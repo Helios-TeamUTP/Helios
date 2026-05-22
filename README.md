@@ -44,7 +44,6 @@ HELIOS es una plataforma web de gestión de citas médicas diseñada para una re
 
 ## Estructura del repositorio
 
-\`\`\`
 helios/
 ├── frontend/
 │   └── src/
@@ -64,7 +63,6 @@ helios/
 └── .github/
     └── workflows/
         └── ci.yml
-\`\`\`
 
 ## Metodología
 
