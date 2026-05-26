@@ -542,9 +542,12 @@ Plan tentativo (a refinar en planning del 11 junio):
 ### Referencias internas
 
 - [Repositorio GitHub](https://github.com/MarianC-programing/Helios)
+- [Pull Request del Sprint 1](https://github.com/MarianC-programing/Helios/pull/1)
 - [Tablero Jira HELL](https://helios-group.atlassian.net)
 - [Workspace Notion HELIOS](https://www.notion.so/HELIOS-Workspace-2a2d9b5c1dbf4eab831310977e440c89)
 - [Proyecto Supabase (admin)](https://supabase.com/dashboard/project/uobhbikcctausgpnzsph)
+- **[Demo público en Railway](https://helios-web-production.up.railway.app)** ← URL que se proyecta + escanea con el QR el jueves
+- [Dashboard Railway del proyecto](https://railway.com/project/e9def4c0-2df1-4dfa-bb52-329e9e9463c4)
 
 ### Documentos clave del repo
 
