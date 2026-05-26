@@ -1,8 +1,8 @@
 # Configuración Nixpacks para Railway
-# Node 20 + pnpm via corepack (incluido con Node 20).
-# Build desde el subdirectorio frontend/.
+# Node 22 + pnpm via corepack. Vite 8 / Vitest 4 / React 19 requieren Node 22+
+# (node:util.styleText export).
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_22"]
 
 [phases.install]
 cmds = [
