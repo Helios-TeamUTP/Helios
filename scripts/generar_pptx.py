@@ -588,13 +588,15 @@ rows = [
     ("Diseño", "Tablas BD vs documentadas", "7/7 (100%)", "Supabase + Obsidian", "ISO/IEC 25010"),
     ("Diseño", "Componentes con SRP", "9/9", "Code review", "TMMi"),
     ("Código", "Cobertura statements (Vitest)", "65.26%  (≥ 60% target)", "Vitest v8", "ISTQB"),
-    ("Código", "Cobertura branches", "53.71%  (≥ 50% target)", "Vitest v8", "ISTQB"),
     ("Código", "Cobertura lines / functions", "81.72% / 89.28%", "Vitest v8", "ISTQB"),
     ("Código", "Tests automatizados pasando", "39/39 (100%)", "Vitest", "TMMi"),
-    ("Código", "Vulnerabilidades críticas", "0 (pendiente confirmar SonarCloud)", "SonarCloud", "ISTQB"),
+    ("No funcional", "Latencia P50 (Locust)", "120 ms", "Locust 2.31", "ISTQB rendimiento"),
+    ("No funcional", "Latencia P95 (Locust)", "300 ms  (target <2000 ms)", "Locust 2.31", "ISTQB rendimiento"),
+    ("No funcional", "Tasa de error bajo carga", "0/6.105 = 0.00%", "Locust 2.31", "ISTQB"),
+    ("No funcional", "Throughput sostenido", "103.85 req/s", "Locust 2.31", "ISTQB"),
     ("Clásicas (Pressman)", "KLOC del Sprint", "≈ 1.4 KLOC", "cloc / SonarCloud", "Pressman"),
     ("Clásicas (Pressman)", "Productividad", "0.28 KLOC/persona", "Cálculo manual", "Pressman"),
-    ("Proceso", "Ciclo de medición Goal→Metric→Acción", "Documentado en este daily", "Daily Scrum semanal", "TQM mejora continua"),
+    ("Proceso", "Ciclo Goal→Metric→Acción", "Documentado en daily MD", "Daily Scrum semanal", "TQM"),
 ]
 
 # Header

@@ -43,8 +43,9 @@ pnpm-lock.yaml
 # Reportes generados por herramientas QA
 coverage/
 *.lcov
-locust_report.html
 .scannerwork/
+# locust_report.html se commitea solo si esta en dailys/ (evidencia academica)
+scripts/locust_report.html
 
 # Python
 __pycache__/
