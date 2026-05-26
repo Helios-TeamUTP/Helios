@@ -1,11 +1,42 @@
-import { defineConfig } from 'vite'
+/// <reference types="vitest/config" />
+import { defineConfig } from 'vitest/config'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    babel({ presets: [reactCompilerPreset()] })
+    babel({ presets: [reactCompilerPreset()] }),
   ],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    css: false,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json-summary'],
+      include: ['src/**/*.{ts,tsx}'],
+      // Excluimos thin wrappers de Supabase y glue de routing,
+      // que se cubren con pruebas E2E manuales en el demo del jueves.
+      exclude: [
+        'src/main.tsx',
+        'src/App.tsx',
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+        'src/lib/types.ts',
+        'src/lib/supabase.ts',
+        'src/hooks/**',
+        'src/components/layout/**',
+        'src/components/auth/ProtectedRoute.tsx',
+        'src/pages/AgendarCita.tsx',
+      ],
+      thresholds: {
+        statements: 60,
+        branches: 50,
+        functions: 60,
+        lines: 60,
+      },
+    },
+  },
 })
