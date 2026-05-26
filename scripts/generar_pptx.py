@@ -301,10 +301,10 @@ add_textbox(
     color=INK_MUTED,
 )
 
-# Columna izquierda: Infraestructura
+# Columna izquierda: Infraestructura (reducida para dejar espacio al QR)
 col_left = Inches(0.5)
-col_right = Inches(7.0)
-col_w = Inches(6.0)
+col_right = Inches(5.3)
+col_w = Inches(4.7)
 col_top = Inches(2.3)
 
 add_rect(slide, col_left, col_top, col_w, Inches(0.06), TEAL)
@@ -365,18 +365,31 @@ add_bullets(
     size=12,
 )
 
-# Barra inferior con stats
-bar_top = Inches(5.6)
-bar_h = Inches(1.2)
+# Bloque QR + URL Railway (esquina derecha)
+qr_path = ROOT / "dailys" / "qr_helios_demo.png"
+if qr_path.exists():
+    slide.shapes.add_picture(
+        str(qr_path), Inches(10.5), Inches(2.3), width=Inches(2.3), height=Inches(2.3),
+    )
+    add_textbox(slide, Inches(10.5), Inches(4.65), Inches(2.3), Inches(0.3),
+                "Escanea el QR", size=10, bold=True, color=TEAL, align=PP_ALIGN.CENTER)
+    add_textbox(slide, Inches(10.5), Inches(4.95), Inches(2.3), Inches(0.3),
+                "helios-web-production", size=8, color=INK_MUTED, align=PP_ALIGN.CENTER)
+    add_textbox(slide, Inches(10.5), Inches(5.18), Inches(2.3), Inches(0.3),
+                ".up.railway.app", size=8, color=INK_MUTED, align=PP_ALIGN.CENTER)
+
+# Barra inferior con stats reales
+bar_top = Inches(5.7)
+bar_h = Inches(1.1)
 add_rect(slide, Inches(0.5), bar_top, Inches(12.3), bar_h, WHITE)
 add_rect(slide, Inches(0.5), bar_top, Inches(0.1), bar_h, TEAL)
 
 stats = [
-    ("28", "archivos TS/TSX nuevos"),
-    ("39", "tests automatizados"),
-    ("65%", "cobertura statements"),
-    ("100%", "US-01..05 implementadas"),
-    ("0", "vulnerabilidades críticas"),
+    ("32", "archivos TS/TSX"),
+    ("39", "tests pasando"),
+    ("65%", "cobertura stmts"),
+    ("2,700", "horarios en BD"),
+    ("5/5", "US implementadas"),
 ]
 stat_w = Inches(2.4)
 stat_left = Inches(0.8)
@@ -384,7 +397,7 @@ for i, (val, lbl) in enumerate(stats):
     x = stat_left + stat_w * i
     add_textbox(slide, x, bar_top + Inches(0.18), stat_w, Inches(0.5),
                 val, size=24, bold=True, color=TEAL)
-    add_textbox(slide, x, bar_top + Inches(0.72), stat_w, Inches(0.4),
+    add_textbox(slide, x, bar_top + Inches(0.7), stat_w, Inches(0.4),
                 lbl, size=10, color=INK_MUTED)
 
 add_footer(slide)
