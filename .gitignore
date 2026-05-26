@@ -39,3 +39,16 @@ credentials.json
 # Dependencias generadas
 package-lock.json
 pnpm-lock.yaml
+
+# Reportes generados por herramientas QA
+coverage/
+*.lcov
+locust_report.html
+.scannerwork/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+scripts/.env
