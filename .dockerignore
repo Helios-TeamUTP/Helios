@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/.git
+**/coverage
+**/.env*
+**/*.log
+**/__pycache__
+**/.venv
+**/.vscode
+**/.idea
+docs/
+dailys/
+scripts/
+backend/
+supabase/
+*.md
+.gitignore
