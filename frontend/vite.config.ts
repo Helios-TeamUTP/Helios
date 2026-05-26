@@ -8,6 +8,15 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] }),
   ],
+  preview: {
+    // Railway sirve por defecto en *.up.railway.app; aceptamos todos los hosts
+    // porque el dominio puede cambiar (custom domain en el futuro).
+    allowedHosts: true,
+    host: '0.0.0.0',
+  },
+  server: {
+    host: '0.0.0.0',
+  },
   test: {
     globals: true,
     environment: 'jsdom',
