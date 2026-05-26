@@ -1,0 +1,100 @@
+export type EstadoCita = 'confirmada' | 'cancelada' | 'completada' | 'no_asistio'
+
+export interface Sede {
+  id: string
+  nombre: string
+  ciudad: string
+  direccion: string | null
+  capacidad_diaria: number
+  activo: boolean
+  created_at: string
+}
+
+export interface Especialidad {
+  id: string
+  nombre: string
+  descripcion: string | null
+  created_at: string
+}
+
+export interface Medico {
+  id: string
+  nombre: string
+  especialidad_id: string | null
+  sede_id: string | null
+  correo: string | null
+  telefono: string | null
+  activo: boolean
+  created_at: string
+}
+
+export interface MedicoConRelaciones extends Medico {
+  especialidad?: Especialidad | null
+  sede?: Sede | null
+}
+
+export interface Horario {
+  id: string
+  medico_id: string
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+  disponible: boolean
+  created_at: string
+}
+
+export interface Paciente {
+  id: string
+  nombre: string
+  cedula: string
+  telefono: string | null
+  correo: string | null
+  fecha_nacimiento: string | null
+  created_at: string
+}
+
+export interface Cita {
+  id: string
+  paciente_id: string | null
+  medico_id: string | null
+  horario_id: string | null
+  sede_id: string | null
+  estado: EstadoCita
+  notas: string | null
+  codigo_confirmacion: string
+  created_at: string
+}
+
+export interface CitaConRelaciones extends Cita {
+  horario?: Horario | null
+  medico?: (Medico & { especialidad?: Especialidad | null }) | null
+  sede?: Sede | null
+}
+
+export interface AuthPacienteLink {
+  auth_uid: string
+  paciente_id: string
+  created_at: string
+}
+
+export interface Database {
+  public: {
+    Tables: {
+      sedes: { Row: Sede; Insert: Partial<Sede>; Update: Partial<Sede> }
+      especialidades: {
+        Row: Especialidad
+        Insert: Partial<Especialidad>
+        Update: Partial<Especialidad>
+      }
+      medicos: { Row: Medico; Insert: Partial<Medico>; Update: Partial<Medico> }
+      horarios: { Row: Horario; Insert: Partial<Horario>; Update: Partial<Horario> }
+      pacientes: { Row: Paciente; Insert: Partial<Paciente>; Update: Partial<Paciente> }
+      citas: { Row: Cita; Insert: Partial<Cita>; Update: Partial<Cita> }
+      auth_paciente_link: {
+        Row: AuthPacienteLink
+        Insert: Partial<AuthPacienteLink>
+        Update: Partial<AuthPacienteLink>
+      }
+    }
+  }
+}
