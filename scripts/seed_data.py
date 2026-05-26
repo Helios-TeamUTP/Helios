@@ -37,13 +37,16 @@ if not SUPABASE_URL or not SUPABASE_KEY:
         "Faltan SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (o VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)."
     )
 
-if "service_role" not in SUPABASE_KEY and "SUPABASE_SERVICE_ROLE_KEY" not in os.environ:
+if not os.environ.get("SUPABASE_SERVICE_ROLE_KEY"):
     print(
-        "[advertencia] Usando anon key. Si RLS bloquea inserts, exporta SUPABASE_SERVICE_ROLE_KEY."
+        "[advertencia] Usando anon key (RLS permisiva en Sprint 1 lo permite, pero ideal usar service_role)."
     )
+else:
+    print("[ok] Conectado con service_role key.")
 
 client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-faker = Faker("es_PA")
+# Faker no tiene es_PA; usamos es_MX que tiene nombres latinos similares.
+faker = Faker("es_MX")
 random.seed(42)
 Faker.seed(42)
 

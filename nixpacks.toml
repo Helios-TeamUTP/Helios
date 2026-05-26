@@ -1,0 +1,13 @@
+# Configuración Nixpacks para Railway
+# Asegura que pnpm esté disponible y construye desde el subdirectorio frontend/
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["cd frontend && pnpm install --frozen-lockfile=false"]
+
+[phases.build]
+cmds = ["cd frontend && pnpm build"]
+
+[start]
+cmd = "cd frontend && pnpm start"
