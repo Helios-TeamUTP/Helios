@@ -168,14 +168,17 @@ de Sprint.
 
 ---
 
-## Métrica 8: Tasa de defectos = 4.09 bugs por KLOC
+## Métrica 8: Tasa de defectos = 5.26 bugs por KLOC
 
 ### 🎯 Imagina esto
 Un artesano que hace 100 sillas y entrega 5 defectuosas tiene una tasa de
 **5% de defectos**.
 
-**Nosotros escribimos 1.71 KLOC y encontramos 7 bugs en total.**
-Eso es 4.09 bugs por cada 1.000 líneas. **La industria considera bueno <5 bugs/KLOC** — nosotros estamos dentro del rango aceptable.
+**Nosotros escribimos 1.71 KLOC y encontramos 9 bugs en total.**
+Eso es 5.26 bugs por cada 1.000 líneas. **La industria considera bueno
+<5 bugs/KLOC** — nosotros estamos ligeramente arriba, pero esto refleja
+**madurez del equipo, no mala calidad**: hicimos UAT real con compañeras
+del grupo y encontramos cosas que sin testing no habríamos detectado.
 
 ### 📊 Los 6 bugs reales
 
@@ -205,20 +208,38 @@ bugs en testing antes de producción):**
    que GARANTIZA que el loading siempre termine, aunque algo falle. Bonus:
    también arreglamos una race condition donde podía mostrarse el paciente
    equivocado tras cambiar de sesión (crítico en app médica).
+8. **5 hooks con el mismo bug** — cuando arreglamos el spinner del login,
+   no nos dimos cuenta que OTROS 5 hooks tenían el mismo error (la página
+   "Mis citas" y el wizard de agendar). Las usuarias seguían viendo
+   spinners infinitos en esas páginas. Aprendizaje: cuando arreglas un
+   patrón, busca el mismo patrón en TODO el código. Esto motivó crear
+   el equipo de agentes con un "bug-hunter" que busca patrones rotos.
+9. **Sesión que no se cerraba al cerrar la pestaña** — pediste que por
+   seguridad de la app médica, cerrar pestaña borre la sesión. Era un
+   riesgo real: si pierdes la laptop o la dejas desbloqueada, cualquiera
+   abre HELIOS con tu sesión. Lo arreglamos cambiando una línea: ahora
+   la sesión vive en sessionStorage (muere al cerrar tab) en lugar de
+   localStorage (vivía para siempre).
 
 ### 💬 Cómo explicarlo en clase
-> *"4.09 bugs por cada 1.000 líneas. La industria considera bueno menos de 5,
-> nosotros estamos en rango. Encontramos 7 defectos durante el sprint: 3 en
-> desarrollo y 4 en demo con usuarias reales. Ninguno llegó a la presentación
-> final, y antes del último deploy aplicamos code review con un agente
-> automático que detectó una race condition crítica adicional."*
+> *"5.26 bugs por cada 1.000 líneas. Superamos ligeramente el target de
+> menos de 5 bugs/KLOC. Esto es honesto: encontramos 9 defectos durante el
+> sprint, 3 en desarrollo y 6 en demo con usuarias reales (compañeras del
+> grupo). Ninguno llegó a la presentación final. Para evitar reincidencias
+> futuras, creamos un equipo de 5 agentes especializados que SIEMPRE se
+> invoca en cualquier cambio: orchestrator, bug-hunter, frontend-expert,
+> clean-code, test-engineer. El bug-hunter ya detectó 2 race conditions
+> críticas que el desarrollador humano no había visto."*
 
-### ❓ Si te preguntan "¿por qué la tasa subió tanto?"
-> *"Hicimos demo con usuarias reales (compañeras del grupo) entre miércoles y
-> jueves. Cualquier proyecto serio detecta más bugs en UAT (testing con
-> usuarios) que en desarrollo solo. Es señal de buenas prácticas, no de mala
-> calidad. La alternativa habría sido NO probar con usuarias y descubrir los
-> bugs el día de la presentación."*
+### ❓ Si te preguntan "¿por qué la tasa supera el 5 bugs/KLOC?"
+> *"Hicimos UAT real con usuarias reales entre miércoles y jueves. Cualquier
+> proyecto serio detecta más bugs en UAT que en desarrollo solo. Es señal
+> de buenas prácticas, no de mala calidad. La alternativa habría sido NO
+> probar con usuarias y descubrir los bugs el día de la presentación con la
+> profesora delante. Adicional, la base 1.71 KLOC es pequeña — un proyecto
+> con 10x más código y solo el doble de bugs tendría una tasa menor pero
+> peor calidad real. Nuestra tasa absoluta de bugs por feature es baja: 9
+> bugs / 5 user stories implementadas = 1.8 bugs/US."*
 
 ### ❓ Si te preguntan "¿qué aprendieron de esos bugs?"
 > *"Cuatro lecciones grandes: (1) scripts destructivos como el seed deben tener

@@ -141,16 +141,18 @@
 ### 5.3 Tasa de defectos
 - **Qué es:** Bugs encontrados / KLOC.
 - **Cómo:** Registro manual de defectos durante el sprint.
-- **Valor:** **7 defectos / 1.71 KLOC = 4.09 bugs/KLOC**
+- **Valor:** **9 defectos / 1.71 KLOC = 5.26 bugs/KLOC**
 - **Defectos detectados y resueltos (todos durante el Sprint, ninguno llegó a presentación):**
-  1. Regex de cédula panameña no aceptaba formato `PE-12-345` → simplificado
-  2. Vitest `vi.mock` fallaba por hoisting con variables externas → `vi.hoisted()`
-  3. Faker `es_PA` locale no existe → cambiado a `es_MX`
-  4. **Registro duplicado**: usuario con `auth.users` pero sin `pacientes` veía "Crear cuenta" en blanco → `Register.tsx` detecta 3 escenarios
-  5. **Toolbar inactivo**: clicks en NavLinks no respondían → `sticky top-0 z-50` en `<header>`
-  6. **Seed destructivo**: `reset_tables()` borraba datos de usuarios reales → preserva citas/pacientes/auth_paciente_link
-  7. **Loading infinito** en `useAuth.tsx`: si Supabase fallaba (cold start, timeout, RLS), el `setLoading(false)` no se ejecutaba y la app se quedaba en spinner "Verificando sesión..." indefinidamente → fix con `try/catch/finally` en `init`, `onAuthStateChange` y `loadPaciente`. Adicional: race condition fix con `useRef` para prevenir respuestas tardías que muestren paciente equivocado tras cambio de sesión (crítico en app médica).
-- **Si preguntan:** *"7 defectos detectados durante el sprint, todos resueltos con commit verificable en GitHub. 3 los encontramos en desarrollo (validaciones, mocks, locale) y 4 en demo con usuarias reales (auth flow, toolbar, seed, loading). Tasa 4.09 bugs/KLOC es honesta — la industria considera bueno <5 bugs/KLOC."*
+  1. Regex de cédula panameña no aceptaba `PE-12-345` → simplificado
+  2. Vitest `vi.mock` fallaba con vars externas → `vi.hoisted()`
+  3. Faker `es_PA` locale no existe → `es_MX`
+  4. Registro duplicado (auth sin paciente) → `Register.tsx` 3 escenarios
+  5. Toolbar inactivo (clicks no responden) → `sticky top-0 z-50` en header
+  6. Seed destructivo borraba citas reales → preserva tablas de usuarios
+  7. Loading infinito en `useAuth.tsx` → `try/catch/finally` + race condition guard
+  8. **5 hooks de datos sin try/catch/finally** (`useCitas`, `useEspecialidades`, `useSedes`, `useMedicos`, `useHorarios`) → patrón consistente aplicado a los 5. Adicional: `useCitas` también tenía race condition (detectado por code-reviewer agente) que podía mostrar citas del paciente anterior tras logout/login rápido — crítico en app médica.
+  9. **Sesión persistente entre pestañas** (`supabase.ts` usaba localStorage por defecto): app médica requiere que cerrar tab borre la sesión por seguridad → cambiado a `sessionStorage`.
+- **Si preguntan:** *"9 defectos detectados durante el sprint, todos resueltos con commit verificable en GitHub. 3 los encontramos en desarrollo y 6 en demo con usuarias reales. Tasa 5.26 bugs/KLOC supera ligeramente el umbral industrial de <5, pero refleja madurez del equipo: hicimos UAT real con compañeras y cada bug detectado en demo es uno que NO llegó a la presentación. Adicional: creamos un equipo de 5 agentes especializados (orchestrator, bug-hunter, frontend-expert, clean-code, test-engineer) que SIEMPRE se invoca en cambios futuros para prevenir reincidencias. El code-reviewer ya detectó 2 race conditions HIGH que YO no había visto."*
 
 ---
 

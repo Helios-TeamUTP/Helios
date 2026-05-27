@@ -209,6 +209,103 @@ Verificacion:
 
 ---
 
+---
+
+## HELL-XX (Bug 5) — Loading infinito en 5 hooks de datos
+
+**Tipo:** Bug
+**Estado:** Done
+**Responsable:** Ethan Gonzalez (Dev Frontend)
+**Story Points:** 3
+**Severidad:** Alta
+
+**Descripción:**
+```
+Sintoma: /mis-citas mostraba spinner "Cargando tus citas..." infinito.
+/agendar tampoco terminaba de cargar los selectores.
+
+Causa raiz: 5 hooks (useCitas, useEspecialidades, useSedes, useMedicos,
+useHorarios) tenian el MISMO patron roto que useAuth tenia antes del
+fix B-07: usaban .then() o await sin try/catch/finally. Si Supabase
+fallaba (cold start, RLS, timeout), setLoading(false) nunca se
+ejecutaba.
+
+Por que se manifesto: el fix de B-07 solo arreglo useAuth, no se busco
+el mismo patron en los otros hooks. Leccion aprendida que motivo
+crear el equipo de agentes con bug-hunter para buscar TODAS las
+instancias de un patron roto.
+
+Fix:
+- Aplicado patron try/catch/finally consistente a los 5 hooks
+- useMedicos y useHorarios tambien setLoading(false) en early return
+- useCitas adicional: race condition guard con signal flag
+  (detectado por code-reviewer HIGH severity)
+
+Race condition en useCitas era CRITICA en app medica:
+- Si paciente A logout y paciente B login rapido
+- Respuesta tardia del fetch de A sobrescribia datos de B en UI
+- Resultado: B veria citas de A
+- En contexto medico: violacion de privacidad + riesgo clinico
+
+Archivos: frontend/src/hooks/useCitas.ts, useEspecialidades.ts,
+useSedes.ts, useMedicos.ts, useHorarios.ts
+
+Commit: dfdbc19
+
+Verificacion:
+- pnpm vitest run: 39/39 pasan
+- pnpm build: limpio
+- /mis-citas carga en <3s sin spinner infinito
+- /agendar muestra selectores con datos
+```
+
+---
+
+## HELL-XX (Bug 6) — Sesión persistente entre pestañas (seguridad)
+
+**Tipo:** Bug
+**Estado:** Done
+**Responsable:** Alejandro Saenz (Tech Lead)
+**Story Points:** 1
+**Severidad:** Alta (riesgo seguridad app médica)
+
+**Descripción:**
+```
+Sintoma reportado: "Cuando abro otra pestana para ingresar y borro
+la anterior, me redirige al inicio de sesion que yo tenia. Esto por
+tema de seguridad no deberia pasar."
+
+Causa raiz: Supabase JS SDK por defecto usa localStorage para
+persistir la sesion JWT. localStorage:
+- Persiste entre pestanas (toda la app comparte sesion)
+- Persiste entre cierres del browser
+- Solo se borra con signOut() explicito
+
+Riesgo en app medica:
+- Si pierdes la laptop, cualquiera que la abra entra con tu sesion
+- Si dejas el browser abierto en compartido, siguiente usuario
+  ve datos del paciente anterior
+- No cumple buenas practicas HIPAA / proteccion de datos clinicos
+
+Fix: storage: window.sessionStorage en createClient options.
+- Cerrar tab/browser borra sesion automaticamente
+- F5 en misma tab mantiene login (UX aceptable)
+- Cada tab tiene su propia sesion (mas seguro)
+
+Tradeoff aceptado por PO: nueva pestana = nuevo login. UX un poco
+menos permisiva pero la seguridad de datos medicos pesa mas.
+
+Archivo: frontend/src/lib/supabase.ts (1 linea + JSDoc completo)
+
+Commit: 87c6c84
+
+Verificacion:
+- Login -> cerrar tab -> abrir nueva tab -> debe pedir login otra vez
+- F5 en sesion activa -> mantiene login
+```
+
+---
+
 ## Cómo crearlas (paso a paso para José)
 
 1. Entrar a Jira → proyecto Helios → Backlog

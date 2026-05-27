@@ -527,8 +527,19 @@ helios/
 | B-05 | Toolbar/NavLinks no respondían a clicks | `frontend/src/components/layout/AppLayout.tsx` | `sticky top-0 z-50` en header + `relative z-10` en nav | _este commit_ |
 | B-06 | Seed destructivo borraba citas / pacientes / auth_paciente_link de usuarios reales | `scripts/seed_data.py` | `reset_tables()` solo borra catálogo; detección automática de pacientes reales preserva sus datos | `bbd2ff4` |
 | B-07 | Loading infinito en `useAuth.tsx`: spinner "Verificando sesión..." nunca terminaba si Supabase fallaba (cold start, RLS, timeout) | `frontend/src/hooks/useAuth.tsx` | `try/catch/finally` en `init`, `onAuthStateChange` y `loadPaciente` garantiza `setLoading(false)` siempre. + `useRef` para prevenir race condition con respuestas tardías que mostrarían paciente equivocado tras cambio de sesión. Validado con agente `code-reviewer` antes del deploy. | `a5e1021` |
+| B-08 | 5 hooks de datos (`useCitas`, `useEspecialidades`, `useSedes`, `useMedicos`, `useHorarios`) tenían el MISMO patrón roto que `useAuth` antes de B-07. Manifestación: `/mis-citas` y `/agendar` se quedaban con spinner infinito | `frontend/src/hooks/use*.ts` (5 archivos) | Aplicado patrón `try/catch/finally` consistente con cleanup `active` flag. Adicional `useCitas`: signal flag para race condition (detectada por code-reviewer HIGH) que podía cruzar citas entre pacientes tras logout/login rápido — crítico en app médica | `dfdbc19` |
+| B-09 | Sesión persistente entre pestañas: localStorage default de Supabase mantenía sesión activa indefinidamente. Riesgo de seguridad en app médica: laptop perdida/desbloqueada permite acceso a próximo usuario | `frontend/src/lib/supabase.ts` | Cambiado `storage: window.sessionStorage`. Cerrar tab/browser borra sesión automáticamente. F5 en misma tab mantiene login (UX aceptable) | `87c6c84` |
 
-**Tasa de defectos actualizada:** 7 bugs / 1.71 KLOC = **4.09 bugs/KLOC** (industria considera bueno <5).
+**Tasa de defectos actualizada:** 9 bugs / 1.71 KLOC = **5.26 bugs/KLOC** (supera ligeramente target <5; refleja madurez del equipo al hacer UAT real con usuarias reales).
+
+**Práctica nueva implementada:** Equipo de 5 agentes especializados creado para Sprint 2 obligatorio:
+- `helios-team-orchestrator` (coordinador)
+- `helios-bug-hunter` (detector)
+- `helios-frontend-expert` (implementador)
+- `helios-clean-code` (mantenedor)
+- `helios-test-engineer` (tests)
+
+Documentación: `docs/agentes/`, `docs/EQUIPO_DE_AGENTES_HELIOS.md`, `CLAUDE.md` con reglas obligatorias.
 
 **Práctica nueva en Sprint 1:** Antes del fix de B-07 aplicamos revisión automatizada con el agente `pr-review-toolkit:code-reviewer`. Detectó una race condition crítica (HIGH severity) que se aplicó antes del deploy. Esta práctica se documenta para Sprint 2 como gate obligatorio en cada PR.
 

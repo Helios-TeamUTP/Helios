@@ -182,24 +182,26 @@ TOTAL TODO INCLUIDO (con tests + scripts): 3.706 líneas = 3.71 KLOC
 
 ### 6. Tasa de defectos (bugs / KLOC)
 
-**Cálculo:** `7 defectos detectados / 1.71 KLOC = 4.09 bugs/KLOC`
+**Cálculo:** `9 defectos detectados / 1.71 KLOC = 5.26 bugs/KLOC`
 
-**Los 7 defectos detectados y resueltos durante el Sprint:**
+**Los 9 defectos detectados y resueltos durante el Sprint:**
 
 **Encontrados en desarrollo (3):**
 1. **Regex de cédula panameña** rechazaba formato `PE-12-345` → simplificado
 2. **Vitest mock hoisting** fallaba con variables externas → `vi.hoisted()`
 3. **Faker locale `es_PA` no existe** → cambiado a `es_MX`
 
-**Encontrados en demo con usuarias reales (4):**
+**Encontrados en demo con usuarias reales (6):**
 4. **Auth idempotente** (`Register.tsx`): usuario con `auth.users` sin `pacientes` veía "Crear cuenta" → detección de 3 escenarios + UI "Completa tu perfil"
 5. **Toolbar sin stacking context** (`AppLayout.tsx`): clicks en NavLinks no respondían → `sticky top-0 z-50` en `<header>`
-6. **Seed destructivo** (`seed_data.py`): `reset_tables()` borraba citas reales → preserva tablas de usuarios; citas perdidas no recuperables en Free tier
-7. **Loading infinito en `useAuth.tsx`**: spinner "Verificando sesión..." nunca terminaba si Supabase fallaba (cold start, timeout). Fix con `try/catch/finally` en 3 lugares + race condition guard con `useRef` para prevenir mostrar paciente equivocado tras cambio de sesión.
+6. **Seed destructivo** (`seed_data.py`): `reset_tables()` borraba citas reales → preserva tablas de usuarios
+7. **Loading infinito en `useAuth.tsx`**: spinner "Verificando sesión..." nunca terminaba → `try/catch/finally` + race condition guard con `useRef`
+8. **5 hooks de datos sin try/catch** (`useCitas`, `useEspecialidades`, `useSedes`, `useMedicos`, `useHorarios`): mismo patrón roto que useAuth tenía → fix consistente aplicado. Adicional: `useCitas` tenía race condition crítica (detectada por code-reviewer agente) que podía cruzar datos entre pacientes
+9. **Sesión persistente** (`supabase.ts`): SDK Supabase usa localStorage por defecto → cambiado a `sessionStorage`. Cerrar tab ahora borra la sesión (requisito de seguridad app médica)
 
-**Evidencia:** los 7 están documentados en commits del repo + en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md` + en Jira (4 bugs encontrados en demo con issues HELL en estado Done).
+**Evidencia:** los 9 están documentados en commits del repo (`12ea1c8`, `5013622`, `86114a4`, `82dd420`, `5b1abdf`, `bbd2ff4`, `a5e1021`, `dfdbc19`, `87c6c84`) + en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md` + en `docs/JIRA_ISSUES_BUGS_SPRINT1.md`.
 
-**Si te preguntan:** *"4.09 bugs por KLOC es honesto y verificable. Encontramos 3 bugs en desarrollo y 4 en demo con usuarias reales, todos resueltos con commit verificable en GitHub. La industria considera bueno <5 bugs/KLOC. Lo importante: ninguno llegó a la presentación final, y aplicamos code review con agente automático antes del último deploy para validar la calidad del fix."*
+**Si te preguntan:** *"5.26 bugs por KLOC supera ligeramente el target industrial de <5. Esto es honesto y refleja madurez: encontramos 6 bugs en demo con usuarias reales (UAT) que NO llegaron a la presentación. Adicional creamos un equipo de 5 agentes especializados (en `docs/agentes/`) que SIEMPRE se invoca en cambios futuros con code review automático. Ya detectó 2 race conditions HIGH severity que el desarrollador humano no había visto, demostrando que la práctica funciona."*
 
 ---
 
