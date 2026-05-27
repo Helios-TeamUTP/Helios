@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Especialidad } from '../lib/types'
 
+/**
+ * Hook que carga las especialidades médicas activas desde Supabase.
+ *
+ * Bug B-08 fix: try/catch/finally garantiza setLoading(false) aunque
+ * Supabase falle (cold start, RLS, timeout). Sin esto, el spinner del
+ * SelectorEspecialidad podía quedar infinito.
+ *
+ * @returns data (especialidades), loading, error
+ */
 export function useEspecialidades() {
   const [data, setData] = useState<Especialidad[]>([])
   const [loading, setLoading] = useState(true)
@@ -10,16 +19,25 @@ export function useEspecialidades() {
   useEffect(() => {
     let active = true
     setLoading(true)
-    supabase
-      .from('especialidades')
-      .select('*')
-      .order('nombre')
-      .then(({ data, error }) => {
+    setError(null)
+    ;(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('especialidades')
+          .select('*')
+          .order('nombre')
         if (!active) return
         if (error) setError(error.message)
         else setData(data ?? [])
-        setLoading(false)
-      })
+      } catch (err) {
+        if (active) {
+          console.error('[useEspecialidades] unexpected:', err)
+          setError(err instanceof Error ? err.message : 'Error desconocido')
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    })()
     return () => {
       active = false
     }
