@@ -12,9 +12,12 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-helios-mist">
-      <header className="border-b border-helios-ink/5 bg-white">
+      {/* Bug fix: sticky + z-50 garantiza que el toolbar siempre esté arriba
+          de cualquier overlay (FullCalendar, modales, etc.) y los clicks
+          lleguen a los NavLinks. */}
+      <header className="sticky top-0 z-50 border-b border-helios-ink/5 bg-white shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="relative z-10 flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-helios-primary text-white">
               <SunIcon />
             </div>
@@ -23,7 +26,7 @@ export function AppLayout() {
               <div className="text-xs text-helios-ink/50">Citas médicas unificadas</div>
             </div>
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="relative z-10 flex items-center gap-1">
             {user ? (
               <>
                 <NavItem to="/agendar">Agendar cita</NavItem>
