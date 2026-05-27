@@ -66,11 +66,22 @@ ESPECIALIDADES = [
 
 
 def reset_tables() -> None:
-    print("[reset] Limpiando datos existentes...")
-    # El orden importa por FKs
-    for table in ["citas", "horarios", "auth_paciente_link", "pacientes", "medicos", "especialidades", "sedes"]:
+    """SOLO borra catalogo (sedes, especialidades, medicos, horarios).
+
+    NUNCA toca: citas, pacientes, auth_paciente_link
+    porque esas tablas tienen datos de USUARIOS REALES que se perderian.
+
+    Bug HELL-XX (Sprint 1 sem 2): version anterior borraba TODAS las tablas
+    y destruyo las citas que las companeras habian agendado. Fix preserva
+    datos de usuarios reales.
+    """
+    print("[reset] Limpiando SOLO catalogo (sedes/especialidades/medicos/horarios)...")
+    print("[reset] PRESERVA: citas, pacientes, auth_paciente_link (datos de usuarios reales)")
+    # Orden importa por FKs: horarios depende de medicos; medicos depende de sedes+especialidades
+    for table in ["horarios", "medicos", "especialidades", "sedes"]:
         try:
-            client.table(table).delete().neq("id" if table != "auth_paciente_link" else "auth_uid", "00000000-0000-0000-0000-000000000000").execute()
+            client.table(table).delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+            print(f"[reset]   {table}: limpiado")
         except Exception as exc:  # noqa: BLE001 - log y continua
             print(f"[reset]   {table}: {exc}")
 
@@ -220,18 +231,46 @@ def insert_citas_iniciales(pacientes: list[dict], medicos: list[dict], horarios:
     print(f"[citas]   {creadas} citas insertadas.")
 
 
+def hay_pacientes_reales() -> bool:
+    """Detecta si la BD ya tiene pacientes/usuarios reales para preservarlos."""
+    try:
+        res = client.table("pacientes").select("id", count="exact").limit(1).execute()
+        cantidad = res.count or 0
+        return cantidad > 0
+    except Exception as exc:  # noqa: BLE001
+        print(f"[chequeo] No se pudo verificar pacientes existentes: {exc}")
+        return True  # En duda, preservar
+
+
 def main() -> None:
     start = datetime.now()
     print(f"[seed] HELIOS seed_data — {start.isoformat()}")
     print(f"[seed] Target: {SUPABASE_URL}")
+    print()
+    print("=" * 60)
+    print("AVISO: Este script solo reemplaza CATALOGO.")
+    print("  - SI re-crea: sedes, especialidades, medicos, horarios")
+    print("  - NO toca:    citas, pacientes, auth_paciente_link")
+    print("=" * 60)
+    print()
 
     reset_tables()
     sedes = insert_sedes()
     especialidades = insert_especialidades()
     medicos = insert_medicos(sedes, especialidades)
     horarios = insert_horarios(medicos)
-    pacientes = insert_pacientes()
-    insert_citas_iniciales(pacientes, medicos, horarios)
+
+    # Pacientes y citas de demo solo si la BD esta vacia (primer setup).
+    # Si ya hay pacientes reales agendando, NO creamos pacientes de prueba.
+    if hay_pacientes_reales():
+        print()
+        print("[pacientes] Ya hay pacientes reales en la BD - PRESERVADOS, no se crean demo.")
+        print("[citas] Citas reales PRESERVADAS, no se crean demo.")
+    else:
+        print()
+        print("[pacientes] BD vacia - creando 20 pacientes demo + 15 citas iniciales...")
+        pacientes = insert_pacientes()
+        insert_citas_iniciales(pacientes, medicos, horarios)
 
     print("\n[resumen]")
     print(f"  sedes:           {len(sedes)}")
