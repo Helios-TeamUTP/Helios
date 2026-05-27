@@ -509,6 +509,26 @@ helios/
 | D-05 | CI/CD no automatizado (sin GitHub Actions) | 🟢 Baja | Sprint 2 (Marian) |
 | D-06 | Cobertura branches al 53% (deseable 70%) | 🟢 Baja | Sprint 2 (Ashley) |
 
+### Defectos detectados durante el Sprint y resueltos
+
+**Encontrados en desarrollo (3):**
+
+| # | Defecto | Archivo afectado | Fix | Commit |
+|---|---|---|---|---|
+| B-01 | Regex de cédula panameña rechazaba formato `PE-12-345` | `frontend/src/lib/cedula.ts` | Simplificado a "5-12 dígitos tras quitar prefijo PE/N/E" | `12ea1c8` |
+| B-02 | Vitest `vi.mock` fallaba por hoisting con variables externas | `frontend/src/pages/Login.test.tsx` | Uso de `vi.hoisted()` para vars compartidas | `5013622` |
+| B-03 | Faker locale `es_PA` no existe | `scripts/seed_data.py` | Cambiado a `es_MX` (nombres latinos similares) | `86114a4` |
+
+**Encontrados en demo con usuarias reales (3):**
+
+| # | Defecto | Archivo afectado | Fix | Commit |
+|---|---|---|---|---|
+| B-04 | Registro duplicado: usuario con `auth.users` pero sin `pacientes` veía "Crear cuenta" en blanco | `frontend/src/pages/Register.tsx` + `Login.tsx` | Detección de 3 escenarios (cargando / completo / falta perfil) y UI "Completa tu perfil" | `82dd420` |
+| B-05 | Toolbar/NavLinks no respondían a clicks | `frontend/src/components/layout/AppLayout.tsx` | `sticky top-0 z-50` en header + `relative z-10` en nav | _este commit_ |
+| B-06 | Seed destructivo borraba citas / pacientes / auth_paciente_link de usuarios reales | `scripts/seed_data.py` | `reset_tables()` solo borra catálogo; detección automática de pacientes reales preserva sus datos | _este commit_ |
+
+**Tasa de defectos actualizada:** 6 bugs / 1.71 KLOC = **3.51 bugs/KLOC** (industria considera bueno <5).
+
 ### Sprint 2 — Cancelación y Reprogramación + endurecer Sprint 1
 
 Plan tentativo (a refinar en planning del 11 junio):

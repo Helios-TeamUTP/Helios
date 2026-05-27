@@ -512,15 +512,15 @@ add_textbox(
 )
 
 blockers = [
-    ("RESUELTO", ACCENT, "Stack muy nuevo (React 19.2 + TS 6 + Vite 8)",
-     "TypeScript falla con tipos genéricos en cliente Supabase",
-     "Mitigación: cliente sin tipado genérico para Sprint 1 + ticket de codegen para Sprint 2."),
-    ("RESUELTO", ACCENT, "Validación de cédula panameña rechazaba PE-12-345",
-     "El regex inicial era demasiado estricto",
-     "Mitigación: simplificada a '5-12 dígitos tras quitar prefijo y guiones' + 7 casos de prueba."),
-    ("RESUELTO", ACCENT, "Vitest 4 mock hoisting con variables externas",
-     "Tests fallaban con 'Cannot access X before initialization'",
-     "Mitigación: usar vi.hoisted() para variables compartidas entre mock y test."),
+    ("RESUELTO", ACCENT, "Registro duplicado: auth sin paciente mostraba 'Crear cuenta'",
+     "Usuarias logueadas veían form de registro en blanco tras correr el seed",
+     "Mitigación: Register.tsx detecta 3 escenarios (cargando/completo/falta perfil) y muestra UI 'Completa tu perfil'."),
+    ("RESUELTO", ACCENT, "Toolbar de navegación no respondía a clicks",
+     "Calendario tapaba los NavLinks del header (sin stacking context)",
+     "Mitigación: sticky top-0 z-50 en <header> de AppLayout + z-10 en <nav>."),
+    ("RESUELTO", ACCENT, "Seed destructivo borraba citas de usuarias reales",
+     "reset_tables() ejecutaba DELETE en citas/pacientes/auth_paciente_link",
+     "Mitigación: reset_tables() solo borra catálogo. Datos de usuarios preservados."),
     ("EN CURSO", AMBER, "RLS permisivo en Sprint 1",
      "Política USING (true) permite ver datos de otros pacientes",
      "Mitigación: documentado como deuda técnica conocida. Primer ticket del Sprint 2."),
@@ -659,7 +659,7 @@ rows = [
     ("No funcional", "Throughput sostenido", "103.85 req/s", "Locust 2.31", "ISTQB"),
     ("Clásicas (Pressman)", "KLOC del Sprint (producto)", "1.71 KLOC medidas", "Script Python conteo", "Pressman"),
     ("Clásicas (Pressman)", "Productividad", "0.342 KLOC/persona", "1.71/5 personas", "Pressman"),
-    ("Clásicas (Pressman)", "Tasa de defectos", "1.75 bugs/KLOC", "3 bugs / 1.71 KLOC", "Pressman"),
+    ("Clásicas (Pressman)", "Tasa de defectos", "3.51 bugs/KLOC", "6 bugs / 1.71 KLOC", "Pressman"),
     ("Proceso", "Ciclo Goal→Metric→Acción", "Documentado en daily MD", "Daily Scrum semanal", "TQM"),
 ]
 

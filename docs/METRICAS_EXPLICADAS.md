@@ -141,12 +141,15 @@
 ### 5.3 Tasa de defectos
 - **Qué es:** Bugs encontrados / KLOC.
 - **Cómo:** Registro manual de defectos durante el sprint.
-- **Valor:** **3 defectos / 1.4 KLOC = 2.1 bugs/KLOC**
-- **Defectos detectados y resueltos:**
-  1. Regex de cédula panameña no aceptaba formato `PE-12-345` → simplificado
-  2. Vitest `vi.mock` fallaba por hoisting con variables externas → usado `vi.hoisted`
-  3. Faker `es_PA` locale no existe → cambiado a `es_MX`
-- **Si preguntan:** *"3 defectos detectados durante el sprint, todos resueltos. Tasa 2.1 bugs/KLOC es buena para Sprint 1."*
+- **Valor:** **6 defectos / 1.71 KLOC = 3.51 bugs/KLOC**
+- **Defectos detectados y resueltos (todos durante el Sprint, ninguno llegó a presentación):**
+  1. Regex de cédula panameña no aceptaba formato `PE-12-345` → simplificado a "5-12 dígitos tras quitar prefijo"
+  2. Vitest `vi.mock` fallaba por hoisting con variables externas → resuelto con `vi.hoisted()`
+  3. Faker `es_PA` locale no existe → cambiado a `es_MX` (nombres latinos)
+  4. **Registro duplicado**: usuario con `auth.users` pero sin `pacientes` veía "Crear cuenta" en blanco → fix en `Register.tsx` detecta 3 escenarios (cargando / completo / falta perfil) y muestra UI "Completa tu perfil"
+  5. **Toolbar inactivo**: clicks en NavLinks no respondían → fix `sticky top-0 z-50` en `<header>` de `AppLayout.tsx` garantiza stacking context arriba de overlays
+  6. **Seed destructivo**: `reset_tables()` borraba `citas` / `pacientes` / `auth_paciente_link` → fix preserva tablas de usuarios reales, solo reemplaza catálogo
+- **Si preguntan:** *"6 defectos detectados durante el sprint, todos resueltos con commit verificable en GitHub. 3 los encontramos en desarrollo (validaciones, mocks, locale) y 3 en demo con usuarias reales (auth, toolbar, seed). Tasa 3.51 bugs/KLOC es honesta para un Sprint 1; la industria considera bueno <5 bugs/KLOC."*
 
 ---
 

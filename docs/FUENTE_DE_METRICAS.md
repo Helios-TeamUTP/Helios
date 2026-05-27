@@ -182,16 +182,23 @@ TOTAL TODO INCLUIDO (con tests + scripts): 3.706 líneas = 3.71 KLOC
 
 ### 6. Tasa de defectos (bugs / KLOC)
 
-**Cálculo:** `3 defectos detectados / 1.71 KLOC = 1.75 bugs/KLOC`
+**Cálculo:** `6 defectos detectados / 1.71 KLOC = 3.51 bugs/KLOC`
 
-**Los 3 defectos** detectados y resueltos durante el Sprint:
+**Los 6 defectos detectados y resueltos durante el Sprint:**
+
+**Encontrados en desarrollo (3):**
 1. **Regex de cédula panameña** rechazaba formato `PE-12-345` → simplificado a "5-12 dígitos tras quitar prefijo"
 2. **Vitest mock hoisting** fallaba con variables externas → resuelto con `vi.hoisted()`
 3. **Faker locale `es_PA` no existe** → cambiado a `es_MX` (mismo idioma, nombres latinos)
 
-**Evidencia:** todos están documentados en commits del repo + en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md`.
+**Encontrados en demo con usuarias reales (3):**
+4. **Auth idempotente:** Usuario con `auth.users` pero sin `pacientes` veía "Crear cuenta" → fix en `Register.tsx` detecta 3 escenarios y muestra UI "Completa tu perfil" cuando aplica
+5. **Toolbar sin stacking context:** Clicks en NavLinks del header no respondían (overlay del calendario los tapaba) → fix `sticky top-0 z-50` en `<header>` de `AppLayout.tsx`
+6. **Seed destructivo:** `reset_tables()` borraba citas reales de usuarios → fix preserva `citas` / `pacientes` / `auth_paciente_link`; solo reemplaza catálogo. Citas perdidas no recuperables (Free tier sin PITR).
 
-**Si te preguntan:** *"1.75 bugs por KLOC es una tasa baja. Los 3 defectos los encontramos durante desarrollo (no en producción), los documentamos en el daily, y todos están resueltos con commit verificable en GitHub."*
+**Evidencia:** los 6 están documentados en commits del repo + en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md` + en Jira (issues HELL-33, HELL-34, HELL-35 con estado Done).
+
+**Si te preguntan:** *"3.51 bugs por KLOC es honesto y verificable. Encontramos 3 bugs en desarrollo y 3 en demo con usuarias reales, todos resueltos con commit verificable en GitHub. La industria considera bueno <5 bugs/KLOC. Lo importante: ninguno llegó a la presentación final."*
 
 ---
 

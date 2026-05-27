@@ -168,31 +168,52 @@ de Sprint.
 
 ---
 
-## Métrica 8: Tasa de defectos = 1.75 bugs por KLOC
+## Métrica 8: Tasa de defectos = 3.51 bugs por KLOC
 
 ### 🎯 Imagina esto
 Un artesano que hace 100 sillas y entrega 5 defectuosas tiene una tasa de
 **5% de defectos**.
 
-**Nosotros escribimos 1.71 KLOC y encontramos 3 bugs durante el desarrollo.**
-Eso es 1.75 bugs por cada 1.000 líneas.
+**Nosotros escribimos 1.71 KLOC y encontramos 6 bugs en total.**
+Eso es 3.51 bugs por cada 1.000 líneas. **La industria considera bueno <5 bugs/KLOC** — nosotros estamos dentro del rango aceptable.
 
-### 📊 Los 3 bugs reales
+### 📊 Los 6 bugs reales
+
+**Encontrados durante el desarrollo (3):**
 1. **Validación de cédula muy estricta** — rechazaba `PE-12-345` (cédulas
    panameñas de extranjeros). Lo arreglamos cambiando la validación.
-2. **Tests no podían hacer mock** — falla técnica de la herramienta Vitest 4.
+2. **Tests no podían hacer mock** — falla técnica de Vitest 4.
    Lo arreglamos usando `vi.hoisted()`.
 3. **Faker no tenía locale `es_PA`** — la librería de datos falsos no
    reconoce Panamá. Lo cambiamos a `es_MX`.
 
-### 💬 Cómo explicarlo en clase
-> *"1.75 bugs por cada 1.000 líneas. La industria considera bueno menos de 5.
-> Encontramos 3 defectos durante el desarrollo, todos documentados y resueltos
-> antes del demo."*
+**Encontrados en demo con usuarias reales (3 — esto es lo profesional, encontrar
+bugs en testing antes de producción):**
 
-### ❓ Si te preguntan "¿hubo más bugs?"
-> *"Esos 3 son los que llegaron a hacer fallar pruebas o impedir avance. Errores
-> tipográficos menores no los contamos como bugs."*
+4. **Registro duplicado** — cuando una usuaria que ya tenía cuenta perdía su
+   perfil de paciente (porque corrimos el seed), la app le pedía crear cuenta
+   de nuevo en blanco. Ahora detecta el caso y le muestra "Completa tu perfil".
+5. **Botones del menú no respondían** — el calendario tapaba los clicks del
+   menú superior. Le pusimos `z-index: 50` al header.
+6. **Seed destructivo** — el script de datos de prueba borraba TODAS las tablas,
+   incluyendo las citas reales de las compañeras. Lo arreglamos para que solo
+   borre catálogo (sedes/médicos/horarios) y nunca toque datos de usuarios.
+
+### 💬 Cómo explicarlo en clase
+> *"3.51 bugs por cada 1.000 líneas. La industria considera bueno menos de 5,
+> nosotros estamos en rango. Encontramos 6 defectos durante el sprint: 3 en
+> desarrollo y 3 en demo con usuarias reales. Ninguno llegó a la presentación
+> final."*
+
+### ❓ Si te preguntan "¿por qué la tasa subió de 1.75 a 3.51?"
+> *"Hicimos demo con usuarias reales (compañeras del grupo) entre miércoles y
+> jueves. Cualquier proyecto serio detecta más bugs en UAT (testing con usuarios)
+> que en desarrollo solo. Es señal de buenas prácticas, no de mala calidad."*
+
+### ❓ Si te preguntan "¿qué aprendieron de esos bugs?"
+> *"Tres lecciones: (1) scripts destructivos como el seed deben tener safeguards,
+> (2) la lógica de autenticación tiene que manejar estados parciales (auth sin
+> perfil), (3) z-index y stacking context son fáciles de olvidar pero matan UX."*
 
 ---
 
