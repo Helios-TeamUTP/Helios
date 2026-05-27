@@ -44,17 +44,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Bug B-07 fix: try/catch garantiza que NUNCA propague excepcion al caller.
    * Race condition fix: ignora respuesta si el authUid actual cambio mientras
    * la query estaba en vuelo.
-   * Bug B-11 fix: cada query envuelta con withTimeout(AUTH_TIMEOUT_MS) para
-   * que un Supabase colgado no atasque el loading=true del caller (causaba
+   * Bug B-11 fix: query envuelta con withTimeout(AUTH_TIMEOUT_MS) para que
+   * un Supabase colgado no atasque el loading=true del caller (causaba
    * "Verificando sesion..." eterno tras F5 en /mis-citas).
+   * Bug B-12 fix: una sola query con JOIN nativo de Supabase
+   * (auth_paciente_link!inner -> pacientes!inner) en lugar de 2 queries
+   * serializadas. Reduce de 2 round-trips a 1 -> spinner baja de ~10s a <2s.
    */
   const loadPaciente = useCallback(async (authUid: string) => {
     currentAuthUidRef.current = authUid
     try {
-      const { data: link, error: linkErr } = await withTimeout(
+      const { data, error } = await withTimeout(
         supabase
           .from('auth_paciente_link')
-          .select('paciente_id')
+          .select('paciente_id, pacientes!inner(*)')
           .eq('auth_uid', authUid)
           .maybeSingle(),
         AUTH_TIMEOUT_MS,
@@ -63,34 +66,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Respuesta tardia: el usuario ya cambio. Ignorar.
       if (currentAuthUidRef.current !== authUid) return
 
-      if (linkErr) {
-        console.error('[useAuth] loadPaciente link error:', linkErr.message)
-        setPaciente(null)
-        return
-      }
-      if (!link?.paciente_id) {
+      if (error) {
+        console.error('[useAuth] loadPaciente error:', error.message)
         setPaciente(null)
         return
       }
 
-      const { data: pac, error: pacErr } = await withTimeout(
-        supabase
-          .from('pacientes')
-          .select('*')
-          .eq('id', link.paciente_id)
-          .maybeSingle(),
-        AUTH_TIMEOUT_MS,
-      )
-
-      // Verificar de nuevo: la segunda query tambien pudo tardar.
-      if (currentAuthUidRef.current !== authUid) return
-
-      if (pacErr) {
-        console.error('[useAuth] loadPaciente paciente error:', pacErr.message)
-        setPaciente(null)
-        return
-      }
-      setPaciente(pac ?? null)
+      // El JOIN devuelve: { paciente_id, pacientes: { ...campos } } o null.
+      // Si no hay link, data === null. Si hay link pero el join no encontro
+      // paciente (caso imposible con !inner), data tambien viene sin pacientes.
+      const pacienteRel = (data as unknown as { pacientes: Paciente | null } | null)?.pacientes
+      setPaciente(pacienteRel ?? null)
     } catch (err) {
       if (err instanceof TimeoutError) {
         console.error('[useAuth] loadPaciente timeout — UI continua sin paciente')

@@ -92,11 +92,15 @@ describe('useAuth — Bug B-11 regresión', () => {
   })
 
   it('SIGNED_IN SÍ recarga paciente (preserva el flujo normal)', async () => {
-    // Mock para que las 2 queries de loadPaciente devuelvan respuesta válida.
-    const maybeSingleMock = vi
-      .fn()
-      .mockResolvedValueOnce({ data: { paciente_id: 'pac-1' }, error: null })
-      .mockResolvedValueOnce({ data: { id: 'pac-1', nombre: 'Test Paciente' }, error: null })
+    // Bug B-12: ahora loadPaciente hace 1 sola query con JOIN nativo.
+    // El response trae el paciente anidado: { paciente_id, pacientes: {...} }
+    const maybeSingleMock = vi.fn().mockResolvedValue({
+      data: {
+        paciente_id: 'pac-1',
+        pacientes: { id: 'pac-1', nombre: 'Test Paciente' },
+      },
+      error: null,
+    })
 
     fromMock.mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -118,9 +122,9 @@ describe('useAuth — Bug B-11 regresión', () => {
 
     // En SIGNED_IN sí debe haber llamado a supabase.from (recargar paciente).
     expect(fromMock).toHaveBeenCalled()
-    // M-2 del review: además del .from, validar que el paciente quedó cargado
-    // y que loading cerró (sin esto, si loadPaciente fallara silente, el test
-    // pasaría igual y la regresión se nos colaría).
+    // M-2 del review B-11: además del .from, validar que el paciente quedó
+    // cargado y que loading cerró (sin esto, si loadPaciente fallara silente,
+    // el test pasaría igual y la regresión se nos colaría).
     await waitFor(() => {
       expect(result.current.paciente).toEqual({ id: 'pac-1', nombre: 'Test Paciente' })
       expect(result.current.loading).toBe(false)
