@@ -5,6 +5,20 @@
 
 ---
 
+## 🧠 PRIMER PASO OBLIGATORIO (al iniciar sesión)
+
+**ANTES de hacer cualquier cosa, lee este archivo:**
+
+```
+docs/CONTEXTO_SESION_ULTIMA.md
+```
+
+Ahí está el **estado exacto donde se quedó la última sesión**: qué bugs se arreglaron, qué falta hacer, qué tests pasaron, qué deploy está vivo, y qué pendientes hay para José.
+
+No empezar a trabajar sin haber leído ese archivo primero. Es la "memoria viva" del proyecto entre sesiones.
+
+---
+
 ## Identidad del proyecto
 
 **HELIOS** es el sistema unificado de citas médicas del Grupo HELIOS (UTP Calidad de Software 2026).
@@ -155,16 +169,17 @@ Referencia rápida — NO repetir estos patrones:
 | B-07 | useAuth loading infinito | `hooks/useAuth.tsx` | try/catch/finally + race condition fix con useRef |
 | B-08 | 5 hooks de datos sin try/catch | `hooks/use*.ts` | Patrón IIFE async con try/catch/finally |
 | B-09 | localStorage para auth | `lib/supabase.ts` | `storage: sessionStorage` |
+| B-10 | Login/Register spinner eterno si Supabase tarda | `pages/Login.tsx`, `pages/Register.tsx`, `lib/withTimeout.ts` (nuevo) | Helper `withTimeout` (Promise.race con 15s) + `try/catch/finally` en handlers → garantiza `setSubmitting(false)` y mensaje claro al usuario |
 
 ---
 
 ## 📈 Métricas del Sprint 1 (a defender el viernes)
 
-- **Cobertura:** 65.26% statements / 81.72% lines / 89.28% functions
-- **Tests:** 39/39 pasando
+- **Cobertura:** 61.4% statements / 82% lines / 90.9% functions
+- **Tests:** 50/50 pasando (39 originales + 11 nuevos del fix B-10)
 - **KLOC:** 1.71 (producto: frontend + SQL)
 - **P95 latencia:** 300 ms (Locust 200 usuarios)
-- **Tasa defectos:** 5.26 bugs/KLOC (9 bugs / 1.71 KLOC) — industria considera bueno <5
+- **Tasa defectos:** 5.85 bugs/KLOC (10 bugs / 1.71 KLOC) — sube ligeramente por B-10 encontrado en producción; narrativa: "lo encontramos antes que el usuario lo sufra crónicamente"
 
 ---
 

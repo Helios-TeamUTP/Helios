@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
+import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 export function Login() {
   const navigate = useNavigate()
@@ -33,18 +34,37 @@ export function Login() {
     return <Navigate to="/registro" replace />
   }
 
+  /**
+   * Bug B-10 fix: try/catch/finally + withTimeout garantiza que
+   * setSubmitting(false) siempre se ejecute, incluso si Supabase nunca
+   * responde. Antes, un signInWithPassword colgado dejaba el spinner
+   * eterno y el botón disabled sin forma de reintentar.
+   */
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
     setSubmitting(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setSubmitting(false)
-    if (error) {
-      setError(error.message)
-      return
+    try {
+      const { error: signInError } = await withTimeout(
+        supabase.auth.signInWithPassword({ email, password }),
+        AUTH_TIMEOUT_MS,
+      )
+      if (signInError) {
+        setError(signInError.message)
+        return
+      }
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
+      navigate(from || '/agendar', { replace: true })
+    } catch (err) {
+      if (err instanceof TimeoutError) {
+        setError('El servidor tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.')
+      } else {
+        console.error('[Login] handleSubmit unexpected:', err)
+        setError('Ocurrió un error inesperado. Intenta de nuevo.')
+      }
+    } finally {
+      setSubmitting(false)
     }
-    const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
-    navigate(from || '/agendar', { replace: true })
   }
 
   return (

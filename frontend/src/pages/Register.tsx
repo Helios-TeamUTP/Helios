@@ -5,6 +5,7 @@ import { isValidCedulaPanama, normalizeCedula } from '../lib/cedula'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
+import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 export function Register() {
   const navigate = useNavigate()
@@ -39,6 +40,12 @@ export function Register() {
   const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
 
+  /**
+   * Bug B-10 fix: try/catch/finally + withTimeout en TODAS las llamadas a
+   * Supabase garantiza que setSubmitting(false) siempre corra y que el
+   * spinner nunca quede eterno si Supabase tarda. Sin esto, cualquiera
+   * de los 5 awaits podía colgarse y dejar el botón disabled para siempre.
+   */
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
@@ -54,73 +61,86 @@ export function Register() {
     }
 
     setSubmitting(true)
-
-    // Verificar si la cédula ya está en uso por otro paciente
-    const { data: existing } = await supabase
-      .from('pacientes')
-      .select('id')
-      .eq('cedula', cedulaNorm)
-      .maybeSingle()
-    if (existing) {
-      setSubmitting(false)
-      setError('Ya existe un paciente con esa cédula. Inicia sesión.')
-      return
-    }
-
-    // Determinar auth_uid + email a usar
-    let authUid: string | null = null
-    let correoFinal: string
-
-    if (isCompletingProfile && user) {
-      // Ya hay sesion - reutilizar auth.users existente
-      authUid = user.id
-      correoFinal = user.email ?? form.correo.trim().toLowerCase()
-    } else {
-      // Nuevo registro completo - crear auth.users
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: form.correo,
-        password: form.password,
-      })
-      if (authError || !authData.user) {
-        setSubmitting(false)
-        setError(authError?.message ?? 'No se pudo crear la cuenta.')
+    try {
+      // Verificar si la cédula ya está en uso por otro paciente
+      const { data: existing } = await withTimeout(
+        supabase.from('pacientes').select('id').eq('cedula', cedulaNorm).maybeSingle(),
+        AUTH_TIMEOUT_MS,
+      )
+      if (existing) {
+        setError('Ya existe un paciente con esa cédula. Inicia sesión.')
         return
       }
-      authUid = authData.user.id
-      correoFinal = form.correo.trim().toLowerCase()
-    }
 
-    // Crear paciente
-    const { data: pac, error: pacError } = await supabase
-      .from('pacientes')
-      .insert({
-        nombre: form.nombre.trim(),
-        cedula: cedulaNorm,
-        telefono: form.telefono.trim() || null,
-        correo: correoFinal,
-      })
-      .select()
-      .single()
-    if (pacError || !pac) {
+      // Determinar auth_uid + email a usar
+      let authUid: string | null = null
+      let correoFinal: string
+
+      if (isCompletingProfile && user) {
+        // Ya hay sesion - reutilizar auth.users existente
+        authUid = user.id
+        correoFinal = user.email ?? form.correo.trim().toLowerCase()
+      } else {
+        // Nuevo registro completo - crear auth.users
+        const { data: authData, error: authError } = await withTimeout(
+          supabase.auth.signUp({
+            email: form.correo,
+            password: form.password,
+          }),
+          AUTH_TIMEOUT_MS,
+        )
+        if (authError || !authData.user) {
+          setError(authError?.message ?? 'No se pudo crear la cuenta.')
+          return
+        }
+        authUid = authData.user.id
+        correoFinal = form.correo.trim().toLowerCase()
+      }
+
+      // Crear paciente
+      const { data: pac, error: pacError } = await withTimeout(
+        supabase
+          .from('pacientes')
+          .insert({
+            nombre: form.nombre.trim(),
+            cedula: cedulaNorm,
+            telefono: form.telefono.trim() || null,
+            correo: correoFinal,
+          })
+          .select()
+          .single(),
+        AUTH_TIMEOUT_MS,
+      )
+      if (pacError || !pac) {
+        setError(pacError?.message ?? 'No se pudo crear el paciente.')
+        return
+      }
+
+      // Vincular auth con paciente (upsert por si ya existe)
+      const { error: linkError } = await withTimeout(
+        supabase
+          .from('auth_paciente_link')
+          .upsert({ auth_uid: authUid, paciente_id: pac.id }, { onConflict: 'auth_uid' }),
+        AUTH_TIMEOUT_MS,
+      )
+      if (linkError) {
+        setError(linkError.message)
+        return
+      }
+
+      // Refrescar contexto de auth para que paciente quede disponible
+      await withTimeout(refreshPaciente(), AUTH_TIMEOUT_MS)
+      navigate('/agendar', { replace: true })
+    } catch (err) {
+      if (err instanceof TimeoutError) {
+        setError('El servidor tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.')
+      } else {
+        console.error('[Register] handleSubmit unexpected:', err)
+        setError('Ocurrió un error inesperado. Intenta de nuevo.')
+      }
+    } finally {
       setSubmitting(false)
-      setError(pacError?.message ?? 'No se pudo crear el paciente.')
-      return
     }
-
-    // Vincular auth con paciente (upsert por si ya existe)
-    const { error: linkError } = await supabase
-      .from('auth_paciente_link')
-      .upsert({ auth_uid: authUid, paciente_id: pac.id }, { onConflict: 'auth_uid' })
-    if (linkError) {
-      setSubmitting(false)
-      setError(linkError.message)
-      return
-    }
-
-    // Refrescar contexto de auth para que paciente quede disponible
-    await refreshPaciente()
-    setSubmitting(false)
-    navigate('/agendar', { replace: true })
   }
 
   return (
