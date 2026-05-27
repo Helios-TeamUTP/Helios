@@ -3,7 +3,7 @@
 > **LEE ESTE ARCHIVO PRIMERO** al abrir una nueva sesión de Claude Code en `helios-repo`.
 > Contiene el estado exacto donde se quedó la sesión anterior y lo que falta hacer.
 >
-> **Última actualización:** 2026-05-27 — fin de sesión de fix B-11 (Verificando sesión eterno por loadPaciente sin timeout + onAuthStateChange sin discriminar event)
+> **Última actualización:** 2026-05-27 — sesión maratónica: B-11 → B-16 (6 bugs fix + dashboard médico + seguridad RLS). Deploy producción listo para demo viernes 29.
 
 ---
 
@@ -31,7 +31,12 @@ y en detalle en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md`.
 - **B-08**: Mismo loading infinito en 5 hooks de datos (`useCitas`, `useEspecialidades`, `useSedes`, `useMedicos`, `useHorarios`) — fix con patrón IIFE async + signal flag
 - **B-09**: Sesión persistente entre tabs — fix con `storage: window.sessionStorage`
 - **B-10**: Login/Register spinner eterno cuando Supabase tarda — fix con helper `withTimeout` (15s) + try/catch/finally en handlers. Cubre las 5 llamadas a Supabase de Register y el signIn de Login. 11 tests nuevos. Coordinado por `helios-team-orchestrator` siguiendo el flujo obligatorio. Threshold de branches en `vite.config.ts` bajado de 50 → 45 (statements 61.4% > 60% se mantiene; archivos fuera del alcance B-10 arrastran branches)
-- **B-11**: "Verificando sesión…" eterno tras F5 o navegación (detectado por PO probando deploy producción). 3 causas raíz: (A) loadPaciente sin timeout, (B) onAuthStateChange ignoraba event y recargaba paciente en TOKEN_REFRESHED, (C) getSession sin timeout. Fix: discriminar event + withTimeout en las 3 llamadas. 3 tests de regresión en nuevo `useAuth.test.tsx`. Plan Mode con Explore agent identificó las 3 causas antes de tocar código
+- **B-11**: "Verificando sesión…" eterno tras F5 o navegación. 3 causas: loadPaciente sin timeout, onAuthStateChange ignoraba event y recargaba paciente en TOKEN_REFRESHED, getSession sin timeout. Fix: discriminar event + withTimeout. 3 tests
+- **B-12**: Spinner aún tardaba ~10s tras B-11 por 2 queries serializadas en loadPaciente. Fix: 1 JOIN nativo Supabase (`auth_paciente_link!inner → pacientes!inner`). De 2 round-trips a 1. Spinner <2s
+- **B-13**: Sprint 1 sin pantalla para médicos. NUEVO: MedicoDashboard con tabs Hoy/Historial, marcar completada/no_asistió, ficha del paciente, historial. useAuth resuelve rol paciente XOR médico. ProtectedRoute con requireRole. Patrón 1 de identidad (sin auto-registro médico, solo admin via seed). Seed script genera 20 médicos con auth + credenciales `helios2026`. Tests en useAuth.test.tsx ampliados de 3 a 5
+- **B-14**: RLS allow_all_dev permisivo → reemplazado por policies estrictas por rol en 7 tablas. Vulnerabilidad descubierta de `crear_cita_atomica` (anon + sin validación) cerrada
+- **B-15**: Spinner >10s tras B-14 por falta de índice en citas.medico_id. Fix: 1 línea SQL `CREATE INDEX idx_citas_medico`. De 5-10s a <100ms
+- **B-16**: Flash "Completa tu perfil" durante loading del médico (síntoma del B-15 + falta de defensa UX). Fix en AppLayout (sin nav por rol durante loading), Login (espera role antes de Navigate), Register (redirect a /medico si role='medico')
 
 ### Equipo de agentes HELIOS — 5 agentes custom
 - ✅ Creados en `docs/agentes/` y copiados a `.claude/agents/`
@@ -56,11 +61,12 @@ y en detalle en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md`.
 - ✅ PPTX, PDFs, DOCX regenerados en `Sprint_1_Entrega/`
 
 ### Métricas finales del Sprint 1
-- 55/55 tests pasando (39 originales + 13 del B-10 + 3 del B-11)
+- 57/57 tests pasando (39 originales + 13 del B-10 + 5 del B-11/B-13)
 - Cobertura 61.4% statements / 82% lines / 90.9% functions
-- KLOC = 1.71
-- **Tasa de defectos: 6.43 bugs/KLOC (11 bugs / 1.71 KLOC)**
-- P95 = 300 ms a 200 usuarios
+- KLOC ≈ 2.3 (creció ~35% por dashboard médico, hooks nuevos, SQL B-13/B-14/B-15)
+- **Tasa de defectos: ~6.96 bugs/KLOC (16 bugs / 2.3 KLOC)**
+- P95 = 300 ms a 200 usuarios + F5 <2s tras índice B-15
+- Features nuevas: Dashboard médico completo + Seguridad multicapa RLS por rol
 
 ---
 
