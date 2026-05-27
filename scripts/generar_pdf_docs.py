@@ -21,8 +21,9 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT.parent / "Sprint_1_Entrega" / "2_GUION_Y_DOCUMENTOS" / "PDF" / "HELIOS_Documentos_Completos.pdf"
 DOCS = [
     ("GUION DE PRESENTACION", ROOT / "docs" / "GUION_PRESENTACION_SPRINT1.md"),
+    ("METRICAS FACILES CON EJEMPLOS", ROOT / "docs" / "METRICAS_FACILES_CON_EJEMPLOS.md"),
     ("GLOSARIO HELIOS", ROOT / "docs" / "GLOSARIO_HELIOS.md"),
-    ("METRICAS EXPLICADAS", ROOT / "docs" / "METRICAS_EXPLICADAS.md"),
+    ("METRICAS EXPLICADAS (TECNICO)", ROOT / "docs" / "METRICAS_EXPLICADAS.md"),
     ("FUENTE EXACTA DE CADA METRICA", ROOT / "docs" / "FUENTE_DE_METRICAS.md"),
 ]
 

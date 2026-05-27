@@ -77,6 +77,14 @@ DOCS = [
         "out_pdf": OUT_PDF / "04_Fuente_de_Metricas.pdf",
         "out_docx": OUT_DOCX / "04_Fuente_de_Metricas.docx",
     },
+    {
+        "id": "05",
+        "titulo": "Metricas Faciles con Ejemplos",
+        "subtitulo": "Cada metrica explicada con analogias de la vida real",
+        "md_path": ROOT / "docs" / "METRICAS_FACILES_CON_EJEMPLOS.md",
+        "out_pdf": OUT_PDF / "05_Metricas_Faciles_con_Ejemplos.pdf",
+        "out_docx": OUT_DOCX / "05_Metricas_Faciles_con_Ejemplos.docx",
+    },
 ]
 
 # =========================================================================
