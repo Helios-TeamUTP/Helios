@@ -69,6 +69,14 @@ DOCS = [
         "out_pdf": OUT_PDF / "03_Metricas_Explicadas.pdf",
         "out_docx": OUT_DOCX / "03_Metricas_Explicadas.docx",
     },
+    {
+        "id": "04",
+        "titulo": "Fuente Exacta de Cada Metrica",
+        "subtitulo": "Origen verificable de cada numero del Sprint 1",
+        "md_path": ROOT / "docs" / "FUENTE_DE_METRICAS.md",
+        "out_pdf": OUT_PDF / "04_Fuente_de_Metricas.pdf",
+        "out_docx": OUT_DOCX / "04_Fuente_de_Metricas.docx",
+    },
 ]
 
 # =========================================================================

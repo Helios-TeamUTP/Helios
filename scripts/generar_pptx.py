@@ -657,8 +657,9 @@ rows = [
     ("No funcional", "Latencia P95 (Locust)", "300 ms  (target <2000 ms)", "Locust 2.31", "ISTQB rendimiento"),
     ("No funcional", "Tasa de error bajo carga", "0/6.105 = 0.00%", "Locust 2.31", "ISTQB"),
     ("No funcional", "Throughput sostenido", "103.85 req/s", "Locust 2.31", "ISTQB"),
-    ("Clásicas (Pressman)", "KLOC del Sprint", "≈ 1.4 KLOC", "cloc / SonarCloud", "Pressman"),
-    ("Clásicas (Pressman)", "Productividad", "0.28 KLOC/persona", "Cálculo manual", "Pressman"),
+    ("Clásicas (Pressman)", "KLOC del Sprint (producto)", "1.71 KLOC medidas", "Script Python conteo", "Pressman"),
+    ("Clásicas (Pressman)", "Productividad", "0.342 KLOC/persona", "1.71/5 personas", "Pressman"),
+    ("Clásicas (Pressman)", "Tasa de defectos", "1.75 bugs/KLOC", "3 bugs / 1.71 KLOC", "Pressman"),
     ("Proceso", "Ciclo Goal→Metric→Acción", "Documentado en daily MD", "Daily Scrum semanal", "TQM"),
 ]
 
