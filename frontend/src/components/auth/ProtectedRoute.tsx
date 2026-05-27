@@ -15,7 +15,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ requireRole }: ProtectedRouteProps = {}) {
-  const { user, role, loading } = useAuth()
+  const { user, role, loading, loadPerfilFailed, refreshPerfil } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -28,6 +28,37 @@ export function ProtectedRoute({ requireRole }: ProtectedRouteProps = {}) {
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  /**
+   * Bug B-17: si loadPerfil termino con error (timeout, RLS, red), NO
+   * redirigir ciegamente a /registro como si fuera un paciente nuevo.
+   * Mostrar mensaje claro con boton "Reintentar" para que el usuario
+   * (especialmente medicos) no caiga en el form "Completa tu perfil".
+   */
+  if (loadPerfilFailed) {
+    return (
+      <div className="mx-auto max-w-md">
+        <div className="card text-center">
+          <h2 className="text-lg font-bold text-helios-ink">
+            No pudimos cargar tu perfil
+          </h2>
+          <p className="mt-2 text-sm text-helios-ink/70">
+            Hubo un problema al verificar tu sesión. Esto puede ser por una
+            conexión lenta o un problema temporal del servidor.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              void refreshPerfil()
+            }}
+            className="btn-primary mt-4"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Bug B-13: si la ruta pide un rol específico y el del usuario no coincide,

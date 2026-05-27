@@ -106,6 +106,79 @@ describe('useAuth — Bugs B-11/B-12/B-13 regresión', () => {
   })
 
   // ─────────────────────────────────────────────────────────────────
+  // B-17: filtrar INITIAL_SESSION + idempotencia por authUid
+  // ─────────────────────────────────────────────────────────────────
+
+  it('B-17: INITIAL_SESSION NO recarga perfil (init ya lo hizo)', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    fromMock.mockClear()
+
+    // Supabase JS SDK dispara INITIAL_SESSION automaticamente al subscribirse.
+    // Mi codigo debe ignorarlo porque init() ya cargo el perfil. Sin este
+    // fix, loadPerfil corria 2 veces concurrentes -> spinner > 10s.
+    const fakeSession = { user: { id: 'user-initial' } }
+    await act(async () => {
+      await capturedListener!('INITIAL_SESSION', fakeSession)
+    })
+
+    expect(fromMock).not.toHaveBeenCalled()
+    expect(result.current.session).toEqual(fakeSession)
+  })
+
+  it('B-17: evento con mismo authUid NO recarga perfil (idempotencia)', async () => {
+    // Setup: cargar primero un paciente
+    setupFromMock(
+      { paciente_id: 'pac-1', pacientes: { id: 'pac-1', nombre: 'Test' } },
+      null,
+    )
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    // Disparar SIGNED_IN para que el authUid quede registrado en currentAuthUidRef
+    await act(async () => {
+      await capturedListener!('SIGNED_IN', { user: { id: 'user-mismo' } })
+    })
+    await waitFor(() => expect(result.current.paciente).toBeTruthy())
+
+    fromMock.mockClear()
+
+    // Ahora un evento espurio (ej. del visibility sync de Supabase) con el
+    // mismo authUid NO debe disparar otra recarga del perfil.
+    await act(async () => {
+      await capturedListener!('SIGNED_IN', { user: { id: 'user-mismo' } })
+    })
+
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('B-17: cambio a authUid distinto SI recarga perfil', async () => {
+    setupFromMock(
+      { paciente_id: 'pac-1', pacientes: { id: 'pac-1', nombre: 'A' } },
+      null,
+    )
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(async () => {
+      await capturedListener!('SIGNED_IN', { user: { id: 'user-A' } })
+    })
+    await waitFor(() => expect(result.current.paciente).toBeTruthy())
+
+    fromMock.mockClear()
+
+    // authUid DISTINTO → debe recargar (cambio real de usuario)
+    await act(async () => {
+      await capturedListener!('SIGNED_IN', { user: { id: 'user-B' } })
+    })
+
+    expect(fromMock).toHaveBeenCalled()
+  })
+
+  // ─────────────────────────────────────────────────────────────────
   // B-13: resolución de rol (paciente XOR medico)
   // ─────────────────────────────────────────────────────────────────
 

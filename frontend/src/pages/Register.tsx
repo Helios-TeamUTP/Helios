@@ -9,7 +9,7 @@ import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 export function Register() {
   const navigate = useNavigate()
-  const { user, paciente, role, loading, refreshPerfil } = useAuth()
+  const { user, paciente, role, loading, loadPerfilFailed, refreshPerfil } = useAuth()
   const [form, setForm] = useState({
     nombre: '',
     cedula: '',
@@ -40,6 +40,38 @@ export function Register() {
   // "Completa tu perfil" confuso.
   if (user && role === 'medico') {
     return <Navigate to="/medico" replace />
+  }
+
+  /**
+   * Bug B-17: si loadPerfil fallo (timeout, error de red, RLS rota), NO
+   * asumir que es un paciente nuevo que debe completar perfil. Mostrar
+   * mensaje de error claro con boton reintentar. Sin esto, un medico cuyo
+   * loadPerfil fallaba caia aqui y veia "Completa tu perfil de paciente",
+   * lo cual era falso (el ya tiene perfil de medico).
+   */
+  if (user && loadPerfilFailed) {
+    return (
+      <div className="mx-auto max-w-md">
+        <div className="card text-center">
+          <h2 className="text-lg font-bold text-helios-ink">
+            No pudimos cargar tu perfil
+          </h2>
+          <p className="mt-2 text-sm text-helios-ink/70">
+            Hubo un problema al verificar tu cuenta. Esto puede ser por una
+            conexión lenta. Intenta de nuevo.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              void refreshPerfil()
+            }}
+            className="btn-primary mt-4"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Caso 3: tiene auth pero NO tiene paciente -> completar perfil

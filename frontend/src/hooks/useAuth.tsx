@@ -29,6 +29,15 @@ interface AuthContextValue {
    */
   role: Role
   loading: boolean
+  /**
+   * Bug B-17: true cuando loadPerfil termino con error (timeout o RLS).
+   * ProtectedRoute y Register lo usan para distinguir:
+   * - role=null + loadPerfilFailed=false: cuenta auth nueva sin perfil (caso B-04,
+   *   debe ir a /registro a completar)
+   * - role=null + loadPerfilFailed=true: hubo problema cargando el perfil, mostrar
+   *   mensaje "Reintentar" en lugar de redirigir a /registro (que confunde al medico)
+   */
+  loadPerfilFailed: boolean
   signOut: () => Promise<void>
   refreshPerfil: () => Promise<void>
 }
@@ -40,6 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [paciente, setPaciente] = useState<Paciente | null>(null)
   const [medico, setMedico] = useState<MedicoConRelaciones | null>(null)
   const [loading, setLoading] = useState(true)
+  /**
+   * Bug B-17: true si la ultima ejecucion de loadPerfil fallo (timeout
+   * o excepcion). Permite a ProtectedRoute mostrar mensaje "Reintentar"
+   * en lugar de redirigir al usuario al form de registro de paciente.
+   */
+  const [loadPerfilFailed, setLoadPerfilFailed] = useState(false)
 
   /**
    * Token de version para prevenir race conditions cuando varias llamadas
@@ -70,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const loadPerfil = useCallback(async (authUid: string) => {
     currentAuthUidRef.current = authUid
+    setLoadPerfilFailed(false) // reset al inicio (B-17)
     try {
       const [pacResult, medResult] = await Promise.all([
         withTimeout(
@@ -120,6 +136,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentAuthUidRef.current === authUid) {
         setPaciente(null)
         setMedico(null)
+        // Bug B-17: marcar fallo para que ProtectedRoute/Register sepan
+        // distinguir "usuario nuevo sin perfil" (caso B-04, role=null,
+        // loadPerfilFailed=false) de "perfil no se pudo cargar por error"
+        // (este caso, loadPerfilFailed=true → mostrar Reintentar).
+        setLoadPerfilFailed(true)
       }
     }
   }, [])
@@ -163,13 +184,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * cambian el usuario. Si recargaramos paciente en cada uno, el spinner
      * "Verificando sesion..." se mostraria al navegar/refrescar; ademas si la
      * recarga colgaba, el loading quedaba eterno. Solo actualizamos session.
+     *
+     * Bug B-17 fix: AGREGAMOS INITIAL_SESSION al filtro. Supabase JS SDK
+     * dispara INITIAL_SESSION automaticamente al subscribirse. Como init()
+     * ya cargo el perfil sincronamente arriba, recargar aqui duplica las
+     * 2 queries de loadPerfil -> spinner dura >10s. Skip y solo actualizamos
+     * session para mantener el JWT.
+     *
+     * Bug B-17 fix #2: idempotencia por authUid. Si llega un evento con el
+     * mismo authUid que ya teniamos cargado (ej. cambio de visibilidad
+     * de pestaña), NO recargar. Solo actualizar session.
      */
     const { data: subscription } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return
 
-      // Token refresh / user update: solo actualizamos session, no recargamos
-      // paciente ni mostramos spinner. El usuario sigue siendo el mismo.
-      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      // Eventos que NO requieren recargar el perfil (mismo usuario, solo
+      // sincronizacion). Skip y actualizamos session unicamente.
+      if (
+        event === 'INITIAL_SESSION' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED'
+      ) {
+        setSession(newSession)
+        return
+      }
+
+      // Idempotencia: si el authUid no cambio (ej. evento espurio del SDK
+      // tras visibilitychange), NO recargar perfil. Solo session.
+      const newAuthUid = newSession?.user?.id ?? null
+      if (newAuthUid && newAuthUid === currentAuthUidRef.current) {
         setSession(newSession)
         return
       }
@@ -188,6 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setPaciente(null)
           setMedico(null)
+          setLoadPerfilFailed(false) // reset al cerrar sesion (B-17)
         }
       } catch (err) {
         if (err instanceof TimeoutError) {
@@ -219,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null)
       setPaciente(null)
       setMedico(null)
+      setLoadPerfilFailed(false) // B-17: reset al cerrar sesion
     }
   }, [])
 
@@ -242,10 +287,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       medico,
       role,
       loading,
+      loadPerfilFailed,
       signOut,
       refreshPerfil,
     }),
-    [session, paciente, medico, role, loading, signOut, refreshPerfil],
+    [session, paciente, medico, role, loading, loadPerfilFailed, signOut, refreshPerfil],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
