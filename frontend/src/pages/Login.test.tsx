@@ -11,6 +11,19 @@ vi.mock('../lib/supabase', () => ({
   },
 }))
 
+// Mock useAuth para que los tests del formulario no requieran AuthProvider.
+// Sin sesión = mostrar el form de login normalmente.
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: null,
+    paciente: null,
+    session: null,
+    loading: false,
+    signOut: vi.fn(),
+    refreshPaciente: vi.fn(),
+  }),
+}))
+
 import { Login } from './Login'
 
 describe('<Login />', () => {

@@ -10,6 +10,18 @@ vi.mock('../lib/supabase', () => ({
   },
 }))
 
+// Mock useAuth: sin sesion (caso de registro nuevo, no "completar perfil")
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: null,
+    paciente: null,
+    session: null,
+    loading: false,
+    signOut: vi.fn(),
+    refreshPaciente: vi.fn(),
+  }),
+}))
+
 import { Register } from './Register'
 
 describe('<Register />', () => {
