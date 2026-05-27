@@ -1,15 +1,37 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
+import { useAuth } from '../hooks/useAuth'
+import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 
 export function Login() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, paciente, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // Aún cargando contexto
+  if (loading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <LoadingSpinner label="Verificando sesión…" />
+      </div>
+    )
+  }
+
+  // Ya hay sesión completa → ir a agendar
+  if (user && paciente) {
+    return <Navigate to="/agendar" replace />
+  }
+
+  // Hay sesión auth pero falta perfil paciente → ir a /registro a completar
+  if (user && !paciente) {
+    return <Navigate to="/registro" replace />
+  }
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
