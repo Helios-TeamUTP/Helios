@@ -178,7 +178,7 @@ prs = Presentation()
 prs.slide_width = Inches(13.333)
 prs.slide_height = Inches(7.5)
 
-TOTAL = 5
+TOTAL = 6
 
 blank_layout = prs.slide_layouts[6]  # layout en blanco
 
@@ -236,13 +236,17 @@ add_textbox(
     color=ACCENT,
 )
 
+# Pill "MVP academico - no es produccion"
+add_pill(slide, Inches(0.7), Inches(4.2), Inches(3.5), Inches(0.4),
+         "ETAPA: SPRINT 1 - MVP ACADEMICO", AMBER, WHITE)
+
 # Linea decorativa
-add_rect(slide, Inches(0.7), Inches(4.4), Inches(0.4), Inches(0.05), ACCENT)
+add_rect(slide, Inches(0.7), Inches(4.8), Inches(0.4), Inches(0.05), ACCENT)
 
 add_textbox(
     slide,
     Inches(0.7),
-    Inches(4.6),
+    Inches(5.0),
     Inches(5),
     Inches(0.4),
     "Equipo Grupo HELIOS",
@@ -253,7 +257,7 @@ add_textbox(
 add_textbox(
     slide,
     Inches(0.7),
-    Inches(5.0),
+    Inches(5.4),
     Inches(11.5),
     Inches(0.5),
     "José Brown · Ethan Gonzalez · Alejandro Saenz · Ashley Martinez · Marian Barba",
@@ -296,7 +300,7 @@ add_textbox(
     Inches(1.7),
     Inches(12),
     Inches(0.4),
-    "Pasamos de Sprint 0 (documentación) a producto funcional desplegado",
+    "Pasamos de Sprint 0 (documentación) a MVP académico funcional para validación con compañeros",
     size=14,
     color=INK_MUTED,
 )
@@ -326,7 +330,7 @@ add_bullets(
     col_w,
     Inches(2.5),
     [
-        {"marker": "✓", "text": "Schema PostgreSQL ejecutado en Supabase (7 tablas + RLS + RPC atómica)"},
+        {"marker": "✓", "text": "Schema PostgreSQL ejecutado: 7 tablas + RLS + RPC atómica"},
         {"marker": "✓", "text": "Supabase Auth habilitado con email/password"},
         {"marker": "✓", "text": "Frontend Vite + React 19 + TS 6 conectado a Supabase"},
         {"marker": "✓", "text": "Deploy en Railway con dominio público"},
@@ -546,11 +550,70 @@ for badge, badge_color, titulo, problema, mitigacion in blockers:
 add_footer(slide)
 
 
-# ===== Slide 5: Métricas Unidad II =====
+# ===== Slide 5: Evidencias de herramientas (Jira + GitHub + Locust) =====
+slide = prs.slides.add_slide(blank_layout)
+set_slide_bg(slide, MIST)
+add_section_header(slide, "Evidencias de herramientas — Backlog Jira HELL")
+add_slide_number(slide, 5, TOTAL)
+
+add_textbox(
+    slide,
+    Inches(0.5),
+    Inches(0.8),
+    Inches(12),
+    Inches(0.7),
+    "Tablero de tareas en Jira (proyecto HELL)",
+    size=28,
+    bold=True,
+    color=TEAL_DARK,
+)
+add_textbox(
+    slide,
+    Inches(0.5),
+    Inches(1.55),
+    Inches(12),
+    Inches(0.4),
+    "15 issues creadas via API · 10 Done · 2 In Progress · 3 To Do · 53 Story Points",
+    size=13,
+    color=INK_MUTED,
+)
+
+# Screenshot del Jira List embebido
+jira_path = ROOT / "dailys" / "kanban_jira.png"
+if jira_path.exists():
+    # Imagen centrada con borde
+    add_rect(slide, Inches(0.5), Inches(2.1), Inches(12.3), Inches(4.7), WHITE, line_color=TEAL)
+    slide.shapes.add_picture(
+        str(jira_path),
+        Inches(0.6),
+        Inches(2.2),
+        width=Inches(12.1),
+        height=Inches(4.5),
+    )
+
+# Pie con stats
+bar_top = Inches(6.95)
+add_rect(slide, Inches(0.5), bar_top, Inches(12.3), Inches(0.35), TEAL_DARK)
+add_textbox(
+    slide,
+    Inches(0.7),
+    bar_top + Inches(0.04),
+    Inches(12),
+    Inches(0.3),
+    "Cada issue tiene responsable, story points y descripción técnica · Backlog evidencia cumplimiento de la Unidad II punto 5",
+    size=10,
+    bold=True,
+    color=WHITE,
+)
+
+add_footer(slide)
+
+
+# ===== Slide 6: Métricas Unidad II =====
 slide = prs.slides.add_slide(blank_layout)
 set_slide_bg(slide, MIST)
 add_section_header(slide, "Aplicación de la Unidad II — ISTQB · TMMi · TQM")
-add_slide_number(slide, 5, TOTAL)
+add_slide_number(slide, 6, TOTAL)
 
 add_textbox(
     slide,
