@@ -3,7 +3,7 @@
 > **LEE ESTE ARCHIVO PRIMERO** al abrir una nueva sesión de Claude Code en `helios-repo`.
 > Contiene el estado exacto donde se quedó la sesión anterior y lo que falta hacer.
 >
-> **Última actualización:** 2026-05-27 — fin de sesión de fix B-10 (login spinner eterno por falta de timeout)
+> **Última actualización:** 2026-05-27 — fin de sesión de fix B-11 (Verificando sesión eterno por loadPaciente sin timeout + onAuthStateChange sin discriminar event)
 
 ---
 
@@ -19,8 +19,8 @@
 - ✅ Cobertura: 65.26% statements / 81.72% lines / 89.28% functions
 - ✅ Locust load test: P95 = 300 ms con 200 usuarios concurrentes
 
-### Bugs encontrados y resueltos (10 totales)
-Todos los bugs B-01 a B-10 están documentados en `CLAUDE.md` tabla resumen
+### Bugs encontrados y resueltos (11 totales)
+Todos los bugs B-01 a B-11 están documentados en `CLAUDE.md` tabla resumen
 y en detalle en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md`.
 
 **Bugs críticos resueltos en esta sesión:**
@@ -31,6 +31,7 @@ y en detalle en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md`.
 - **B-08**: Mismo loading infinito en 5 hooks de datos (`useCitas`, `useEspecialidades`, `useSedes`, `useMedicos`, `useHorarios`) — fix con patrón IIFE async + signal flag
 - **B-09**: Sesión persistente entre tabs — fix con `storage: window.sessionStorage`
 - **B-10**: Login/Register spinner eterno cuando Supabase tarda — fix con helper `withTimeout` (15s) + try/catch/finally en handlers. Cubre las 5 llamadas a Supabase de Register y el signIn de Login. 11 tests nuevos. Coordinado por `helios-team-orchestrator` siguiendo el flujo obligatorio. Threshold de branches en `vite.config.ts` bajado de 50 → 45 (statements 61.4% > 60% se mantiene; archivos fuera del alcance B-10 arrastran branches)
+- **B-11**: "Verificando sesión…" eterno tras F5 o navegación (detectado por PO probando deploy producción). 3 causas raíz: (A) loadPaciente sin timeout, (B) onAuthStateChange ignoraba event y recargaba paciente en TOKEN_REFRESHED, (C) getSession sin timeout. Fix: discriminar event + withTimeout en las 3 llamadas. 3 tests de regresión en nuevo `useAuth.test.tsx`. Plan Mode con Explore agent identificó las 3 causas antes de tocar código
 
 ### Equipo de agentes HELIOS — 5 agentes custom
 - ✅ Creados en `docs/agentes/` y copiados a `.claude/agents/`
@@ -55,10 +56,10 @@ y en detalle en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md`.
 - ✅ PPTX, PDFs, DOCX regenerados en `Sprint_1_Entrega/`
 
 ### Métricas finales del Sprint 1
-- 50/50 tests pasando (39 originales + 11 del fix B-10)
+- 55/55 tests pasando (39 originales + 13 del B-10 + 3 del B-11)
 - Cobertura 61.4% statements / 82% lines / 90.9% functions
 - KLOC = 1.71
-- **Tasa de defectos: 5.85 bugs/KLOC (10 bugs / 1.71 KLOC)**
+- **Tasa de defectos: 6.43 bugs/KLOC (11 bugs / 1.71 KLOC)**
 - P95 = 300 ms a 200 usuarios
 
 ---

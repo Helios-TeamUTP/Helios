@@ -11,6 +11,7 @@ import {
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { Paciente } from '../lib/types'
+import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 interface AuthContextValue {
   user: User | null
@@ -43,15 +44,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Bug B-07 fix: try/catch garantiza que NUNCA propague excepcion al caller.
    * Race condition fix: ignora respuesta si el authUid actual cambio mientras
    * la query estaba en vuelo.
+   * Bug B-11 fix: cada query envuelta con withTimeout(AUTH_TIMEOUT_MS) para
+   * que un Supabase colgado no atasque el loading=true del caller (causaba
+   * "Verificando sesion..." eterno tras F5 en /mis-citas).
    */
   const loadPaciente = useCallback(async (authUid: string) => {
     currentAuthUidRef.current = authUid
     try {
-      const { data: link, error: linkErr } = await supabase
-        .from('auth_paciente_link')
-        .select('paciente_id')
-        .eq('auth_uid', authUid)
-        .maybeSingle()
+      const { data: link, error: linkErr } = await withTimeout(
+        supabase
+          .from('auth_paciente_link')
+          .select('paciente_id')
+          .eq('auth_uid', authUid)
+          .maybeSingle(),
+        AUTH_TIMEOUT_MS,
+      )
 
       // Respuesta tardia: el usuario ya cambio. Ignorar.
       if (currentAuthUidRef.current !== authUid) return
@@ -66,11 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const { data: pac, error: pacErr } = await supabase
-        .from('pacientes')
-        .select('*')
-        .eq('id', link.paciente_id)
-        .maybeSingle()
+      const { data: pac, error: pacErr } = await withTimeout(
+        supabase
+          .from('pacientes')
+          .select('*')
+          .eq('id', link.paciente_id)
+          .maybeSingle(),
+        AUTH_TIMEOUT_MS,
+      )
 
       // Verificar de nuevo: la segunda query tambien pudo tardar.
       if (currentAuthUidRef.current !== authUid) return
@@ -82,7 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setPaciente(pac ?? null)
     } catch (err) {
-      console.error('[useAuth] loadPaciente unexpected:', err)
+      if (err instanceof TimeoutError) {
+        console.error('[useAuth] loadPaciente timeout — UI continua sin paciente')
+      } else {
+        console.error('[useAuth] loadPaciente unexpected:', err)
+      }
       if (currentAuthUidRef.current === authUid) setPaciente(null)
     }
   }, [])
@@ -93,15 +107,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     /**
      * Bug B-07 fix: try/catch/finally garantiza que setLoading(false)
      * SIEMPRE se ejecute, incluso si getSession() o loadPaciente() fallan.
+     * Bug B-11 fix: getSession() envuelto con withTimeout para que un
+     * Supabase colgado nunca atasque el init (el spinner "Verificando
+     * sesion..." quedaba eterno tras F5 si la red estaba mal).
      */
     const init = async () => {
       try {
-        const { data } = await supabase.auth.getSession()
+        const { data } = await withTimeout(supabase.auth.getSession(), AUTH_TIMEOUT_MS)
         if (!mounted) return
         setSession(data.session)
         if (data.session?.user) await loadPaciente(data.session.user.id)
       } catch (err) {
-        console.error('[useAuth] init error:', err)
+        if (err instanceof TimeoutError) {
+          console.error('[useAuth] init timeout — UI continua sin sesion')
+        } else {
+          console.error('[useAuth] init error:', err)
+        }
       } finally {
         if (mounted) setLoading(false)
       }
@@ -113,9 +134,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
      * Si llega una nueva sesion, ponemos loading=true mientras cargamos el
      * paciente para evitar que la UI vea un instante de "logueado sin paciente"
      * que dispararia redirects incorrectos a /registro.
+     *
+     * Bug B-11 fix: discriminamos por evento. TOKEN_REFRESHED y USER_UPDATED
+     * ocurren periodicamente (Supabase refresca el JWT cada 5-60 min) y NO
+     * cambian el usuario. Si recargaramos paciente en cada uno, el spinner
+     * "Verificando sesion..." se mostraria al navegar/refrescar; ademas si la
+     * recarga colgaba, el loading quedaba eterno. Solo actualizamos session.
      */
-    const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return
+
+      // Token refresh / user update: solo actualizamos session, no recargamos
+      // paciente ni mostramos spinner. El usuario sigue siendo el mismo.
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        setSession(newSession)
+        return
+      }
+
       setSession(newSession)
 
       // Si la sesion cambia y hay usuario nuevo, indicamos loading
@@ -128,7 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (hasNewUser) await loadPaciente(newSession.user.id)
         else setPaciente(null)
       } catch (err) {
-        console.error('[useAuth] onAuthStateChange error:', err)
+        if (err instanceof TimeoutError) {
+          console.error('[useAuth] onAuthStateChange timeout — UI continua sin paciente')
+        } else {
+          console.error('[useAuth] onAuthStateChange error:', err)
+        }
       } finally {
         if (mounted) setLoading(false)
       }
