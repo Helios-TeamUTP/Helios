@@ -1,0 +1,167 @@
+{
+  "folders": [
+    {
+      "name": "Raiz HELIOS",
+      "path": "."
+    },
+    {
+      "name": "Frontend (React)",
+      "path": "frontend"
+    },
+    {
+      "name": "Docs",
+      "path": "docs"
+    },
+    {
+      "name": "Scripts (Python)",
+      "path": "scripts"
+    },
+    {
+      "name": "Supabase (SQL)",
+      "path": "supabase"
+    },
+    {
+      "name": "Backend",
+      "path": "backend"
+    }
+  ],
+  "settings": {
+    "files.eol": "\n",
+    "editor.formatOnSave": false,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "[python]": {
+      "editor.tabSize": 4
+    },
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/coverage": true,
+      "**/__pycache__": true,
+      "**/.venv": true,
+      "**/*.pyc": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/coverage": true,
+      "**/pnpm-lock.yaml": true
+    },
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.patterns": {
+      "*.tsx": "${capture}.test.tsx, ${capture}.module.css",
+      "*.ts": "${capture}.test.ts",
+      "package.json": "pnpm-lock.yaml, package-lock.json, .npmrc",
+      "tsconfig.json": "tsconfig.*.json",
+      "vite.config.ts": "vite.config.*.ts, vitest.config.*.ts"
+    },
+    "terminal.integrated.cwd": "${workspaceFolder:Frontend (React)}"
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss",
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "yzhang.markdown-all-in-one",
+      "github.vscode-pull-request-github",
+      "eamodio.gitlens"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "HELIOS: Dev server (Vite + hot reload)",
+        "detail": "Levanta la web en http://localhost:5173 con HMR. Lo que edite Claude se refleja en menos de 1s.",
+        "type": "shell",
+        "command": "pnpm dev",
+        "options": {
+          "cwd": "${workspaceFolder:Frontend (React)}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "group": "helios",
+          "clear": true
+        },
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "HELIOS: Tests (Vitest 52 tests)",
+        "detail": "Corre los 52 tests del frontend y reporta resultados.",
+        "type": "shell",
+        "command": "pnpm vitest run",
+        "options": {
+          "cwd": "${workspaceFolder:Frontend (React)}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "group": "helios"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "HELIOS: Coverage report",
+        "detail": "Corre tests + reporta cobertura (debe ser >=60% statements).",
+        "type": "shell",
+        "command": "pnpm vitest run --coverage",
+        "options": {
+          "cwd": "${workspaceFolder:Frontend (React)}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "group": "helios"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "HELIOS: Build (verificar compilacion)",
+        "detail": "Compila para produccion: tsc -b + vite build. Falla si hay errores de TypeScript.",
+        "type": "shell",
+        "command": "pnpm build",
+        "options": {
+          "cwd": "${workspaceFolder:Frontend (React)}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated",
+          "group": "helios"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "HELIOS: Git status",
+        "detail": "Muestra archivos modificados (los que Claude esta cambiando).",
+        "type": "shell",
+        "command": "git status",
+        "options": {
+          "cwd": "${workspaceFolder:Raiz HELIOS}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "HELIOS: Git log (ultimos 10 commits)",
+        "detail": "Muestra los ultimos commits para ver que hizo Claude.",
+        "type": "shell",
+        "command": "git log --oneline -10",
+        "options": {
+          "cwd": "${workspaceFolder:Raiz HELIOS}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      }
+    ]
+  }
+}
