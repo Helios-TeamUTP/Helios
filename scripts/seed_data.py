@@ -88,9 +88,28 @@ def insert_especialidades() -> list[dict]:
 
 
 def insert_medicos(sedes: list[dict], especialidades: list[dict]) -> list[dict]:
-    print("[medicos] Insertando 10 medicos distribuidos entre sedes y especialidades...")
+    """Garantiza al menos 1 medico por combinacion sede x especialidad
+    + 5 medicos extra distribuidos al azar = 20 medicos total.
+    Asi cualquier combinacion que pruebe un usuario tiene medicos disponibles."""
+    print(f"[medicos] Garantizando 1 medico por combinacion ({len(sedes)} sedes x {len(especialidades)} especialidades) + extras...")
     medicos = []
-    for _ in range(10):
+
+    # Fase 1: Una por combinacion (15 medicos = 3 sedes x 5 especialidades)
+    for sede in sedes:
+        for esp in especialidades:
+            medicos.append(
+                {
+                    "nombre": faker.name(),
+                    "especialidad_id": esp["id"],
+                    "sede_id": sede["id"],
+                    "correo": faker.unique.email(),
+                    "telefono": faker.phone_number(),
+                    "activo": True,
+                }
+            )
+
+    # Fase 2: 5 medicos extra al azar para diversidad
+    for _ in range(5):
         sede = random.choice(sedes)
         esp = random.choice(especialidades)
         medicos.append(
