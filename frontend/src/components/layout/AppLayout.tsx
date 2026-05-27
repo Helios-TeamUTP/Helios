@@ -2,13 +2,16 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 export function AppLayout() {
-  const { user, paciente, signOut } = useAuth()
+  const { user, paciente, medico, role, signOut } = useAuth()
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
   }
+
+  // Bug B-13: nombre visible segun rol (medico tiene precedencia sobre paciente).
+  const nombreUsuario = medico?.nombre ?? paciente?.nombre ?? user?.email
 
   return (
     <div className="min-h-screen bg-helios-mist">
@@ -29,10 +32,17 @@ export function AppLayout() {
           <nav className="relative z-10 flex items-center gap-1">
             {user ? (
               <>
-                <NavItem to="/agendar">Agendar cita</NavItem>
-                <NavItem to="/mis-citas">Mis citas</NavItem>
+                {/* Bug B-13: nav segun rol. Medico ve "Mi agenda", paciente ve "Agendar"+"Mis citas". */}
+                {role === 'medico' && <NavItem to="/medico">Mi agenda</NavItem>}
+                {role === 'paciente' && (
+                  <>
+                    <NavItem to="/agendar">Agendar cita</NavItem>
+                    <NavItem to="/mis-citas">Mis citas</NavItem>
+                  </>
+                )}
+                {role === null && <NavItem to="/registro">Completa tu perfil</NavItem>}
                 <div className="mx-2 hidden text-sm text-helios-ink/60 sm:block">
-                  {paciente?.nombre ?? user.email}
+                  {nombreUsuario}
                 </div>
                 <button onClick={handleSignOut} className="btn-ghost">
                   Cerrar sesión

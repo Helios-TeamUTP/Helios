@@ -77,6 +77,35 @@ export interface AuthPacienteLink {
   created_at: string
 }
 
+/**
+ * Bug B-13: vinculo entre auth.users y medicos.
+ * Patron 1 de seguridad: solo se crea via service_role (en seed).
+ * Frontend NUNCA puede insertar; RLS solo permite SELECT del dueño.
+ */
+export interface AuthMedicoLink {
+  auth_uid: string
+  medico_id: string
+  created_at: string
+}
+
+/**
+ * Rol del usuario logueado. Derivado en useAuth segun que tabla
+ * de vinculo (auth_paciente_link o auth_medico_link) tenga registro.
+ * - 'paciente': tiene vinculo en auth_paciente_link
+ * - 'medico': tiene vinculo en auth_medico_link
+ * - null: no tiene ningun vinculo (cuenta auth sin perfil, ir a /registro)
+ */
+export type Role = 'paciente' | 'medico' | null
+
+/**
+ * Cita con datos del paciente joinned (para el dashboard del medico).
+ * El medico necesita ver quien viene a cada cita.
+ */
+export interface CitaConPaciente extends Cita {
+  paciente?: Paciente | null
+  horario?: Horario | null
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -94,6 +123,11 @@ export interface Database {
         Row: AuthPacienteLink
         Insert: Partial<AuthPacienteLink>
         Update: Partial<AuthPacienteLink>
+      }
+      auth_medico_link: {
+        Row: AuthMedicoLink
+        Insert: Partial<AuthMedicoLink>
+        Update: Partial<AuthMedicoLink>
       }
     }
   }

@@ -9,7 +9,7 @@ import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 export function Register() {
   const navigate = useNavigate()
-  const { user, paciente, loading, refreshPaciente } = useAuth()
+  const { user, paciente, loading, refreshPerfil } = useAuth()
   const [form, setForm] = useState({
     nombre: '',
     cedula: '',
@@ -129,7 +129,7 @@ export function Register() {
       }
 
       // Refrescar contexto de auth para que paciente quede disponible
-      await withTimeout(refreshPaciente(), AUTH_TIMEOUT_MS)
+      await withTimeout(refreshPerfil(), AUTH_TIMEOUT_MS)
       navigate('/agendar', { replace: true })
     } catch (err) {
       if (err instanceof TimeoutError) {

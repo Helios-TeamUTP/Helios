@@ -9,7 +9,7 @@ import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 export function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, paciente, loading } = useAuth()
+  const { user, paciente, role, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -24,15 +24,15 @@ export function Login() {
     )
   }
 
-  // Ya hay sesión completa → ir a agendar
-  if (user && paciente) {
-    return <Navigate to="/agendar" replace />
-  }
-
-  // Hay sesión auth pero falta perfil paciente → ir a /registro a completar
-  if (user && !paciente) {
+  // Bug B-13: redirect segun rol. Medico → /medico, paciente → /agendar,
+  // sin perfil (cuenta auth sin link) → /registro (completar perfil).
+  if (user) {
+    if (role === 'medico') return <Navigate to="/medico" replace />
+    if (role === 'paciente') return <Navigate to="/agendar" replace />
     return <Navigate to="/registro" replace />
   }
+  // Variable paciente queda referenciada para mantener el contrato del hook
+  void paciente
 
   /**
    * Bug B-10 fix: try/catch/finally + withTimeout garantiza que
@@ -53,8 +53,12 @@ export function Login() {
         setError(signInError.message)
         return
       }
+      // El redirect post-login lo maneja el bloque "if (user)" de arriba
+      // cuando useAuth actualice el state. Mientras, si el caller venia con
+      // una ruta de origen, ir alli (respetando ProtectedRoute con requireRole
+      // que redirigira al dashboard correcto si el rol no coincide).
       const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
-      navigate(from || '/agendar', { replace: true })
+      navigate(from || '/', { replace: true })
     } catch (err) {
       if (err instanceof TimeoutError) {
         setError('El servidor tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.')

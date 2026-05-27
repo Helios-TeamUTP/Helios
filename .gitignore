@@ -35,6 +35,8 @@ build/
 .credentials
 config/secrets.json
 credentials.json
+# Bug B-13: credenciales de medicos demo generadas por seed_medicos_demo.py
+docs/CREDENCIALES_DEMO_MEDICOS.md
 
 # Dependencias generadas
 package-lock.json

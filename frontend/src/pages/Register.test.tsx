@@ -4,12 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { TimeoutError } from '../lib/withTimeout'
 
-const { fromMock, signUpMock, refreshPacienteMock } = vi.hoisted(() => ({
+const { fromMock, signUpMock, refreshPerfilMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
   signUpMock: vi.fn(),
-  // refreshPaciente debe retornar Promise (es async en la implementación real).
-  // Sin esto, withTimeout(refreshPaciente(), ...) rompe en runtime.
-  refreshPacienteMock: vi.fn().mockResolvedValue(undefined),
+  // refreshPerfil debe retornar Promise (es async en la implementación real).
+  // Sin esto, withTimeout(refreshPerfil(), ...) rompe en runtime.
+  refreshPerfilMock: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../lib/supabase', () => ({
@@ -27,7 +27,7 @@ vi.mock('../hooks/useAuth', () => ({
     session: null,
     loading: false,
     signOut: vi.fn(),
-    refreshPaciente: refreshPacienteMock,
+    refreshPerfil: refreshPerfilMock,
   }),
 }))
 
@@ -94,7 +94,7 @@ describe('<Register />', () => {
   /**
    * Happy path: cubre las 5 llamadas a Supabase del flujo completo de
    * registro (chequeo cédula → signUp → insert paciente → upsert link →
-   * refreshPaciente). Necesario para cobertura ≥60% tras el refactor B-10
+   * refreshPerfil). Necesario para cobertura ≥60% tras el refactor B-10
    * que agregó código del try/catch/finally en handleSubmit.
    */
   it('flujo completo: crea paciente, vincula auth y navega a /agendar', async () => {
@@ -141,7 +141,7 @@ describe('<Register />', () => {
     await user.type(screen.getByLabelText('Contraseña'), 'segura123')
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
 
-    // Verifica que el flujo llegó hasta el final (refreshPaciente fue llamado)
+    // Verifica que el flujo llegó hasta el final (refreshPerfil fue llamado)
     await vi.waitFor(() => {
       expect(signUpMock).toHaveBeenCalledWith({
         email: 'ana@test.com',
@@ -152,7 +152,7 @@ describe('<Register />', () => {
         { auth_uid: 'auth-uid-xyz', paciente_id: 'pac-abc' },
         { onConflict: 'auth_uid' },
       )
-      expect(refreshPacienteMock).toHaveBeenCalled()
+      expect(refreshPerfilMock).toHaveBeenCalled()
     })
   })
 

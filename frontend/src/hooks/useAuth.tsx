@@ -10,16 +10,27 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { Paciente } from '../lib/types'
+import type { MedicoConRelaciones, Paciente, Role } from '../lib/types'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 interface AuthContextValue {
   user: User | null
   session: Session | null
   paciente: Paciente | null
+  /**
+   * Bug B-13: medico con especialidad y sede joinned para mostrar en
+   * el header del MedicoDashboard ("Dr. X · Medicina General · Sede Panama").
+   */
+  medico: MedicoConRelaciones | null
+  /**
+   * Rol del usuario: 'paciente', 'medico' o null (sin perfil).
+   * Bug B-13: usado por ProtectedRoute requireRole y por Login para
+   * redirigir al dashboard correcto.
+   */
+  role: Role
   loading: boolean
   signOut: () => Promise<void>
-  refreshPaciente: () => Promise<void>
+  refreshPerfil: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -27,6 +38,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [paciente, setPaciente] = useState<Paciente | null>(null)
+  const [medico, setMedico] = useState<MedicoConRelaciones | null>(null)
   const [loading, setLoading] = useState(true)
 
   /**
@@ -40,50 +52,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const currentAuthUidRef = useRef<string | null>(null)
 
   /**
-   * Carga el paciente vinculado al auth_uid.
-   * Bug B-07 fix: try/catch garantiza que NUNCA propague excepcion al caller.
+   * Carga el perfil vinculado al auth_uid: paciente Y/O medico.
+   * Bug B-07: try/catch garantiza que NUNCA propague excepcion al caller.
    * Race condition fix: ignora respuesta si el authUid actual cambio mientras
    * la query estaba en vuelo.
-   * Bug B-11 fix: query envuelta con withTimeout(AUTH_TIMEOUT_MS) para que
-   * un Supabase colgado no atasque el loading=true del caller (causaba
-   * "Verificando sesion..." eterno tras F5 en /mis-citas).
-   * Bug B-12 fix: una sola query con JOIN nativo de Supabase
-   * (auth_paciente_link!inner -> pacientes!inner) en lugar de 2 queries
-   * serializadas. Reduce de 2 round-trips a 1 -> spinner baja de ~10s a <2s.
+   * Bug B-11: queries envueltas con withTimeout(AUTH_TIMEOUT_MS) para que
+   * un Supabase colgado no atasque el loading=true del caller.
+   * Bug B-12: cada perfil se carga con UNA query (JOIN nativo Supabase).
+   * Bug B-13: ahora carga AMBOS perfiles (paciente y medico) en PARALELO
+   * con Promise.all para no agregar latencia. Si encuentra paciente -> rol
+   * paciente; si encuentra medico -> rol medico; ninguno -> rol null (cuenta
+   * auth sin perfil, sera redirigido a /registro como hoy).
+   *
+   * Asumimos exclusion: un usuario es paciente XOR medico, nunca ambos.
+   * Si por accidente tuviera ambos vinculos, prevalece medico (acceso
+   * privilegiado al dashboard).
    */
-  const loadPaciente = useCallback(async (authUid: string) => {
+  const loadPerfil = useCallback(async (authUid: string) => {
     currentAuthUidRef.current = authUid
     try {
-      const { data, error } = await withTimeout(
-        supabase
-          .from('auth_paciente_link')
-          .select('paciente_id, pacientes!inner(*)')
-          .eq('auth_uid', authUid)
-          .maybeSingle(),
-        AUTH_TIMEOUT_MS,
-      )
+      const [pacResult, medResult] = await Promise.all([
+        withTimeout(
+          supabase
+            .from('auth_paciente_link')
+            .select('paciente_id, pacientes!inner(*)')
+            .eq('auth_uid', authUid)
+            .maybeSingle(),
+          AUTH_TIMEOUT_MS,
+        ),
+        withTimeout(
+          supabase
+            .from('auth_medico_link')
+            .select(
+              'medico_id, medicos!inner(*, especialidad:especialidades(*), sede:sedes(*))',
+            )
+            .eq('auth_uid', authUid)
+            .maybeSingle(),
+          AUTH_TIMEOUT_MS,
+        ),
+      ])
 
       // Respuesta tardia: el usuario ya cambio. Ignorar.
       if (currentAuthUidRef.current !== authUid) return
 
-      if (error) {
-        console.error('[useAuth] loadPaciente error:', error.message)
-        setPaciente(null)
-        return
+      if (pacResult.error) {
+        console.error('[useAuth] loadPerfil paciente error:', pacResult.error.message)
+      }
+      if (medResult.error) {
+        console.error('[useAuth] loadPerfil medico error:', medResult.error.message)
       }
 
-      // El JOIN devuelve: { paciente_id, pacientes: { ...campos } } o null.
-      // Si no hay link, data === null. Si hay link pero el join no encontro
-      // paciente (caso imposible con !inner), data tambien viene sin pacientes.
-      const pacienteRel = (data as unknown as { pacientes: Paciente | null } | null)?.pacientes
+      const pacienteRel = (
+        pacResult.data as unknown as { pacientes: Paciente | null } | null
+      )?.pacientes
+      const medicoRel = (
+        medResult.data as unknown as { medicos: MedicoConRelaciones | null } | null
+      )?.medicos
+
       setPaciente(pacienteRel ?? null)
+      setMedico(medicoRel ?? null)
     } catch (err) {
       if (err instanceof TimeoutError) {
-        console.error('[useAuth] loadPaciente timeout — UI continua sin paciente')
+        console.error('[useAuth] loadPerfil timeout — UI continua sin perfil')
       } else {
-        console.error('[useAuth] loadPaciente unexpected:', err)
+        console.error('[useAuth] loadPerfil unexpected:', err)
       }
-      if (currentAuthUidRef.current === authUid) setPaciente(null)
+      if (currentAuthUidRef.current === authUid) {
+        setPaciente(null)
+        setMedico(null)
+      }
     }
   }, [])
 
@@ -102,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data } = await withTimeout(supabase.auth.getSession(), AUTH_TIMEOUT_MS)
         if (!mounted) return
         setSession(data.session)
-        if (data.session?.user) await loadPaciente(data.session.user.id)
+        if (data.session?.user) await loadPerfil(data.session.user.id)
       } catch (err) {
         if (err instanceof TimeoutError) {
           console.error('[useAuth] init timeout — UI continua sin sesion')
@@ -146,11 +183,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else currentAuthUidRef.current = null
 
       try {
-        if (hasNewUser) await loadPaciente(newSession.user.id)
-        else setPaciente(null)
+        if (hasNewUser) {
+          await loadPerfil(newSession.user.id)
+        } else {
+          setPaciente(null)
+          setMedico(null)
+        }
       } catch (err) {
         if (err instanceof TimeoutError) {
-          console.error('[useAuth] onAuthStateChange timeout — UI continua sin paciente')
+          console.error('[useAuth] onAuthStateChange timeout — UI continua sin perfil')
         } else {
           console.error('[useAuth] onAuthStateChange error:', err)
         }
@@ -164,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentAuthUidRef.current = null
       subscription.subscription.unsubscribe()
     }
-  }, [loadPaciente])
+  }, [loadPerfil])
 
   const signOut = useCallback(async () => {
     try {
@@ -177,25 +218,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentAuthUidRef.current = null
       setSession(null)
       setPaciente(null)
+      setMedico(null)
     }
   }, [])
 
-  const refreshPaciente = useCallback(async () => {
-    if (session?.user) await loadPaciente(session.user.id)
+  const refreshPerfil = useCallback(async () => {
+    if (session?.user) await loadPerfil(session.user.id)
     // Solo depende del user.id, no del session entero (evita re-renders
     // por cada token refresh).
-  }, [session?.user?.id, loadPaciente])
+  }, [session?.user?.id, loadPerfil])
+
+  /**
+   * Bug B-13: derivar rol del perfil cargado. Si por algun motivo
+   * ambos vinculos coexistieran, medico tiene precedencia (defensivo).
+   */
+  const role: Role = medico ? 'medico' : paciente ? 'paciente' : null
 
   const value = useMemo(
     () => ({
       user: session?.user ?? null,
       session,
       paciente,
+      medico,
+      role,
       loading,
       signOut,
-      refreshPaciente,
+      refreshPerfil,
     }),
-    [session, paciente, loading, signOut, refreshPaciente],
+    [session, paciente, medico, role, loading, signOut, refreshPerfil],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

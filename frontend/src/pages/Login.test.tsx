@@ -21,7 +21,7 @@ vi.mock('../hooks/useAuth', () => ({
     session: null,
     loading: false,
     signOut: vi.fn(),
-    refreshPaciente: vi.fn(),
+    refreshPerfil: vi.fn(),
   }),
 }))
 
