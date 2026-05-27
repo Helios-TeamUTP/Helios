@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
 export function AppLayout() {
-  const { user, paciente, medico, role, signOut } = useAuth()
+  const { user, paciente, medico, role, loading, signOut } = useAuth()
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
@@ -32,17 +32,25 @@ export function AppLayout() {
           <nav className="relative z-10 flex items-center gap-1">
             {user ? (
               <>
-                {/* Bug B-13: nav segun rol. Medico ve "Mi agenda", paciente ve "Agendar"+"Mis citas". */}
-                {role === 'medico' && <NavItem to="/medico">Mi agenda</NavItem>}
-                {role === 'paciente' && (
+                {/* Bug B-16: durante loading (role transitorio = null), NO mostrar
+                    los NavItems por rol — evita el flash de "Completa tu perfil"
+                    que confunde al medico al refrescar /medico. Mostramos solo
+                    Cerrar sesion + email para que el usuario sepa que sigue
+                    logueado y pueda salir si quiere. */}
+                {!loading && (
                   <>
-                    <NavItem to="/agendar">Agendar cita</NavItem>
-                    <NavItem to="/mis-citas">Mis citas</NavItem>
+                    {role === 'medico' && <NavItem to="/medico">Mi agenda</NavItem>}
+                    {role === 'paciente' && (
+                      <>
+                        <NavItem to="/agendar">Agendar cita</NavItem>
+                        <NavItem to="/mis-citas">Mis citas</NavItem>
+                      </>
+                    )}
+                    {role === null && <NavItem to="/registro">Completa tu perfil</NavItem>}
                   </>
                 )}
-                {role === null && <NavItem to="/registro">Completa tu perfil</NavItem>}
                 <div className="mx-2 hidden text-sm text-helios-ink/60 sm:block">
-                  {nombreUsuario}
+                  {loading ? 'Cargando…' : nombreUsuario}
                 </div>
                 <button onClick={handleSignOut} className="btn-ghost">
                   Cerrar sesión

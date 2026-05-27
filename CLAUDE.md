@@ -171,16 +171,22 @@ Referencia rápida — NO repetir estos patrones:
 | B-09 | localStorage para auth | `lib/supabase.ts` | `storage: sessionStorage` |
 | B-10 | Login/Register spinner eterno si Supabase tarda | `pages/Login.tsx`, `pages/Register.tsx`, `lib/withTimeout.ts` (nuevo) | Helper `withTimeout` (Promise.race con 15s) + `try/catch/finally` en handlers → garantiza `setSubmitting(false)` y mensaje claro al usuario |
 | B-11 | "Verificando sesión…" eterno tras F5 o navegación | `hooks/useAuth.tsx`, `hooks/useAuth.test.tsx` (nuevo) | Discriminar `event` en `onAuthStateChange` (TOKEN_REFRESHED y USER_UPDATED ya NO recargan paciente) + `withTimeout` en `loadPaciente` y `getSession` → spinner nunca queda eterno, max 15s |
+| B-12 | Spinner aún tardaba ~10s tras B-11 | `hooks/useAuth.tsx` | `loadPaciente` reducido de 2 queries serializadas a 1 JOIN nativo Supabase (`auth_paciente_link!inner → pacientes!inner`). De ~10s a <2s |
+| B-13 | Sprint 1 sin pantalla para médicos | `pages/MedicoDashboard.tsx`, `hooks/useMedicoCitas.ts`, `components/medico/*` (NUEVOS), `hooks/useAuth.tsx`, `App.tsx`, `Login.tsx`, `AppLayout.tsx`, `ProtectedRoute.tsx` | Dashboard médico con agenda hoy, marcar completada/no_asistió, ficha del paciente, historial. `useAuth` resuelve rol paciente XOR médico vía 2 queries Promise.all. `ProtectedRoute` con prop `requireRole`. Verificación identidad: Patrón 1 (sin auto-registro, solo admin via seed) |
+| B-14 | RLS `allow_all_dev` permisivo en todas las tablas | `supabase/migrations/B-13`, `B-14`, `rollback_B-14` | Policies estrictas por rol en `auth_*_link`, `pacientes`, `citas`, `horarios`, `medicos`, `sedes`, `especialidades`. Patrón 1 (no auto-registro médico). Fix de `crear_cita_atomica` (era anon + sin validación → ahora authenticated + valida `auth.uid()` es dueño del paciente) |
+| B-15 | Spinner >10s tras B-14 por RLS sin índice | `supabase/migrations/B-15_indices_rls.sql` (NUEVO) | Agregar `CREATE INDEX idx_citas_medico ON citas(medico_id)`. Policies `medico_ve_sus_citas` hacían full table scan. Con índice: <100ms. De >10s a <2s |
+| B-16 | Flash "Completa tu perfil" durante loading del médico | `components/layout/AppLayout.tsx`, `pages/Login.tsx`, `pages/Register.tsx` | Durante `loading=true`, AppLayout NO muestra NavItem por rol (evita flash cuando `role=null` transitorio). Login espera role antes de Navigate. Register redirige a /medico si user es médico (cinturón y tirantes) |
 
 ---
 
 ## 📈 Métricas del Sprint 1 (a defender el viernes)
 
 - **Cobertura:** 61.4% statements / 82% lines / 90.9% functions
-- **Tests:** 55/55 pasando (39 originales + 13 del B-10 + 3 del B-11)
-- **KLOC:** 1.71 (producto: frontend + SQL)
-- **P95 latencia:** 300 ms (Locust 200 usuarios)
-- **Tasa defectos:** 6.43 bugs/KLOC (11 bugs / 1.71 KLOC) — sube por B-11 encontrado en producción por el PO (justo antes del demo); narrativa: "lo cazamos en uso real antes que la profesora lo viera; el equipo lo arregló en 1 ciclo Plan→Code→Review→Deploy"
+- **Tests:** 57/57 pasando (39 originales + 13 del B-10 + 5 del B-11/B-13)
+- **KLOC:** ~2.3 (producto: frontend + SQL + dashboard médico)
+- **P95 latencia:** 300 ms (Locust 200 usuarios) + <2s F5 con índice B-15
+- **Tasa defectos:** 16 bugs / 2.3 KLOC = **6.96 bugs/KLOC** — sube por bugs detectados en uso real por PO (B-11, B-12, B-15, B-16) en ciclos rápidos Plan→Code→Review→Deploy. Narrativa: "detectamos y arreglamos en la misma jornada gracias a la disciplina del proceso obligatorio del CLAUDE.md"
+- **Features nuevas del Sprint:** Dashboard de médicos (B-13) + seguridad multicapa RLS por rol (B-14)
 
 ---
 

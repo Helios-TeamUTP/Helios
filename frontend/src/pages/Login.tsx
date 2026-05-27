@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
@@ -7,15 +7,16 @@ import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 export function Login() {
-  const navigate = useNavigate()
-  const location = useLocation()
   const { user, paciente, role, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Aún cargando contexto
+  // Bug B-16: si loading=true (perfil cargando), mostrar spinner ANTES
+  // de evaluar Navigate. Sin esto, el bloque "if (user)" podia redirigir
+  // a /registro cuando role era null transitorio (mientras loadPerfil
+  // estaba en vuelo), causando flash de "Completa tu perfil" para medicos.
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -53,12 +54,10 @@ export function Login() {
         setError(signInError.message)
         return
       }
-      // El redirect post-login lo maneja el bloque "if (user)" de arriba
-      // cuando useAuth actualice el state. Mientras, si el caller venia con
-      // una ruta de origen, ir alli (respetando ProtectedRoute con requireRole
-      // que redirigira al dashboard correcto si el rol no coincide).
-      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
-      navigate(from || '/', { replace: true })
+      // Bug B-16: el redirect lo hace el bloque "if (user)" de arriba en
+      // el re-render que dispara setSubmitting(false) + el cambio de auth
+      // de Supabase. NO hacemos navigate manual aqui para evitar quedar
+      // momentaneamente en '/' o /agendar antes de que role este resuelto.
     } catch (err) {
       if (err instanceof TimeoutError) {
         setError('El servidor tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.')

@@ -9,7 +9,7 @@ import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 export function Register() {
   const navigate = useNavigate()
-  const { user, paciente, loading, refreshPerfil } = useAuth()
+  const { user, paciente, role, loading, refreshPerfil } = useAuth()
   const [form, setForm] = useState({
     nombre: '',
     cedula: '',
@@ -32,6 +32,14 @@ export function Register() {
   // Caso 2: usuario completamente registrado (auth + paciente) -> ir a agendar
   if (user && paciente) {
     return <Navigate to="/agendar" replace />
+  }
+
+  // Bug B-16: si el user es medico (no paciente), redirigir a /medico.
+  // Sin esto, un medico que caia en /registro por accidente (race condition
+  // post-login antes de que role estuviera calculado) veia el form de
+  // "Completa tu perfil" confuso.
+  if (user && role === 'medico') {
+    return <Navigate to="/medico" replace />
   }
 
   // Caso 3: tiene auth pero NO tiene paciente -> completar perfil

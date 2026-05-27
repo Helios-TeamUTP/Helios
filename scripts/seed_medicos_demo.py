@@ -38,6 +38,7 @@ from supabase import Client, create_client
 
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
+load_dotenv(ROOT / "scripts" / ".env")  # ubicacion estandar del proyecto
 load_dotenv(ROOT / "frontend" / ".env.local")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
