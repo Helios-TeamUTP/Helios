@@ -168,14 +168,14 @@ de Sprint.
 
 ---
 
-## Métrica 8: Tasa de defectos = 3.51 bugs por KLOC
+## Métrica 8: Tasa de defectos = 4.09 bugs por KLOC
 
 ### 🎯 Imagina esto
 Un artesano que hace 100 sillas y entrega 5 defectuosas tiene una tasa de
 **5% de defectos**.
 
-**Nosotros escribimos 1.71 KLOC y encontramos 6 bugs en total.**
-Eso es 3.51 bugs por cada 1.000 líneas. **La industria considera bueno <5 bugs/KLOC** — nosotros estamos dentro del rango aceptable.
+**Nosotros escribimos 1.71 KLOC y encontramos 7 bugs en total.**
+Eso es 4.09 bugs por cada 1.000 líneas. **La industria considera bueno <5 bugs/KLOC** — nosotros estamos dentro del rango aceptable.
 
 ### 📊 Los 6 bugs reales
 
@@ -198,22 +198,40 @@ bugs en testing antes de producción):**
 6. **Seed destructivo** — el script de datos de prueba borraba TODAS las tablas,
    incluyendo las citas reales de las compañeras. Lo arreglamos para que solo
    borre catálogo (sedes/médicos/horarios) y nunca toque datos de usuarios.
+7. **Spinner infinito al cargar** — cuando Supabase respondía lento (cold start
+   o timeout), la app se quedaba mostrando "Verificando sesión..." para siempre.
+   Era porque el código no tenía manejo de errores: si Supabase fallaba,
+   el `setLoading(false)` nunca se ejecutaba. Lo arreglamos con `try/catch/finally`
+   que GARANTIZA que el loading siempre termine, aunque algo falle. Bonus:
+   también arreglamos una race condition donde podía mostrarse el paciente
+   equivocado tras cambiar de sesión (crítico en app médica).
 
 ### 💬 Cómo explicarlo en clase
-> *"3.51 bugs por cada 1.000 líneas. La industria considera bueno menos de 5,
-> nosotros estamos en rango. Encontramos 6 defectos durante el sprint: 3 en
-> desarrollo y 3 en demo con usuarias reales. Ninguno llegó a la presentación
-> final."*
+> *"4.09 bugs por cada 1.000 líneas. La industria considera bueno menos de 5,
+> nosotros estamos en rango. Encontramos 7 defectos durante el sprint: 3 en
+> desarrollo y 4 en demo con usuarias reales. Ninguno llegó a la presentación
+> final, y antes del último deploy aplicamos code review con un agente
+> automático que detectó una race condition crítica adicional."*
 
-### ❓ Si te preguntan "¿por qué la tasa subió de 1.75 a 3.51?"
+### ❓ Si te preguntan "¿por qué la tasa subió tanto?"
 > *"Hicimos demo con usuarias reales (compañeras del grupo) entre miércoles y
-> jueves. Cualquier proyecto serio detecta más bugs en UAT (testing con usuarios)
-> que en desarrollo solo. Es señal de buenas prácticas, no de mala calidad."*
+> jueves. Cualquier proyecto serio detecta más bugs en UAT (testing con
+> usuarios) que en desarrollo solo. Es señal de buenas prácticas, no de mala
+> calidad. La alternativa habría sido NO probar con usuarias y descubrir los
+> bugs el día de la presentación."*
 
 ### ❓ Si te preguntan "¿qué aprendieron de esos bugs?"
-> *"Tres lecciones: (1) scripts destructivos como el seed deben tener safeguards,
-> (2) la lógica de autenticación tiene que manejar estados parciales (auth sin
-> perfil), (3) z-index y stacking context son fáciles de olvidar pero matan UX."*
+> *"Cuatro lecciones grandes: (1) scripts destructivos como el seed deben tener
+> safeguards explícitos, (2) la lógica de autenticación tiene que manejar
+> estados parciales (auth sin perfil), (3) z-index y stacking context son
+> fáciles de olvidar pero matan la UX, (4) TODO efecto async debe tener
+> try/catch/finally para garantizar que el loading state termine."*
+
+### ❓ Si te preguntan "¿cómo prevendrán bugs futuros?"
+> *"Tres cosas para Sprint 2: (1) conectar SonarCloud que detecta este tipo de
+> patrones automáticamente, (2) GitHub Actions con tests obligatorios en cada
+> PR, (3) usar el agente code-reviewer antes de cada merge (lo aplicamos hoy
+> y nos atrapó una race condition que habríamos pasado por alto)."*
 
 ---
 

@@ -137,6 +137,78 @@ debe tener safeguards explicitos para datos de usuarios reales.
 
 ---
 
+---
+
+## HELL-XX (Bug 4) — Loading infinito en useAuth.tsx (CRÍTICO)
+
+**Tipo:** Bug
+**Estado:** Done
+**Responsable:** José Brown (Product Owner)
+**Story Points:** 3
+**Severidad:** Alta (app inutilizable cuando se manifestaba)
+
+**Descripción:**
+```
+Sintoma: Cuando una usuaria hace click en "Agendar cita" o entra a la
+pagina principal, la app se queda mostrando el spinner "Verificando
+sesion..." infinitamente. La app es inutilizable.
+
+Reportado por Marian y otra companera durante el demo del 27 mayo.
+
+Causa raiz (3 problemas en useAuth.tsx):
+
+1. onAuthStateChange callback NO llamaba setLoading(false)
+   - Tras token refresh o signIn, loading podia quedar en true
+   - Codigo viejo solo tenia setSession y setPaciente, sin setLoading
+
+2. loadPaciente() sin try-catch
+   - Si Supabase fallaba (RLS, red, timeout, cold start), excepcion
+     propagaba y rompia la cadena .then() del getSession
+   - setLoading(false) nunca se ejecutaba
+
+3. getSession().then() sin .catch() ni try/finally
+   - Mismo sintoma: cualquier fallo de red dejaba loading=true para siempre
+
+Por que se manifesto AHORA y no antes:
+- BD con mas datos (20 medicos, 5400 horarios) = queries un poco mas lentas
+- Supabase Free tier cold start = 2-5s en primera request
+- Probabilidad de timeout/fallo subio de ~1% a ~20-30%
+- Sin try/catch, cada fallo dejaba app colgada
+
+Fix aplicado:
+1. init() envuelto en try/catch/finally con setLoading(false) en finally
+2. onAuthStateChange callback envuelto igual
+3. loadPaciente() con try/catch que setea paciente=null si falla
+4. Manejo explicito de errores de Supabase (linkErr, pacErr)
+5. console.error('[useAuth] ...') para debugging
+6. signOut() tambien con try/catch/finally + setSession(null) defensivo
+
+Adicional (encontrado por agente code-reviewer ANTES del deploy):
+- HIGH severity: race condition en loadPaciente()
+- Si llegan dos llamadas concurrentes con auth_uid distintos, la respuesta
+  tardia podia mostrar paciente equivocado
+- CRITICO en app medica (datos del paciente anterior tras logout/login)
+- Fix con useRef<currentAuthUid> que descarta respuestas tardias
+
+Archivos modificados:
+- frontend/src/hooks/useAuth.tsx (refactor completo del provider)
+- frontend/src/pages/Login.test.tsx (mock de useAuth agregado)
+- frontend/src/pages/Register.test.tsx (mock de useAuth agregado)
+
+Commit: a5e1021
+
+Verificacion:
+1. Tests: 39/39 pasan
+2. Build: limpio
+3. Deploy: HTTP 200 confirmado en produccion
+4. Code review: agente pr-review-toolkit:code-reviewer ejecutado
+   - 1 HIGH detectado y aplicado (race condition)
+   - 2 LOW aplicadas (dependencies y signOut defensivo)
+   - Aprobado para deploy
+```
+
+---
+
 ## Cómo crearlas (paso a paso para José)
 
 1. Entrar a Jira → proyecto Helios → Backlog

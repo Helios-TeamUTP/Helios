@@ -525,9 +525,12 @@ helios/
 |---|---|---|---|---|
 | B-04 | Registro duplicado: usuario con `auth.users` pero sin `pacientes` veía "Crear cuenta" en blanco | `frontend/src/pages/Register.tsx` + `Login.tsx` | Detección de 3 escenarios (cargando / completo / falta perfil) y UI "Completa tu perfil" | `82dd420` |
 | B-05 | Toolbar/NavLinks no respondían a clicks | `frontend/src/components/layout/AppLayout.tsx` | `sticky top-0 z-50` en header + `relative z-10` en nav | _este commit_ |
-| B-06 | Seed destructivo borraba citas / pacientes / auth_paciente_link de usuarios reales | `scripts/seed_data.py` | `reset_tables()` solo borra catálogo; detección automática de pacientes reales preserva sus datos | _este commit_ |
+| B-06 | Seed destructivo borraba citas / pacientes / auth_paciente_link de usuarios reales | `scripts/seed_data.py` | `reset_tables()` solo borra catálogo; detección automática de pacientes reales preserva sus datos | `bbd2ff4` |
+| B-07 | Loading infinito en `useAuth.tsx`: spinner "Verificando sesión..." nunca terminaba si Supabase fallaba (cold start, RLS, timeout) | `frontend/src/hooks/useAuth.tsx` | `try/catch/finally` en `init`, `onAuthStateChange` y `loadPaciente` garantiza `setLoading(false)` siempre. + `useRef` para prevenir race condition con respuestas tardías que mostrarían paciente equivocado tras cambio de sesión. Validado con agente `code-reviewer` antes del deploy. | `a5e1021` |
 
-**Tasa de defectos actualizada:** 6 bugs / 1.71 KLOC = **3.51 bugs/KLOC** (industria considera bueno <5).
+**Tasa de defectos actualizada:** 7 bugs / 1.71 KLOC = **4.09 bugs/KLOC** (industria considera bueno <5).
+
+**Práctica nueva en Sprint 1:** Antes del fix de B-07 aplicamos revisión automatizada con el agente `pr-review-toolkit:code-reviewer`. Detectó una race condition crítica (HIGH severity) que se aplicó antes del deploy. Esta práctica se documenta para Sprint 2 como gate obligatorio en cada PR.
 
 ### Sprint 2 — Cancelación y Reprogramación + endurecer Sprint 1
 

@@ -182,23 +182,24 @@ TOTAL TODO INCLUIDO (con tests + scripts): 3.706 líneas = 3.71 KLOC
 
 ### 6. Tasa de defectos (bugs / KLOC)
 
-**Cálculo:** `6 defectos detectados / 1.71 KLOC = 3.51 bugs/KLOC`
+**Cálculo:** `7 defectos detectados / 1.71 KLOC = 4.09 bugs/KLOC`
 
-**Los 6 defectos detectados y resueltos durante el Sprint:**
+**Los 7 defectos detectados y resueltos durante el Sprint:**
 
 **Encontrados en desarrollo (3):**
-1. **Regex de cédula panameña** rechazaba formato `PE-12-345` → simplificado a "5-12 dígitos tras quitar prefijo"
-2. **Vitest mock hoisting** fallaba con variables externas → resuelto con `vi.hoisted()`
-3. **Faker locale `es_PA` no existe** → cambiado a `es_MX` (mismo idioma, nombres latinos)
+1. **Regex de cédula panameña** rechazaba formato `PE-12-345` → simplificado
+2. **Vitest mock hoisting** fallaba con variables externas → `vi.hoisted()`
+3. **Faker locale `es_PA` no existe** → cambiado a `es_MX`
 
-**Encontrados en demo con usuarias reales (3):**
-4. **Auth idempotente:** Usuario con `auth.users` pero sin `pacientes` veía "Crear cuenta" → fix en `Register.tsx` detecta 3 escenarios y muestra UI "Completa tu perfil" cuando aplica
-5. **Toolbar sin stacking context:** Clicks en NavLinks del header no respondían (overlay del calendario los tapaba) → fix `sticky top-0 z-50` en `<header>` de `AppLayout.tsx`
-6. **Seed destructivo:** `reset_tables()` borraba citas reales de usuarios → fix preserva `citas` / `pacientes` / `auth_paciente_link`; solo reemplaza catálogo. Citas perdidas no recuperables (Free tier sin PITR).
+**Encontrados en demo con usuarias reales (4):**
+4. **Auth idempotente** (`Register.tsx`): usuario con `auth.users` sin `pacientes` veía "Crear cuenta" → detección de 3 escenarios + UI "Completa tu perfil"
+5. **Toolbar sin stacking context** (`AppLayout.tsx`): clicks en NavLinks no respondían → `sticky top-0 z-50` en `<header>`
+6. **Seed destructivo** (`seed_data.py`): `reset_tables()` borraba citas reales → preserva tablas de usuarios; citas perdidas no recuperables en Free tier
+7. **Loading infinito en `useAuth.tsx`**: spinner "Verificando sesión..." nunca terminaba si Supabase fallaba (cold start, timeout). Fix con `try/catch/finally` en 3 lugares + race condition guard con `useRef` para prevenir mostrar paciente equivocado tras cambio de sesión.
 
-**Evidencia:** los 6 están documentados en commits del repo + en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md` + en Jira (issues HELL-33, HELL-34, HELL-35 con estado Done).
+**Evidencia:** los 7 están documentados en commits del repo + en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md` + en Jira (4 bugs encontrados en demo con issues HELL en estado Done).
 
-**Si te preguntan:** *"3.51 bugs por KLOC es honesto y verificable. Encontramos 3 bugs en desarrollo y 3 en demo con usuarias reales, todos resueltos con commit verificable en GitHub. La industria considera bueno <5 bugs/KLOC. Lo importante: ninguno llegó a la presentación final."*
+**Si te preguntan:** *"4.09 bugs por KLOC es honesto y verificable. Encontramos 3 bugs en desarrollo y 4 en demo con usuarias reales, todos resueltos con commit verificable en GitHub. La industria considera bueno <5 bugs/KLOC. Lo importante: ninguno llegó a la presentación final, y aplicamos code review con agente automático antes del último deploy para validar la calidad del fix."*
 
 ---
 

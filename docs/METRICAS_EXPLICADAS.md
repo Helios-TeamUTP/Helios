@@ -141,15 +141,16 @@
 ### 5.3 Tasa de defectos
 - **Qué es:** Bugs encontrados / KLOC.
 - **Cómo:** Registro manual de defectos durante el sprint.
-- **Valor:** **6 defectos / 1.71 KLOC = 3.51 bugs/KLOC**
+- **Valor:** **7 defectos / 1.71 KLOC = 4.09 bugs/KLOC**
 - **Defectos detectados y resueltos (todos durante el Sprint, ninguno llegó a presentación):**
-  1. Regex de cédula panameña no aceptaba formato `PE-12-345` → simplificado a "5-12 dígitos tras quitar prefijo"
-  2. Vitest `vi.mock` fallaba por hoisting con variables externas → resuelto con `vi.hoisted()`
-  3. Faker `es_PA` locale no existe → cambiado a `es_MX` (nombres latinos)
-  4. **Registro duplicado**: usuario con `auth.users` pero sin `pacientes` veía "Crear cuenta" en blanco → fix en `Register.tsx` detecta 3 escenarios (cargando / completo / falta perfil) y muestra UI "Completa tu perfil"
-  5. **Toolbar inactivo**: clicks en NavLinks no respondían → fix `sticky top-0 z-50` en `<header>` de `AppLayout.tsx` garantiza stacking context arriba de overlays
-  6. **Seed destructivo**: `reset_tables()` borraba `citas` / `pacientes` / `auth_paciente_link` → fix preserva tablas de usuarios reales, solo reemplaza catálogo
-- **Si preguntan:** *"6 defectos detectados durante el sprint, todos resueltos con commit verificable en GitHub. 3 los encontramos en desarrollo (validaciones, mocks, locale) y 3 en demo con usuarias reales (auth, toolbar, seed). Tasa 3.51 bugs/KLOC es honesta para un Sprint 1; la industria considera bueno <5 bugs/KLOC."*
+  1. Regex de cédula panameña no aceptaba formato `PE-12-345` → simplificado
+  2. Vitest `vi.mock` fallaba por hoisting con variables externas → `vi.hoisted()`
+  3. Faker `es_PA` locale no existe → cambiado a `es_MX`
+  4. **Registro duplicado**: usuario con `auth.users` pero sin `pacientes` veía "Crear cuenta" en blanco → `Register.tsx` detecta 3 escenarios
+  5. **Toolbar inactivo**: clicks en NavLinks no respondían → `sticky top-0 z-50` en `<header>`
+  6. **Seed destructivo**: `reset_tables()` borraba datos de usuarios reales → preserva citas/pacientes/auth_paciente_link
+  7. **Loading infinito** en `useAuth.tsx`: si Supabase fallaba (cold start, timeout, RLS), el `setLoading(false)` no se ejecutaba y la app se quedaba en spinner "Verificando sesión..." indefinidamente → fix con `try/catch/finally` en `init`, `onAuthStateChange` y `loadPaciente`. Adicional: race condition fix con `useRef` para prevenir respuestas tardías que muestren paciente equivocado tras cambio de sesión (crítico en app médica).
+- **Si preguntan:** *"7 defectos detectados durante el sprint, todos resueltos con commit verificable en GitHub. 3 los encontramos en desarrollo (validaciones, mocks, locale) y 4 en demo con usuarias reales (auth flow, toolbar, seed, loading). Tasa 4.09 bugs/KLOC es honesta — la industria considera bueno <5 bugs/KLOC."*
 
 ---
 
