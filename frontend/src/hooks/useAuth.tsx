@@ -13,6 +13,84 @@ import { supabase } from '../lib/supabase'
 import type { MedicoConRelaciones, Paciente, Role } from '../lib/types'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
+/**
+ * Bug B-20.3: completar registro pendiente DENTRO del onAuthStateChange,
+ * ANTES de loadPerfil. Garantiza que cuando loadPerfil corre, el link
+ * auth_paciente_link ya existe y paciente se carga correctamente.
+ *
+ * Causa raíz del bug anterior (B-20.2): Login llamaba completarRegistroPendiente
+ * tras signInWithPassword OK, pero refreshPerfil de useAuth dependía de
+ * session?.user que aún no se había propagado al state de React (setSession
+ * del listener estaba pendiente). refreshPerfil veía user=null y no hacía
+ * nada. loadPerfil del listener corría en paralelo y terminaba con paciente=null
+ * (porque el link aún no existía cuando empezó). Resultado: UI muestra
+ * "Completa tu perfil" aunque el paciente Y el link sí se crearon en BD.
+ *
+ * Mover acá elimina la race: el callback de onAuthStateChange es secuencial.
+ *
+ * Retorna string con error o null si todo OK.
+ */
+async function completarRegistroPendienteHelper(
+  pendiente: {
+    nombre: string
+    cedula: string
+    telefono: string | null
+    correo: string
+  },
+  authUid: string,
+): Promise<string | null> {
+  try {
+    // Verificar si la cédula ya está en uso (caso edge: usuario reintenta
+    // tras un fallo previo y la cédula quedó en BD).
+    const { data: existing, error: checkError } = await withTimeout(
+      supabase.from('pacientes').select('id').eq('cedula', pendiente.cedula).maybeSingle(),
+      AUTH_TIMEOUT_MS,
+    )
+    if (checkError) return `chequeo cédula: ${checkError.message}`
+
+    let pacienteId: string
+    if (existing) {
+      // Paciente con esa cédula ya existe — linkear sin re-insertar.
+      pacienteId = (existing as { id: string }).id
+    } else {
+      // Insertar paciente nuevo
+      const { data: pac, error: insertError } = await withTimeout(
+        supabase
+          .from('pacientes')
+          .insert({
+            nombre: pendiente.nombre,
+            cedula: pendiente.cedula,
+            telefono: pendiente.telefono,
+            correo: pendiente.correo,
+          })
+          .select()
+          .single(),
+        AUTH_TIMEOUT_MS,
+      )
+      if (insertError) return `crear paciente: ${insertError.message}`
+      if (!pac) return 'crear paciente: sin data'
+      pacienteId = (pac as { id: string }).id
+    }
+
+    // UPSERT link auth.uid -> paciente
+    const { error: linkError } = await withTimeout(
+      supabase
+        .from('auth_paciente_link')
+        .upsert(
+          { auth_uid: authUid, paciente_id: pacienteId },
+          { onConflict: 'auth_uid' },
+        ),
+      AUTH_TIMEOUT_MS,
+    )
+    if (linkError) return `vincular cuenta con paciente: ${linkError.message}`
+
+    return null
+  } catch (err) {
+    if (err instanceof TimeoutError) return 'timeout completando registro'
+    return err instanceof Error ? err.message : 'error inesperado'
+  }
+}
+
 interface AuthContextValue {
   user: User | null
   session: Session | null
@@ -38,8 +116,16 @@ interface AuthContextValue {
    *   mensaje "Reintentar" en lugar de redirigir a /registro (que confunde al medico)
    */
   loadPerfilFailed: boolean
+  /**
+   * Bug B-20.3: mensaje de error si completarRegistroPendiente fallo tras
+   * signIn. Login.tsx lo muestra al usuario en pantalla para diagnostico
+   * inmediato (RLS rejected, cedula duplicada, timeout, etc).
+   */
+  registroPendienteError: string | null
   signOut: () => Promise<void>
   refreshPerfil: () => Promise<void>
+  /** Limpia el banner de error de registro pendiente (B-20.3). */
+  clearRegistroPendienteError: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -55,6 +141,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * en lugar de redirigir al usuario al form de registro de paciente.
    */
   const [loadPerfilFailed, setLoadPerfilFailed] = useState(false)
+  /**
+   * Bug B-20.3: mensaje de error si completarRegistroPendiente fallo tras
+   * signIn (RLS, cedula duplicada, timeout). Login.tsx lo muestra.
+   */
+  const [registroPendienteError, setRegistroPendienteError] = useState<string | null>(null)
 
   /**
    * Token de version para prevenir race conditions cuando varias llamadas
@@ -227,11 +318,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         if (hasNewUser) {
+          /**
+           * Bug B-20.3: si Register.tsx dejo datos en sessionStorage
+           * (flow nuevo usuario), completar el perfil AHORA antes de
+           * loadPerfil. Asi loadPerfil ve el link recien creado y carga
+           * el paciente correctamente. Sin esto, loadPerfil corre
+           * primero, encuentra paciente=null, y la UI muestra "Completa
+           * tu perfil" aunque el INSERT ocurra despues.
+           */
+          const pendienteJson = sessionStorage.getItem('helios_pending_paciente')
+          if (pendienteJson) {
+            try {
+              const pendiente = JSON.parse(pendienteJson) as {
+                nombre: string
+                cedula: string
+                telefono: string | null
+                correo: string
+              }
+              const errMsg = await completarRegistroPendienteHelper(
+                pendiente,
+                newSession.user.id,
+              )
+              if (errMsg) {
+                console.error('[useAuth] completarRegistroPendiente fallo:', errMsg)
+                setRegistroPendienteError(errMsg)
+              } else {
+                setRegistroPendienteError(null)
+              }
+            } catch (parseErr) {
+              console.error('[useAuth] parse helios_pending_paciente:', parseErr)
+            } finally {
+              sessionStorage.removeItem('helios_pending_paciente')
+            }
+          }
           await loadPerfil(newSession.user.id)
         } else {
           setPaciente(null)
           setMedico(null)
           setLoadPerfilFailed(false) // reset al cerrar sesion (B-17)
+          setRegistroPendienteError(null) // reset al cerrar sesion (B-20.3)
         }
       } catch (err) {
         if (err instanceof TimeoutError) {
@@ -264,7 +389,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPaciente(null)
       setMedico(null)
       setLoadPerfilFailed(false) // B-17: reset al cerrar sesion
+      setRegistroPendienteError(null) // B-20.3: reset al cerrar sesion
     }
+  }, [])
+
+  const clearRegistroPendienteError = useCallback(() => {
+    setRegistroPendienteError(null)
   }, [])
 
   const refreshPerfil = useCallback(async () => {
@@ -288,10 +418,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
       loading,
       loadPerfilFailed,
+      registroPendienteError,
       signOut,
       refreshPerfil,
+      clearRegistroPendienteError,
     }),
-    [session, paciente, medico, role, loading, loadPerfilFailed, signOut, refreshPerfil],
+    [
+      session,
+      paciente,
+      medico,
+      role,
+      loading,
+      loadPerfilFailed,
+      registroPendienteError,
+      signOut,
+      refreshPerfil,
+      clearRegistroPendienteError,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -30,15 +30,14 @@ vi.mock('../lib/supabase', () => ({
 
 // Mock useAuth para que los tests del formulario no requieran AuthProvider.
 // Sin sesión = mostrar el form de login normalmente.
+// Bug B-20.3: incluimos registroPendienteError y clearRegistroPendienteError
+// porque Login los consume del context (para el banner rojo de diagnostico).
+const { useAuthMock, clearRegistroPendienteErrorMock } = vi.hoisted(() => ({
+  useAuthMock: vi.fn(),
+  clearRegistroPendienteErrorMock: vi.fn(),
+}))
 vi.mock('../hooks/useAuth', () => ({
-  useAuth: () => ({
-    user: null,
-    paciente: null,
-    session: null,
-    loading: false,
-    signOut: vi.fn(),
-    refreshPerfil: refreshPerfilMock,
-  }),
+  useAuth: () => useAuthMock(),
 }))
 
 import { Login } from './Login'
@@ -53,6 +52,17 @@ describe('<Login />', () => {
     // B-20.2: getSession default devuelve session activa (polling pasa inmediato)
     getSessionMock.mockResolvedValue({
       data: { session: { access_token: 't', user: { id: 'auth-default' } } },
+    })
+    // B-20.3: useAuth default - sin sesion, sin error de registro pendiente
+    useAuthMock.mockReturnValue({
+      user: null,
+      paciente: null,
+      session: null,
+      loading: false,
+      registroPendienteError: null,
+      signOut: vi.fn(),
+      refreshPerfil: refreshPerfilMock,
+      clearRegistroPendienteError: clearRegistroPendienteErrorMock,
     })
   })
 
@@ -177,12 +187,63 @@ describe('<Login />', () => {
   })
 
   /**
-   * Bug B-20: tras signIn exitoso, Login.tsx completa el registro pendiente
-   * (insert paciente + upsert link) usando datos guardados por Register.tsx
-   * en sessionStorage. Esto resuelve el race de session=null al hacer signUp.
+   * Bug B-20.3: completarRegistroPendiente fue movida a useAuth.tsx
+   * (onAuthStateChange handler) para eliminar el race condition que dejaba
+   * paciente=null tras crear el link. Login.tsx ya NO ejecuta esa logica.
+   * Aqui solo verificamos:
+   *   - Login muestra el banner rojo si registroPendienteError viene del context
+   *   - Login llama clearRegistroPendienteError al re-enviar el form
+   *   - El happy path sigue funcionando (signIn delega a useAuth)
    */
-  describe('B-20: completarRegistroPendiente tras signIn', () => {
-    it('sin sessionStorage pendiente, NO llama a supabase.from (no regresión)', async () => {
+  describe('B-20.3: errores de registro pendiente vienen de useAuth', () => {
+    it('muestra el banner rojo si registroPendienteError viene del context', () => {
+      useAuthMock.mockReturnValue({
+        user: null,
+        paciente: null,
+        session: null,
+        loading: false,
+        registroPendienteError: 'crear paciente: duplicate key value violates unique constraint',
+        signOut: vi.fn(),
+        refreshPerfil: refreshPerfilMock,
+        clearRegistroPendienteError: clearRegistroPendienteErrorMock,
+      })
+
+      render(
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>,
+      )
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveTextContent(/No pudimos completar tu registro/)
+      expect(alert).toHaveTextContent(/duplicate key value/)
+    })
+
+    it('llama clearRegistroPendienteError al re-enviar el form de login', async () => {
+      useAuthMock.mockReturnValue({
+        user: null,
+        paciente: null,
+        session: null,
+        loading: false,
+        registroPendienteError: 'algun error previo',
+        signOut: vi.fn(),
+        refreshPerfil: refreshPerfilMock,
+        clearRegistroPendienteError: clearRegistroPendienteErrorMock,
+      })
+
+      const user = userEvent.setup()
+      render(
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>,
+      )
+      await user.type(screen.getByLabelText('Correo electrónico'), 'a@b.com')
+      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+      await user.click(screen.getByRole('button', { name: /Iniciar sesión/ }))
+
+      expect(clearRegistroPendienteErrorMock).toHaveBeenCalled()
+    })
+
+    it('happy path: signIn se llama y NO se hace insert paciente desde Login (vive en useAuth)', async () => {
       signInMock.mockResolvedValue({
         data: { user: { id: 'auth-1' }, session: { access_token: 't' } },
         error: null,
@@ -198,137 +259,11 @@ describe('<Login />', () => {
       await user.type(screen.getByLabelText('Contraseña'), 'segura123')
       await user.click(screen.getByRole('button', { name: /Iniciar sesión/ }))
 
-      // signIn se llamó, pero como NO hay registro pendiente,
-      // getUser ni supabase.from se llaman.
       await vi.waitFor(() => expect(signInMock).toHaveBeenCalled())
-      expect(getUserMock).not.toHaveBeenCalled()
+      // Login NO llama supabase.from ni getUser — eso es responsabilidad
+      // de useAuth.onAuthStateChange ahora (B-20.3).
       expect(fromMock).not.toHaveBeenCalled()
-      // Fix C-1: tampoco refreshPerfil (no hay nada que refrescar — el
-      // listener de onAuthStateChange se encarga del happy path normal).
-      expect(refreshPerfilMock).not.toHaveBeenCalled()
-    })
-
-    it('con sessionStorage pendiente, inserta paciente y crea link tras signIn', async () => {
-      // Setup: Register.tsx dejó datos en sessionStorage
-      sessionStorage.setItem(
-        'helios_pending_paciente',
-        JSON.stringify({
-          nombre: 'Ana López',
-          cedula: '8-123-4567',
-          telefono: '6000-0000',
-          correo: 'ana@test.com',
-        }),
-      )
-
-      signInMock.mockResolvedValue({
-        data: { user: { id: 'auth-xyz' }, session: { access_token: 't' } },
-        error: null,
-      })
-      getUserMock.mockResolvedValue({
-        data: { user: { id: 'auth-xyz' } },
-      })
-
-      // Mocks de las queries: cédula libre, insert OK, upsert OK
-      const maybeSingleCedula = vi.fn().mockResolvedValue({ data: null, error: null })
-      const insertSingle = vi.fn().mockResolvedValue({
-        data: { id: 'pac-new' },
-        error: null,
-      })
-      const upsertLink = vi.fn().mockResolvedValue({ error: null })
-
-      fromMock.mockImplementation((table: string) => {
-        if (table === 'pacientes') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleCedula }),
-            }),
-            insert: vi.fn().mockReturnValue({
-              select: vi.fn().mockReturnValue({ single: insertSingle }),
-            }),
-          }
-        }
-        if (table === 'auth_paciente_link') {
-          return { upsert: upsertLink }
-        }
-        throw new Error(`tabla no esperada: ${table}`)
-      })
-
-      const user = userEvent.setup()
-      render(
-        <MemoryRouter>
-          <Login />
-        </MemoryRouter>,
-      )
-      await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
-      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
-      await user.click(screen.getByRole('button', { name: /Iniciar sesión/ }))
-
-      await vi.waitFor(() => {
-        // signIn primero
-        expect(signInMock).toHaveBeenCalledWith({
-          email: 'ana@test.com',
-          password: 'segura123',
-        })
-        // getUser para obtener auth_uid
-        expect(getUserMock).toHaveBeenCalled()
-        // INSERT paciente con datos del sessionStorage
-        expect(insertSingle).toHaveBeenCalled()
-        // UPSERT link con auth_uid y paciente_id correctos
-        expect(upsertLink).toHaveBeenCalledWith(
-          { auth_uid: 'auth-xyz', paciente_id: 'pac-new' },
-          { onConflict: 'auth_uid' },
-        )
-        // Fix C-1: refreshPerfil se llama tras el upsert link para ganar
-        // la carrera contra onAuthStateChange y evitar que useAuth quede
-        // con paciente=null transitorio (que dispararía redirect a /registro).
-        expect(refreshPerfilMock).toHaveBeenCalled()
-      })
-
-      // sessionStorage limpiado tras éxito
-      expect(sessionStorage.getItem('helios_pending_paciente')).toBeNull()
-    })
-
-    it('si insert paciente falla, NO bloquea el login (sessionStorage se limpia)', async () => {
-      sessionStorage.setItem(
-        'helios_pending_paciente',
-        JSON.stringify({
-          nombre: 'Ana',
-          cedula: '8-123-4567',
-          telefono: null,
-          correo: 'ana@test.com',
-        }),
-      )
-
-      signInMock.mockResolvedValue({
-        data: { user: { id: 'auth-xyz' }, session: { access_token: 't' } },
-        error: null,
-      })
-      getUserMock.mockResolvedValue({ data: { user: { id: 'auth-xyz' } } })
-
-      // El chequeo de cédula falla por excepción de red
-      fromMock.mockImplementation(() => {
-        throw new Error('Network down')
-      })
-
-      const user = userEvent.setup()
-      render(
-        <MemoryRouter>
-          <Login />
-        </MemoryRouter>,
-      )
-      await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
-      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
-      await user.click(screen.getByRole('button', { name: /Iniciar sesión/ }))
-
-      // El login NO falla aunque el insert tuvo error.
-      // No debe mostrar mensaje de error al usuario (el catch interno lo absorbe).
-      // sessionStorage se limpia para no acumular basura.
-      await vi.waitFor(() => {
-        expect(signInMock).toHaveBeenCalled()
-      })
-      expect(sessionStorage.getItem('helios_pending_paciente')).toBeNull()
-      // El botón vuelve a estar habilitado (finally del handleSubmit)
-      expect(screen.getByRole('button', { name: /Iniciar sesión/ })).not.toBeDisabled()
+      expect(getUserMock).not.toHaveBeenCalled()
     })
   })
 
