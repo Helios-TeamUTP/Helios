@@ -4,8 +4,10 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { useHorarios } from '../../hooks/useHorarios'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { LoadingSpinner } from '../shared/LoadingSpinner'
 import { ErrorMessage } from '../shared/ErrorMessage'
+import { CalendarioCitasLista } from './CalendarioCitasLista'
 import type { Horario } from '../../lib/types'
 
 interface Props {
@@ -15,6 +17,9 @@ interface Props {
 }
 
 export function CalendarioCitas({ medicoId, value, onChange }: Props) {
+  // Bug B-18: todos los hooks SIEMPRE corren primero (rules-of-hooks).
+  // El branching mobile/desktop se hace en el render, no en el orden de hooks.
+  const isMobile = useIsMobile()
   const { data, loading, error } = useHorarios(medicoId)
 
   const events = useMemo(
@@ -31,6 +36,25 @@ export function CalendarioCitas({ medicoId, value, onChange }: Props) {
     [data, value],
   )
 
+  /**
+   * Bug B-18: en pantallas <=768px, FullCalendar timeGridWeek se desordena
+   * (7 columnas en 360px de ancho = ~50px por dia, imposible leer slots
+   * de 20 min). En movil delegamos a una vista de lista mas amigable.
+   * Desktop sigue con FullCalendar (mejor experiencia visual).
+   */
+  if (isMobile) {
+    return (
+      <CalendarioCitasLista
+        horarios={data}
+        loading={loading}
+        error={error}
+        value={value}
+        onChange={onChange}
+      />
+    )
+  }
+
+  // Desktop: FullCalendar (codigo original).
   if (loading) return <LoadingSpinner label="Cargando horarios disponibles…" />
   if (error) return <ErrorMessage message={error} />
   if (data.length === 0)
