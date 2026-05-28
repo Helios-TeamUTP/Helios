@@ -1,326 +1,289 @@
 # 📅 PLAN SPRINT 2 — HELIOS
 
-> **Versión:** Propuesta inicial (pendiente validación con Jira real)
+> **Estado:** Alineado con Jira (issue **HELL-3**)
 > **Periodo:** 2026-05-30 al 2026-06-12 (2 semanas)
-> **Tema principal:** Cancelación, reprogramación de citas + notificaciones + hardening de producción
->
-> ⚠️ **Nota:** Este plan se basa en lo que el CLAUDE.md menciona como "5 historias para Sprint 2" + "Cancelar/reprogramar en progreso". Cuando José confirme con captura de Jira, los IDs y títulos se ajustarán a los reales.
+> **Tema:** Cancelación y Reprogramación de citas (autoservicio del paciente)
+> **Story Points:** 13 SP (5 cancelar + 8 reprogramar)
 
 ---
 
-## 🎯 Objetivos del Sprint 2
+## 🎯 Objetivo del Sprint 2
 
-1. **Permitir al paciente cancelar y reprogramar sus citas** (autoservicio)
-2. **Notificar por email** confirmación de cita, cancelación y recordatorios
-3. **Aumentar madurez del proceso** hacia TMMi nivel 3 (optimización con métricas)
-4. **Reducir deuda técnica** identificada al cierre del Sprint 1
-5. **Mantener estabilidad de producción** (cero regresiones del Sprint 1)
+Permitir al paciente **cancelar y reprogramar sus citas de forma autoservicio**, sin necesidad de contactar al centro médico. Liberar horarios automáticamente para que estén disponibles a otros pacientes.
 
 ---
 
-## 📋 Historias de Usuario propuestas
+## 📋 Issue principal en Jira
 
-### US-06 — Cancelar cita (5 SP · Alta prioridad)
+**HELL-3:** "Sprint 2 — Cancelación y Re-programación"
+🔗 https://helios-group.atlassian.net/browse/HELL-3
 
-**Como** paciente,
-**quiero** cancelar una cita que tengo agendada,
-**para** liberar el horario si no podré asistir.
+**Subtareas:** 9 subtasks listadas abajo (a crear en Jira).
 
-#### Criterios de aceptación
+---
 
-- [ ] En la página `/mis-citas`, cada cita confirmada tiene botón "Cancelar"
-- [ ] Al hacer clic en "Cancelar", aparece modal de confirmación con detalle de la cita
-- [ ] Si el paciente confirma, la cita cambia a estado `cancelada`
-- [ ] El horario asociado vuelve a estar disponible (`disponible = true`)
-- [ ] No se puede cancelar una cita ya pasada (fecha < hoy)
-- [ ] No se puede cancelar con menos de 2 horas de anticipación
-- [ ] El médico ve la cancelación en su dashboard en tiempo real
+## ✅ Alcance del Sprint 2
 
-#### Subtareas técnicas
+1. **Cancelar cita confirmada** (paciente, autoservicio)
+2. **Reprogramar cita confirmada** a otro horario disponible (paciente)
+3. **Actualizar dashboard del médico** en tiempo real con cambios
+4. **Mantener historial de cambios por cita** (auditoría — tabla + triggers, sin UI)
 
-**Backend (Supabase):**
-- [ ] Crear función RPC `cancelar_cita_atomica(cita_id, paciente_id)` que:
-  - Valida que el paciente sea el dueño de la cita
-  - Valida ventana de 2h
-  - Actualiza `citas.estado = 'cancelada'`
-  - Actualiza `horarios.disponible = true`
-  - Todo en una transacción atómica
-- [ ] Actualizar RLS de `citas` para permitir UPDATE solo del dueño + médico asignado
-- [ ] Test SQL de la RPC en Supabase SQL Editor
+### ❌ Fuera de alcance (Sprint 3)
 
-**Frontend:**
-- [ ] Componente `BotonCancelarCita.tsx` con modal de confirmación
-- [ ] Hook `useCancelarCita.ts` que llama a la RPC
-- [ ] Integrar en `pages/MisCitas.tsx`
-- [ ] Mostrar estado visual de la cita cancelada (badge gris)
-- [ ] Manejar error si ya pasó la cita o muy cerca
+- Notificaciones por email/SMS al cancelar/reprogramar
+- Mostrar el historial de cambios en la UI
+- Cancelación con motivo (texto libre)
+- Cancelación masiva por médico (emergencias)
+- MFA y email confirmation
+- Monitoreo con Sentry
+
+Ver propuesta completa de Sprint 3 en [`PLAN_SPRINT_3.md`](./PLAN_SPRINT_3.md).
+
+---
+
+## 📋 Criterios de aceptación generales (de HELL-3)
+
+- [ ] Solo el paciente dueño puede cancelar/reprogramar sus citas (validado por RLS)
+- [ ] No se puede cancelar/reprogramar con menos de 2 horas de anticipación
+- [ ] Al cancelar, el horario vuelve a estar disponible automáticamente
+- [ ] Al reprogramar, el horario viejo se libera y el nuevo se reserva (atómico)
+- [ ] El médico ve los cambios en su dashboard sin recargar
+- [ ] Cada cambio queda registrado en tabla `citas_historial`
+- [ ] Cero regresiones del Sprint 1 (los 65 tests deben seguir pasando)
+- [ ] Cobertura de tests se mantiene ≥ 60%
+
+---
+
+## 🛠️ Las 9 Subtareas (a crear en Jira bajo HELL-3)
+
+### ST-1 · Crear función SQL `cancelar_cita_atomica` (Backend)
+
+**Asignado:** Alejandro (Tech Lead)
+**Story Points:** 2
+
+Función PostgreSQL que cancela una cita atómicamente:
+
+1. Valida ownership (auth.uid() = paciente dueño)
+2. Valida estado "confirmada" (no ya cancelada)
+3. Valida ventana de 2 horas
+4. UPDATE `citas.estado = 'cancelada'` + `cancelado_at = now()`
+5. UPDATE `horarios.disponible = true`
+6. Todo en transacción única
+
+**Retorna:** `{ success: boolean, error_code: string }`
+
+**Tests SQL:**
+- Cancelar cita propia OK
+- Cancelar cita ajena → `error_code='unauthorized'`
+- Cancelar con < 2h → `error_code='too_late'`
+- Cancelar ya cancelada → `error_code='already_cancelled'`
+
+---
+
+### ST-2 · Crear función SQL `reprogramar_cita_atomica` (Backend)
+
+**Asignado:** Alejandro (Tech Lead)
+**Story Points:** 3
+
+Función PostgreSQL que reprograma una cita:
+
+**Parámetros:** `cita_id`, `nuevo_horario_id`
+
+1. Validar ownership y ventana de 2h
+2. Validar que `nuevo_horario_id` pertenezca al MISMO médico
+3. Validar que el nuevo horario esté disponible
+4. Liberar horario viejo (`disponible=true`)
+5. Reservar horario nuevo (`disponible=false`)
+6. Actualizar `citas.horario_id`
+7. Insertar entrada en `citas_historial`
+8. Atómico
+
+**Retorna:** `{ success: boolean, error_code: string, nueva_cita: cita }`
+
+---
+
+### ST-3 · Crear tabla `citas_historial` + triggers (Backend)
+
+**Asignado:** Alejandro (Tech Lead)
+**Story Points:** 2
+
+```sql
+CREATE TABLE citas_historial (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cita_id UUID REFERENCES citas(id) ON DELETE CASCADE,
+  accion TEXT CHECK (accion IN ('creada','cancelada','reprogramada','completada')),
+  actor_uid UUID,
+  actor_rol TEXT CHECK (actor_rol IN ('paciente','medico')),
+  detalle JSONB,  -- datos viejos vs nuevos
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_citas_historial_cita ON citas_historial(cita_id);
+```
+
+**RLS:**
+- SELECT: solo paciente dueño + médico asignado
+- INSERT: solo desde triggers/RPCs
+
+**Trigger en `citas` (AFTER UPDATE):** inserta automáticamente en historial.
+
+---
+
+### ST-4 · Hook `useCancelarCita` (Frontend)
+
+**Asignado:** Ethan (Dev Frontend)
+**Story Points:** 1
+
+`frontend/src/hooks/useCancelarCita.ts`:
+
+- Recibe `cita_id`
+- Llama RPC vía `supabase.rpc('cancelar_cita_atomica', ...)`
+- Manejo de errores con `setError` visible (patrón B-20.3)
+- Estado `loading`
+- `onSuccess` callback
 
 **Tests:**
-- [ ] Test unitario de `useCancelarCita` (mockear Supabase)
-- [ ] Test integración del componente con modal
-- [ ] Test de la validación de 2h de anticipación
-- [ ] Test de regresión: paciente NO puede cancelar cita ajena
-
-**Documentación:**
-- [ ] Actualizar `CLAUDE.md` con la nueva RPC
-- [ ] Documentar el flujo en `PLAN_EJECUCION_SPRINT_0_Y_1.md`
+- Mock de `supabase.rpc` → verificar parámetros
+- Errores `too_late`, `unauthorized` → mensajes claros
+- `onSuccess` se llama tras éxito
 
 ---
 
-### US-07 — Reprogramar cita (8 SP · Alta prioridad)
+### ST-5 · Componente `BotonCancelarCita` + modal (Frontend)
 
-**Como** paciente,
-**quiero** cambiar la fecha/hora de una cita ya agendada,
-**para** ajustarla a mi disponibilidad sin tener que cancelar y volver a agendar.
+**Asignado:** Ethan (Dev Frontend)
+**Story Points:** 1
 
-#### Criterios de aceptación
+`frontend/src/components/citas/BotonCancelarCita.tsx`:
 
-- [ ] En `/mis-citas`, cada cita confirmada tiene botón "Reprogramar"
-- [ ] Al hacer clic, se abre el wizard del calendario CON los mismos médico/especialidad/sede precargados
-- [ ] Solo se muestran horarios disponibles del médico (excluyendo el horario actual)
-- [ ] Al seleccionar nuevo slot y confirmar, la cita se actualiza atómicamente:
-  - Horario viejo: `disponible = true`
-  - Horario nuevo: `disponible = false`
-  - Cita: `horario_id = nuevo_id`
-- [ ] No se puede reprogramar con menos de 2 horas de anticipación
-- [ ] Notifica al médico del cambio (preparar para US-08)
-
-#### Subtareas técnicas
-
-**Backend (Supabase):**
-- [ ] Crear función RPC `reprogramar_cita_atomica(cita_id, nuevo_horario_id, paciente_id)` que:
-  - Valida ownership y ventana de 2h
-  - Libera horario viejo
-  - Reserva horario nuevo (con check de disponibilidad)
-  - Actualiza la cita
-  - Todo atómico
-- [ ] Test SQL de la RPC
-
-**Frontend:**
-- [ ] Modal/página de reprogramación que reutilice `CalendarioCitas`
-- [ ] Hook `useReprogramarCita.ts`
-- [ ] Pre-llenar contexto con datos de la cita actual
-- [ ] Integrar en `pages/MisCitas.tsx`
-- [ ] Confirmación visual con código de cita actualizado
-
-**Tests:**
-- [ ] Test unitario del hook
-- [ ] Test del flujo completo (mock Supabase)
-- [ ] Test de race condition (dos pacientes intentan el mismo slot)
+- Botón rojo "Cancelar" visible solo si la cita es cancelable
+- Modal de confirmación con detalle de la cita y advertencia
+- Botones "Cancelar acción" / "Sí, cancelar cita"
+- Usa `useCancelarCita`
+- Tras éxito: cierra modal + actualiza lista
+- Tras error: banner rojo con mensaje real
 
 ---
 
-### US-08 — Notificaciones por email (8 SP · Media prioridad)
+### ST-6 · Hook `useReprogramarCita` + página `ReprogramarCita` (Frontend)
 
-**Como** paciente / médico,
-**quiero** recibir notificaciones por email de mis citas,
-**para** estar informado sin tener que entrar al sistema.
+**Asignado:** Ethan (Dev Frontend)
+**Story Points:** 3
 
-#### Criterios de aceptación
+Hook similar a `useCancelarCita`.
 
-- [ ] Al **agendar** una cita, el paciente recibe email con: fecha, hora, médico, sede, código
-- [ ] Al **cancelar** una cita, paciente y médico reciben email
-- [ ] Al **reprogramar** una cita, ambos reciben email con datos viejos vs nuevos
-- [ ] **Recordatorio automático** 24h antes de la cita (paciente)
-- [ ] Templates en HTML con marca HELIOS (color teal #0A8478)
-- [ ] Si el email falla, NO bloquea la operación principal (best-effort)
-
-#### Subtareas técnicas
-
-**Decisión de arquitectura:**
-- [ ] Evaluar opciones: Supabase Edge Functions vs servicio externo (Resend, SendGrid)
-- [ ] Recomendación inicial: **Resend** (gratuito hasta 3000 emails/mes, fácil setup)
-
-**Backend (Supabase + Edge Functions o webhook):**
-- [ ] Crear Edge Function `send_cita_email` que recibe `{ tipo, cita_id }` y manda email
-- [ ] 4 templates HTML: confirmación, cancelación, reprogramación, recordatorio
-- [ ] Trigger SQL en `citas` (INSERT/UPDATE) que invoca la Edge Function
-- [ ] Cron job (Supabase pg_cron) para recordatorios 24h
-
-**Frontend:**
-- [ ] Mostrar mensaje "Te enviamos un correo de confirmación" tras agendar
-- [ ] (Opcional) Botón "Reenviar email" en MisCitas
-
-**Tests:**
-- [ ] Mock de la Edge Function en tests de hooks
-- [ ] Test de los 4 templates renderizados
-
-**Configuración:**
-- [ ] Variables de entorno en Supabase para Resend API key
-- [ ] Documentar en `CLAUDE.md` la decisión de arquitectura
+Página `frontend/src/pages/ReprogramarCita.tsx`:
+- Reutiliza `CalendarioCitas`
+- Pre-carga médico, sede, especialidad de la cita actual
+- Excluye el slot actual de los disponibles
+- Al confirmar nuevo slot: llama hook
+- Tras éxito: redirect a `/mis-citas` con mensaje verde
+- Errores visibles (patrón B-20.3)
 
 ---
 
-### US-09 — Historial de cambios por cita (3 SP · Media prioridad)
+### ST-7 · Actualizar `MisCitas` con botones (Frontend)
 
-**Como** paciente / médico,
-**quiero** ver el historial de cambios de una cita,
-**para** auditar quién la cambió y cuándo.
+**Asignado:** Ethan (Dev Frontend)
+**Story Points:** 1
 
-#### Criterios de aceptación
+Modificar `frontend/src/pages/MisCitas.tsx`:
 
-- [ ] Cada cita tiene un historial visible: creación, cambios de estado, reprogramaciones
-- [ ] Cada entrada del historial muestra: acción, fecha/hora, autor (paciente o médico)
-- [ ] Accesible desde `/mis-citas` (paciente) y dashboard médico
-- [ ] Solo visible para el paciente dueño y el médico asignado (RLS)
-
-#### Subtareas técnicas
-
-**Backend:**
-- [ ] Crear tabla `citas_historial`:
-  ```sql
-  CREATE TABLE citas_historial (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    cita_id UUID REFERENCES citas(id),
-    accion TEXT NOT NULL,  -- 'creada', 'cancelada', 'reprogramada', 'completada'
-    actor_uid UUID,
-    actor_rol TEXT,  -- 'paciente' o 'medico'
-    detalle JSONB,   -- datos viejos vs nuevos
-    created_at TIMESTAMPTZ DEFAULT now()
-  );
-  ```
-- [ ] Triggers en `citas` que insertan automáticamente en `citas_historial`
-- [ ] RLS de `citas_historial`: solo dueño + médico asignado
-
-**Frontend:**
-- [ ] Componente `HistorialCita.tsx` (accordion expandible)
-- [ ] Hook `useHistorialCita.ts`
-- [ ] Integrar en MisCitas y dashboard médico
-
-**Tests:**
-- [ ] Test del trigger SQL (insertar cita → verificar entry en historial)
-- [ ] Test del componente con varias entradas
+- Cada cita muestra:
+  - Datos (ya existe)
+  - Botón "Cancelar" si cancelable
+  - Botón "Reprogramar" (link) si reprogramable
+  - Badge "Cancelada" / "Completada" según estado
+- Pestañas: "Próximas" / "Pasadas" / "Canceladas"
 
 ---
 
-### US-10 — Confirmación email + MFA opcional (13 SP · Baja prioridad)
+### ST-8 · Actualizar dashboard médico (Frontend)
 
-**Como** equipo,
-**queremos** activar confirmación de email obligatoria y MFA opcional,
-**para** acercar HELIOS a producción comercial real.
+**Asignado:** Ethan + Ashley (QA validación)
+**Story Points:** 1
 
-#### Criterios de aceptación
+Modificar `frontend/src/pages/MedicoDashboard.tsx`:
 
-- [ ] Tras `signUp`, el usuario recibe email con link de confirmación
-- [ ] El usuario NO puede iniciar sesión hasta confirmar el email
-- [ ] Página `/verificar-email` que muestra "Revisa tu bandeja"
-- [ ] Opción "Reenviar email" si no llegó
-- [ ] Settings del usuario para activar MFA con app autenticadora (TOTP)
-- [ ] Login MFA: tras password correcto, pedir código TOTP
-
-#### Subtareas técnicas
-
-**Backend (Supabase):**
-- [ ] Activar `Confirm email` en Supabase Auth settings
-- [ ] Configurar SMTP propio (no usar el de Supabase que es limitado)
-- [ ] Templates de Supabase Auth en español con marca HELIOS
-- [ ] Habilitar MFA en Supabase Auth settings
-
-**Frontend:**
-- [ ] Página `/verificar-email`
-- [ ] Manejar caso "email no confirmado" en login con mensaje claro
-- [ ] Page `/configuracion` con sección MFA (enrollar/desenrollar)
-- [ ] Modal MFA en login si está activo
-
-**Tests:**
-- [ ] Mock de Supabase Auth para los flujos nuevos
-
-**Documentación:**
-- [ ] Guía de usuario para confirmar email
-- [ ] Guía de usuario para activar MFA
-
-**⚠️ NOTA:** Esta historia tiene 13 SP por su impacto en flujos. Puede dividirse en US-10a (email confirmation) y US-10b (MFA) si conviene.
+- Citas canceladas aparecen en pestaña Historial (badge gris)
+- Filtrar agenda de "Hoy" para excluir canceladas
+- Auto-refresh cada 60 segundos (o Supabase Realtime)
+- Toast notification si una cita se cancela mientras el médico la ve
 
 ---
 
-## 🛠️ Tareas técnicas no funcionales (Deuda Técnica)
+### ST-9 · Tests E2E + smoke post-deploy (QA + DevOps)
 
-### TD-01 — Monitoreo de errores en producción (3 SP)
+**Asignado:** Ashley (QA) + Marian (DevOps)
+**Story Points:** -
 
-- [ ] Integrar Sentry (free tier: 5,000 eventos/mes)
-- [ ] Capturar errores no manejados en frontend
-- [ ] Capturar console.errors del catch
-- [ ] Alertas a email del equipo
+1. **Test manual E2E:**
+   - Crear paciente → agendar → cancelar → verificar horario libre
+   - Re-agendar misma cita
+   - Reprogramar → verificar swap correcto
+   - Login médico → verificar cambios
 
-### TD-02 — Logging estructurado (2 SP)
+2. **Smoke automatizado post-deploy:** `curl HTTP 200`
 
-- [ ] Reemplazar `console.error` por logger estructurado
-- [ ] Logs con contexto (user_id, accion, timestamp)
-- [ ] Enviar a Supabase logs o servicio externo
+3. **Verificar regresión:** 65 tests Sprint 1 siguen pasando
 
-### TD-03 — Pruebas E2E con Playwright (5 SP)
-
-- [ ] Configurar Playwright en el repo
-- [ ] 3 tests E2E críticos:
-  1. Registro nuevo paciente → agendar cita → ver en MisCitas
-  2. Médico ve agenda → marca cita completada → aparece en historial
-  3. Cancelar cita → horario vuelve a disponible
-- [ ] Correr en CI antes de cada deploy
-
-### TD-04 — Locust a 500 usuarios (2 SP)
-
-- [ ] Ajustar `locustfile.py` para 500 usuarios
-- [ ] Medir P95 con esa carga
-- [ ] Identificar cuellos de botella (queries lentas, RLS, etc.)
-- [ ] Documentar resultados
-
-### TD-05 — Documentar RPCs en SQL (1 SP)
-
-- [ ] Agregar comentarios COMMENT ON FUNCTION para cada RPC
-- [ ] Documentar parámetros, retornos, casos de error
-- [ ] Generar dump del schema con comentarios
+4. **Locust:** subir a 300 usuarios y medir P95
 
 ---
 
 ## 📊 Distribución de Story Points
 
-| Categoría | SP | % del Sprint |
+| Subtarea | SP | Responsable |
 |---|---|---|
-| Historias funcionales (US-06 a US-10) | 37 | 75% |
-| Deuda técnica (TD-01 a TD-05) | 13 | 25% |
-| **TOTAL** | **50 SP** | 100% |
-
-**Capacidad estimada del equipo:** 50 SP / 2 semanas (similar al Sprint 1).
+| ST-1 cancelar_cita_atomica | 2 | Alejandro |
+| ST-2 reprogramar_cita_atomica | 3 | Alejandro |
+| ST-3 citas_historial + triggers | 2 | Alejandro |
+| ST-4 useCancelarCita hook | 1 | Ethan |
+| ST-5 BotonCancelarCita componente | 1 | Ethan |
+| ST-6 useReprogramarCita + página | 3 | Ethan |
+| ST-7 MisCitas actualizada | 1 | Ethan |
+| ST-8 Dashboard médico | 1 | Ethan + Ashley |
+| ST-9 QA + smoke | - | Ashley + Marian |
+| **TOTAL** | **14 SP** | |
 
 ---
 
-## 🗓️ Cronograma sugerido
+## 🗓️ Cronograma sugerido (1.5 semanas)
 
 ### Semana 1 (mayo 30 - junio 5)
 
-| Día | Tarea principal |
-|---|---|
-| Lun | Planning Sprint 2 + setup ramas |
-| Mar | US-06 (cancelar cita) backend + frontend |
-| Mié | US-06 tests + code review + deploy |
-| Jue | US-07 (reprogramar) backend |
-| Vie | US-07 frontend + tests |
+| Día | Tarea principal | Quién |
+|---|---|---|
+| Lun | Planning + setup branch `sprint2/bootstrap` | Marian |
+| Mar | ST-1 + ST-3 (backend cancelar + historial) | Alejandro |
+| Mié | ST-2 (backend reprogramar) | Alejandro |
+| Jue | ST-4 + ST-5 (hook + componente cancelar) | Ethan |
+| Vie | ST-6 (hook + página reprogramar) | Ethan |
 
 ### Semana 2 (junio 6 - junio 12)
 
-| Día | Tarea principal |
-|---|---|
-| Lun | US-07 deploy + US-08 (emails) arranque |
-| Mar | US-08 templates + Edge Function |
-| Mié | US-09 (historial) backend + frontend |
-| Jue | TD-01 (Sentry) + TD-04 (Locust 500) |
-| Vie | Demo + retrospectiva Sprint 2 |
-
-**Nota:** US-10 (email confirmation + MFA) queda como opcional/stretch goal. Solo si quedan SP libres.
+| Día | Tarea principal | Quién |
+|---|---|---|
+| Lun | ST-7 + ST-8 (MisCitas + dashboard médico) | Ethan + Ashley |
+| Mar | ST-9 tests E2E + smoke post-deploy | Ashley + Marian |
+| Mié | Deploy producción + validación PO | Marian + José |
+| Jue | Buffer (bugs encontrados, ajustes) | Equipo |
+| Vie | Demo Sprint 2 + retrospectiva | Todos |
 
 ---
 
-## 🚦 Criterios de "Done" del Sprint 2
+## 🚦 Criterios de "Done"
 
-Cada historia se considera completada cuando:
+Cada subtarea se considera completada cuando:
 
-1. ✅ Código mergeado a `main` (o branch del Sprint 2)
+1. ✅ Código mergeado a `sprint2/bootstrap`
 2. ✅ Tests unitarios + integración pasando
 3. ✅ Code review aprobado por al menos un integrante
 4. ✅ Deploy a producción exitoso (HTTP 200 verificado)
-5. ✅ PO valida funcionalidad en producción real
+5. ✅ PO (José) valida funcionalidad en producción real
 6. ✅ Documentación actualizada (CLAUDE.md, PLAN_EJECUCION)
-7. ✅ Issue de Jira movida a "Done"
+7. ✅ Subtarea de Jira movida a "Done"
 
 ---
 
@@ -328,41 +291,41 @@ Cada historia se considera completada cuando:
 
 | Riesgo | Mitigación |
 |---|---|
-| SMTP de Supabase muy limitado para emails | Usar Resend desde el inicio |
-| Race conditions en reprogramación | Validar con tests de carga (TD-04) |
-| Sentry consume cuota free rápido | Filtrar errores conocidos, alertas solo críticas |
-| MFA muy complejo para tiempo de Sprint | Marcar US-10 como stretch goal, no comprometerse |
-| Cancelaciones masivas afectan calendario | Implementar caché client-side de horarios |
+| Race condition: dos pacientes reservan el mismo horario liberado | Función SQL atómica con SELECT FOR UPDATE |
+| Pacientes reprograman muchas veces para "bloquear" horarios | Considerar límite (ej: máximo 2 reprogramaciones por cita) — discutir con PO |
+| El médico ve datos viejos por caché del frontend | Auto-refresh cada 60s o usar Supabase Realtime |
+| RLS rechaza UPDATE por bug en política | Tests SQL exhaustivos antes de deploy |
+| Regresión en flow Sprint 1 (registro, agendamiento) | ST-9 verifica los 65 tests del Sprint 1 |
 
 ---
 
 ## 📝 Preguntas pendientes para José (PO)
 
-1. **¿Tenemos presupuesto para servicios?** (Resend free + Sentry free son gratis, pero validar)
-2. **¿Email confirmation se hace en Sprint 2 o Sprint 3?** (impacta UX significativamente)
-3. **¿MFA es realmente prioridad académica?** (no aporta a métricas, sí a "producción real")
-4. **¿La profesora pide cosas específicas para Sprint 2?** (revisar rúbrica)
+1. **¿Límite de reprogramaciones por cita?** (sugiero máximo 2, así no se abusa)
+2. **¿Ventana de 2 horas es correcta?** o prefieren 4h / 24h?
+3. **¿Quieren botón "Cancelar" también para el médico?** (no está en alcance pero es razonable)
+4. **¿Quieren ya pensar en notificaciones email?** o lo dejamos firme para Sprint 3?
 
 ---
 
 ## 📦 Entregables al final del Sprint 2
 
-1. App con cancelación + reprogramación + notificaciones en producción
-2. Tablero Kanban actualizado (cero issues Sprint 2 en To Do, todas Done o In Progress)
-3. Métricas actualizadas con datos del Sprint 2
-4. Demo en vivo del flujo completo
+1. App con cancelación + reprogramación en producción
+2. Tablero Jira HELL-3 con 9 subtareas en Done
+3. Métricas actualizadas (cobertura, bugs, latencia)
+4. Demo en vivo del flujo: agendar → cancelar → reprogramar
 5. Retrospectiva documentada
 
 ---
 
-## 🔄 Próximos pasos inmediatos (esta semana)
+## 🔄 Próximos pasos inmediatos
 
-1. **José revisa este plan** y lo compara con Jira real
-2. **José manda captura de Jira** Sprint 2 para refinar IDs y títulos
-3. **Equipo discute en daily** prioridades y asignaciones
-4. **Marian crea las ramas** `sprint2/us-06-cancelar`, etc.
-5. **Empezamos por US-06** (cancelar) por ser la más simple y de alta prioridad
+1. **José llena la descripción de HELL-3** con el texto provisto en chat
+2. **José/Marian crean las 9 subtareas** en Jira con los títulos y descripciones
+3. **Marian crea la branch** `sprint2/bootstrap` desde `sprint1/bootstrap`
+4. **Equipo empieza por ST-1, ST-2, ST-3** (backend, son bloqueantes)
+5. **Frontend (ST-4 a ST-8)** arranca cuando ST-1 y ST-2 estén deployados
 
 ---
 
-_Documento generado al inicio del Sprint 2, 2026-05-28. Pendiente validación con Jira._
+_Documento alineado con Jira HELL-3, 2026-05-28._
