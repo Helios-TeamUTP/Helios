@@ -153,6 +153,27 @@ export function Register() {
         }
         sessionStorage.setItem('helios_pending_paciente', JSON.stringify(pendiente))
 
+        /**
+         * Bug B-20.1: cuando Supabase tiene email confirmation DESACTIVADA
+         * (caso HELIOS demo), signUp devuelve sesion activa inmediatamente
+         * (auto-login). Eso hace que useAuth detecte `user` y Login.tsx
+         * redirija a /registro mostrando "Completa tu perfil" SIN ejecutar
+         * completarRegistroPendiente() (que solo corre tras signInWithPassword
+         * manual en el handleSubmit). Resultado: el usuario queda autenticado
+         * sin paciente, viendo el form de completar — bug regresivo.
+         *
+         * Fix: signOut explicito para limpiar la sesion auto-creada por
+         * signUp. Asi Login.tsx renderiza el form normal con banner verde,
+         * el usuario ingresa password, signInWithPassword OK, y entonces
+         * SI corre completarRegistroPendiente() que crea paciente + link.
+         */
+        try {
+          await withTimeout(supabase.auth.signOut(), AUTH_TIMEOUT_MS)
+        } catch {
+          // No bloqueante. Si signOut falla, completarRegistroPendiente
+          // tiene su propio fallback en Login.tsx (caso edge raro).
+        }
+
         navigate('/login', {
           replace: true,
           state: {

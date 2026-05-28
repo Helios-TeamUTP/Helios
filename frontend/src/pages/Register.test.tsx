@@ -4,9 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { TimeoutError } from '../lib/withTimeout'
 
-const { fromMock, signUpMock, refreshPerfilMock, navigateMock } = vi.hoisted(() => ({
+const { fromMock, signUpMock, signOutMock, refreshPerfilMock, navigateMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
   signUpMock: vi.fn(),
+  // Bug B-20.1: signOut tras signUp para forzar re-login manual.
+  signOutMock: vi.fn().mockResolvedValue({ error: null }),
   refreshPerfilMock: vi.fn().mockResolvedValue(undefined),
   // Bug B-20: verificamos que Register navega a /login con el state correcto.
   navigateMock: vi.fn(),
@@ -15,7 +17,7 @@ const { fromMock, signUpMock, refreshPerfilMock, navigateMock } = vi.hoisted(() 
 vi.mock('../lib/supabase', () => ({
   supabase: {
     from: fromMock,
-    auth: { signUp: signUpMock },
+    auth: { signUp: signUpMock, signOut: signOutMock },
   },
 }))
 
@@ -143,6 +145,14 @@ describe('<Register />', () => {
         email: 'ana@test.com',
         password: 'segura123',
       })
+    })
+
+    // Bug B-20.1: signOut DEBE llamarse tras signUp para limpiar la sesion
+    // auto-creada (cuando email confirmation esta desactivada). Sin esto,
+    // useAuth detecta user, Login redirige a /registro y se ve "Completa
+    // tu perfil" sin ejecutar completarRegistroPendiente.
+    await vi.waitFor(() => {
+      expect(signOutMock).toHaveBeenCalled()
     })
 
     // sessionStorage tiene los datos del paciente para que Login.tsx los use
