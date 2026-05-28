@@ -112,16 +112,24 @@ export function Register() {
         return
       }
 
-      // Determinar auth_uid + email a usar
-      let authUid: string | null = null
-      let correoFinal: string
+      /**
+       * Bug B-20: separar registro de login para evitar el bug del session=null.
+       *
+       * Caso A — NUEVO USUARIO (NO isCompletingProfile):
+       *   1. signUp en auth.users (sin importar si session viene null o no)
+       *   2. Guardar nombre/cedula/telefono/correo en sessionStorage
+       *   3. Redirect a /login con state {registroExitoso, email}
+       *   4. Login.tsx hace el insert paciente + link tras signInWithPassword
+       *      (cuando ya hay JWT garantizado, sin race con la sesion)
+       *
+       * Caso B — COMPLETAR PERFIL (isCompletingProfile, caso B-04):
+       *   1. Usuario ya tiene auth.users + JWT activo
+       *   2. Insert paciente + upsert link directamente (RLS pasa por auth.uid)
+       *   3. refreshPerfil + navigate a /agendar
+       */
 
-      if (isCompletingProfile && user) {
-        // Ya hay sesion - reutilizar auth.users existente
-        authUid = user.id
-        correoFinal = user.email ?? form.correo.trim().toLowerCase()
-      } else {
-        // Nuevo registro completo - crear auth.users
+      if (!isCompletingProfile) {
+        // Caso A: nuevo usuario
         const { data: authData, error: authError } = await withTimeout(
           supabase.auth.signUp({
             email: form.correo,
@@ -133,51 +141,35 @@ export function Register() {
           setError(authError?.message ?? 'No se pudo crear la cuenta.')
           return
         }
-        authUid = authData.user.id
-        correoFinal = form.correo.trim().toLowerCase()
 
-        /**
-         * Bug B-19 fix: signUp puede devolver session=null en 2 casos:
-         * 1. Email confirmation habilitada (default de Supabase)
-         * 2. Race condition con setSession interno del cliente
-         *
-         * Sin session, el cliente sigue como anon (auth.uid() = NULL) y
-         * el upsert en auth_paciente_link falla SILENCIOSAMENTE porque
-         * su policy RLS requiere auth_uid = auth.uid().
-         *
-         * Resultado: paciente creado sin link → usuario huerfano →
-         * isCompletingProfile=true en el siguiente render → pantalla
-         * "Completa tu perfil" aunque el usuario ya llenó todo.
-         *
-         * Fix: si no hay session, hacer signInWithPassword explicito
-         * con las mismas credenciales. Si Supabase exige verificacion
-         * obligatoria, signIn falla con mensaje claro al usuario.
-         */
-        if (!authData.session) {
-          const { error: signInError } = await withTimeout(
-            supabase.auth.signInWithPassword({
-              email: form.correo,
-              password: form.password,
-            }),
-            AUTH_TIMEOUT_MS,
-          )
-          if (signInError) {
-            // OBS-1 del code review B-19: si Supabase exige verificar email,
-            // el mensaje genérico confunde porque el usuario va a intentar
-            // login manual y va a fallar igual. Mensaje específico.
-            const esEmailNoConfirmado =
-              signInError.message?.toLowerCase().includes('email not confirmed') ||
-              signInError.message?.toLowerCase().includes('confirm')
-            setError(
-              esEmailNoConfirmado
-                ? 'Cuenta creada. Revisa tu correo (incluido spam) para confirmar la cuenta antes de iniciar sesión.'
-                : 'Cuenta creada, pero no pudimos iniciar sesión automáticamente. ' +
-                  'Intenta iniciar sesión manualmente desde la página de login.',
-            )
-            return
-          }
+        // Guardar datos para que Login.tsx complete el perfil tras signIn.
+        // Usamos sessionStorage (no localStorage) porque solo necesita
+        // sobrevivir el redirect /registro -> /login, no entre sesiones.
+        const pendiente = {
+          nombre: form.nombre.trim(),
+          cedula: cedulaNorm,
+          telefono: form.telefono.trim() || null,
+          correo: form.correo.trim().toLowerCase(),
         }
+        sessionStorage.setItem('helios_pending_paciente', JSON.stringify(pendiente))
+
+        navigate('/login', {
+          replace: true,
+          state: {
+            registroExitoso: true,
+            email: form.correo.trim().toLowerCase(),
+          },
+        })
+        return // El flujo continua en Login.tsx tras signInWithPassword
       }
+
+      // Caso B: isCompletingProfile (B-04). Usuario ya tiene JWT activo.
+      if (!user) {
+        setError('Sesión no disponible. Cierra sesión e intenta de nuevo.')
+        return
+      }
+      const authUid = user.id
+      const correoFinal = user.email ?? form.correo.trim().toLowerCase()
 
       // Crear paciente
       const { data: pac, error: pacError } = await withTimeout(
@@ -209,6 +201,11 @@ export function Register() {
         setError(linkError.message)
         return
       }
+
+      // Bug B-20: limpiar sessionStorage si quedo data residual de un
+      // intento previo (caso edge: usuario completo perfil despues de
+      // dias y la sessionStorage de aquel registro vieja sigue ahi).
+      sessionStorage.removeItem('helios_pending_paciente')
 
       // Refrescar contexto de auth para que paciente quede disponible
       await withTimeout(refreshPerfil(), AUTH_TIMEOUT_MS)

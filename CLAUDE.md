@@ -176,17 +176,21 @@ Referencia rápida — NO repetir estos patrones:
 | B-14 | RLS `allow_all_dev` permisivo en todas las tablas | `supabase/migrations/B-13`, `B-14`, `rollback_B-14` | Policies estrictas por rol en `auth_*_link`, `pacientes`, `citas`, `horarios`, `medicos`, `sedes`, `especialidades`. Patrón 1 (no auto-registro médico). Fix de `crear_cita_atomica` (era anon + sin validación → ahora authenticated + valida `auth.uid()` es dueño del paciente) |
 | B-15 | Spinner >10s tras B-14 por RLS sin índice | `supabase/migrations/B-15_indices_rls.sql` (NUEVO) | Agregar `CREATE INDEX idx_citas_medico ON citas(medico_id)`. Policies `medico_ve_sus_citas` hacían full table scan. Con índice: <100ms. De >10s a <2s |
 | B-16 | Flash "Completa tu perfil" durante loading del médico | `components/layout/AppLayout.tsx`, `pages/Login.tsx`, `pages/Register.tsx` | Durante `loading=true`, AppLayout NO muestra NavItem por rol (evita flash cuando `role=null` transitorio). Login espera role antes de Navigate. Register redirige a /medico si user es médico (cinturón y tirantes) |
+| B-17 | F5 en /medico tarda >10s + flash "Completa tu perfil" si loadPerfil falla | `hooks/useAuth.tsx`, `components/auth/ProtectedRoute.tsx`, `pages/Register.tsx` | (1) Filtrar `INITIAL_SESSION` en `onAuthStateChange` (evita doble `loadPerfil` al F5). (2) Idempotencia por `authUid` (evita reload en cambio de pestaña). (3) Flag `loadPerfilFailed` expuesto en context → ProtectedRoute muestra pantalla error + Reintentar en lugar de Navigate ciego a /registro |
+| B-18 | Calendario FullCalendar ilegible en móvil | `components/agendamiento/CalendarioCitas.tsx`, `CalendarioCitasLista.tsx` (NUEVO), `hooks/useIsMobile.ts` (NUEVO) | Vista lista agrupada por día en pantallas <768px. `useIsMobile` con `matchMedia` + listener. `formatFechaLarga` con `split('-').map(Number)` para evitar desfase de timezone |
+| B-19 | signUp con session=null deja paciente huérfano | `pages/Register.tsx` | Tras signUp si `authData.session` es null, hacer `signInWithPassword` explícito ANTES de los inserts para garantizar JWT activo (RLS `auth_paciente_link` requiere `auth.uid() = auth_uid`). **Fix incompleto** — B-20 lo redisena |
+| B-20 | B-19 aún fallaba: register termina en "Completa tu perfil" | `pages/Register.tsx`, `pages/Login.tsx`, `supabase/cleanup_B-20_huerfanos.sql` (NUEVO) | Separar registro de login: Register solo hace `signUp` + guardar datos en `sessionStorage` + redirect a `/login`. Login tras `signInWithPassword` ejecuta `completarRegistroPendiente()` que INSERTa paciente + UPSERT link cuando el JWT ya está garantizado. Fix C-1 (code review): pasar `refreshPerfil` para ganar carrera contra `onAuthStateChange` listener |
 
 ---
 
 ## 📈 Métricas del Sprint 1 (a defender el viernes)
 
 - **Cobertura:** 61.4% statements / 82% lines / 90.9% functions
-- **Tests:** 57/57 pasando (39 originales + 13 del B-10 + 5 del B-11/B-13)
+- **Tests:** 65/65 pasando (39 originales + 13 del B-10 + 5 del B-11/B-13 + 8 del B-17/B-19/B-20)
 - **KLOC:** ~2.3 (producto: frontend + SQL + dashboard médico)
 - **P95 latencia:** 300 ms (Locust 200 usuarios) + <2s F5 con índice B-15
-- **Tasa defectos:** 16 bugs / 2.3 KLOC = **6.96 bugs/KLOC** — sube por bugs detectados en uso real por PO (B-11, B-12, B-15, B-16) en ciclos rápidos Plan→Code→Review→Deploy. Narrativa: "detectamos y arreglamos en la misma jornada gracias a la disciplina del proceso obligatorio del CLAUDE.md"
-- **Features nuevas del Sprint:** Dashboard de médicos (B-13) + seguridad multicapa RLS por rol (B-14)
+- **Tasa defectos:** 20 bugs / 2.3 KLOC = **8.70 bugs/KLOC** — sube por bugs detectados en uso real por PO (B-11, B-12, B-15..B-20) en ciclos rápidos Plan→Code→Review→Deploy. Narrativa: "detectamos y arreglamos en la misma jornada gracias a la disciplina del proceso obligatorio del CLAUDE.md"
+- **Features nuevas del Sprint:** Dashboard de médicos (B-13) + seguridad multicapa RLS por rol (B-14) + vista móvil del calendario (B-18) + flow registro→login con paciente automático (B-20)
 
 ---
 
