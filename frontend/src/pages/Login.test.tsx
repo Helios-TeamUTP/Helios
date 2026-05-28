@@ -4,10 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { TimeoutError } from '../lib/withTimeout'
 
-const { signInMock, getUserMock, fromMock, refreshPerfilMock } = vi.hoisted(() => ({
+const { signInMock, getUserMock, getSessionMock, fromMock, refreshPerfilMock } = vi.hoisted(() => ({
   signInMock: vi.fn(),
   // Bug B-20: getUser + from son necesarios para completarRegistroPendiente
   getUserMock: vi.fn(),
+  // Bug B-20.2: getSession se llama para polling JWT propagado antes de
+  // hacer queries que dependen de auth.uid() en RLS.
+  getSessionMock: vi.fn(),
   fromMock: vi.fn(),
   // Fix C-1 (code review B-20): hoisteado para verificar que Login lo llama
   // tras el INSERT exitoso (cierra la carrera contra onAuthStateChange).
@@ -19,6 +22,7 @@ vi.mock('../lib/supabase', () => ({
     auth: {
       signInWithPassword: signInMock,
       getUser: getUserMock,
+      getSession: getSessionMock,
     },
     from: fromMock,
   },
@@ -46,6 +50,10 @@ describe('<Login />', () => {
     signInMock.mockResolvedValue({ data: { user: null, session: null }, error: null })
     // Default: getUser y from no se usan a menos que un test los configure
     getUserMock.mockResolvedValue({ data: { user: null } })
+    // B-20.2: getSession default devuelve session activa (polling pasa inmediato)
+    getSessionMock.mockResolvedValue({
+      data: { session: { access_token: 't', user: { id: 'auth-default' } } },
+    })
   })
 
   afterEach(() => {

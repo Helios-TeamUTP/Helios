@@ -14,18 +14,24 @@ import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
  * en ese momento el cliente tiene JWT válido y las RLS de auth_paciente_link
  * (que requieren auth.uid() = auth_uid) pasan correctamente.
  *
- * Si falla cualquier paso, NO bloqueamos el login. El usuario cae al caso
- * B-04 (form "Completa tu perfil") como backup.
- *
  * Fix C-1 (code review B-20): recibimos `refreshPerfil` y lo llamamos tras
- * el upsert link exitoso. Sin esto, hay un race condition con el listener
- * `onAuthStateChange` de useAuth: el listener corre `loadPerfil` en paralelo
- * (puede terminar ANTES del INSERT) y deja `paciente=null`, lo que hace que
- * `if (user)` en el render redirija a /registro y el bug original regrese
- * intermitentemente (estimado 20-40% según latencia de red).
+ * el upsert link exitoso. Cierra la carrera con `onAuthStateChange` listener.
+ *
+ * Fix B-20.2 (reporte PO mariana@gmail.com): DOS cambios criticos:
+ *   1. POLLING DE SESSION: signInWithPassword resuelve "OK" pero el JWT puede
+ *      tardar 100-500ms en propagarse al cliente. Si hacemos el UPSERT link
+ *      en ese intervalo, `auth.uid()` de la RLS retorna NULL y el insert
+ *      falla silente (Supabase devuelve { error: ... } sin lanzar). Polling
+ *      hasta 3s con getSession() garantiza que el JWT este activo antes de
+ *      cualquier query que dependa de RLS.
+ *   2. ERRORES VISIBLES: aceptar `setError` callback y mostrar el mensaje
+ *      real al usuario en pantalla en lugar de tragarlo en console.error.
+ *      Asi si algo falla, vemos EXACTAMENTE que paso (RLS rejected, cedula
+ *      duplicada, timeout, etc) sin necesidad de DevTools.
  */
 async function completarRegistroPendiente(
   refreshPerfil: () => Promise<void>,
+  setError: (msg: string | null) => void,
 ): Promise<void> {
   const pendienteJson = sessionStorage.getItem('helios_pending_paciente')
   if (!pendienteJson) return // No hay registro pendiente, no hay nada que hacer
@@ -44,66 +50,98 @@ async function completarRegistroPendiente(
   }
 
   try {
-    const { data: userData } = await withTimeout(supabase.auth.getUser(), AUTH_TIMEOUT_MS)
-    if (!userData?.user) return
-
-    // Verificar cédula no esté en uso (caso edge: usuario reintenta con
-    // misma cédula tras un fallo previo).
-    const { data: existing } = await withTimeout(
-      supabase.from('pacientes').select('id').eq('cedula', pendiente.cedula).maybeSingle(),
-      AUTH_TIMEOUT_MS,
-    )
-    if (existing) {
-      // Paciente con esa cédula ya existe — quizá del intento anterior.
-      // Linkear directamente sin insertar de nuevo.
-      const linkData = existing as { id: string }
-      await withTimeout(
-        supabase
-          .from('auth_paciente_link')
-          .upsert(
-            { auth_uid: userData.user.id, paciente_id: linkData.id },
-            { onConflict: 'auth_uid' },
-          ),
-        AUTH_TIMEOUT_MS,
-      )
-      // Fix C-1: refrescar perfil para ganar la carrera contra el listener.
-      await withTimeout(refreshPerfil(), AUTH_TIMEOUT_MS)
+    /**
+     * Fix B-20.2 paso 1: esperar a que el JWT propague tras signInWithPassword.
+     * Polling cada 200ms hasta 3s. Sin esto, el siguiente UPSERT puede
+     * encontrar auth.uid() NULL en RLS y fallar silente.
+     */
+    let sessionReady = false
+    for (let i = 0; i < 15; i++) {
+      const { data } = await supabase.auth.getSession()
+      if (data.session?.access_token && data.session.user) {
+        sessionReady = true
+        break
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    }
+    if (!sessionReady) {
+      setError('Sesión no disponible tras login. Recarga la página e intenta de nuevo.')
       return
     }
 
-    // Insertar paciente nuevo
-    const { data: pac } = await withTimeout(
-      supabase
-        .from('pacientes')
-        .insert({
-          nombre: pendiente.nombre,
-          cedula: pendiente.cedula,
-          telefono: pendiente.telefono,
-          correo: pendiente.correo,
-        })
-        .select()
-        .single(),
+    const { data: userData } = await withTimeout(supabase.auth.getUser(), AUTH_TIMEOUT_MS)
+    if (!userData?.user) {
+      setError('No se pudo verificar tu usuario tras login. Recarga la página.')
+      return
+    }
+    const authUid = userData.user.id
+
+    // Verificar cédula no esté en uso (caso edge: usuario reintenta con
+    // misma cédula tras un fallo previo).
+    const { data: existing, error: checkError } = await withTimeout(
+      supabase.from('pacientes').select('id').eq('cedula', pendiente.cedula).maybeSingle(),
       AUTH_TIMEOUT_MS,
     )
-    if (!pac) return
+    if (checkError) {
+      setError(`Error verificando cédula: ${checkError.message}`)
+      return
+    }
 
-    const pacData = pac as { id: string }
-    await withTimeout(
+    let pacienteId: string
+    if (existing) {
+      // Paciente con esa cédula ya existe — quizá del intento anterior.
+      pacienteId = (existing as { id: string }).id
+    } else {
+      // Insertar paciente nuevo, con manejo explícito de error
+      const { data: pac, error: insertError } = await withTimeout(
+        supabase
+          .from('pacientes')
+          .insert({
+            nombre: pendiente.nombre,
+            cedula: pendiente.cedula,
+            telefono: pendiente.telefono,
+            correo: pendiente.correo,
+          })
+          .select()
+          .single(),
+        AUTH_TIMEOUT_MS,
+      )
+      if (insertError) {
+        setError(`Error creando paciente: ${insertError.message}`)
+        return
+      }
+      if (!pac) {
+        setError('No se pudo crear el paciente (sin datos).')
+        return
+      }
+      pacienteId = (pac as { id: string }).id
+    }
+
+    // UPSERT link con manejo explícito de error (el bug original era tragarlo)
+    const { error: linkError } = await withTimeout(
       supabase
         .from('auth_paciente_link')
         .upsert(
-          { auth_uid: userData.user.id, paciente_id: pacData.id },
+          { auth_uid: authUid, paciente_id: pacienteId },
           { onConflict: 'auth_uid' },
         ),
       AUTH_TIMEOUT_MS,
     )
+    if (linkError) {
+      setError(`Error vinculando cuenta con paciente: ${linkError.message}`)
+      return
+    }
+
     // Fix C-1: refrescar perfil para ganar la carrera contra el listener.
-    // Sin esto, onAuthStateChange podría leer paciente=null antes del INSERT
-    // y `if (user)` del render redirigiría a /registro mostrando el bug.
     await withTimeout(refreshPerfil(), AUTH_TIMEOUT_MS)
   } catch (err) {
-    // No bloqueamos el login si falla esto. El usuario cae al caso B-04.
     console.error('[Login] completarRegistroPendiente:', err)
+    if (err instanceof TimeoutError) {
+      setError('Timeout completando registro. Recarga la página e intenta de nuevo.')
+    } else {
+      const msg = err instanceof Error ? err.message : 'error inesperado'
+      setError(`Error completando registro: ${msg}`)
+    }
   } finally {
     sessionStorage.removeItem('helios_pending_paciente')
   }
@@ -173,7 +211,10 @@ export function Login() {
       // registro pendiente. La función NO lanza errores que bloqueen el login.
       // Fix C-1: pasamos refreshPerfil para que la función fuerce a useAuth
       // a recargar paciente tras el INSERT, evitando que el listener vea null.
-      await completarRegistroPendiente(refreshPerfil)
+      // Fix B-20.2: pasamos setError para que cualquier fallo se muestre EN
+      // PANTALLA con detalle (en lugar de solo console.error). Asi el PO
+      // puede diagnosticar sin abrir DevTools.
+      await completarRegistroPendiente(refreshPerfil, setError)
       // Bug B-16: el redirect lo hace el bloque "if (user)" de arriba en
       // el re-render que dispara setSubmitting(false) + el cambio de auth
       // de Supabase. NO hacemos navigate manual aqui para evitar quedar
