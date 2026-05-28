@@ -4,9 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { TimeoutError } from '../lib/withTimeout'
 
-const { fromMock, signUpMock, refreshPerfilMock } = vi.hoisted(() => ({
+const { fromMock, signUpMock, signInWithPasswordMock, refreshPerfilMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
   signUpMock: vi.fn(),
+  // Bug B-19: signInWithPassword se llama tras signUp si la session
+  // devuelta es null (email confirm activa o race en supabase-js).
+  signInWithPasswordMock: vi.fn().mockResolvedValue({ data: {}, error: null }),
   // refreshPerfil debe retornar Promise (es async en la implementación real).
   // Sin esto, withTimeout(refreshPerfil(), ...) rompe en runtime.
   refreshPerfilMock: vi.fn().mockResolvedValue(undefined),
@@ -15,7 +18,10 @@ const { fromMock, signUpMock, refreshPerfilMock } = vi.hoisted(() => ({
 vi.mock('../lib/supabase', () => ({
   supabase: {
     from: fromMock,
-    auth: { signUp: signUpMock },
+    auth: {
+      signUp: signUpMock,
+      signInWithPassword: signInWithPasswordMock,
+    },
   },
 }))
 
@@ -147,6 +153,13 @@ describe('<Register />', () => {
         email: 'ana@test.com',
         password: 'segura123',
       })
+      // Bug B-19: como signUp devolvio session=null, Register debe haber
+      // hecho signInWithPassword explicito para garantizar el JWT antes
+      // del upsert del link (sin esto el upsert fallaba silente por RLS).
+      expect(signInWithPasswordMock).toHaveBeenCalledWith({
+        email: 'ana@test.com',
+        password: 'segura123',
+      })
       expect(insertPacienteSingle).toHaveBeenCalled()
       expect(upsertLink).toHaveBeenCalledWith(
         { auth_uid: 'auth-uid-xyz', paciente_id: 'pac-abc' },
@@ -244,6 +257,126 @@ describe('<Register />', () => {
       await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
 
       expect(await screen.findByRole('alert')).toHaveTextContent(/Ocurrió un error inesperado/)
+    })
+  })
+
+  /**
+   * Bug B-19: garantizar sesion activa tras signUp.
+   *
+   * Causa raiz: signUp puede devolver session=null (email confirmation
+   * activa o race con setSession interno del cliente). Sin sesion, el
+   * cliente sigue como anon, auth.uid() es NULL, y el upsert en
+   * auth_paciente_link falla SILENTE por la policy RLS que requiere
+   * auth_uid = auth.uid().
+   *
+   * Fix: si !authData.session, hacer signInWithPassword explicito.
+   */
+  describe('B-19: garantiza sesión tras signUp', () => {
+    beforeEach(() => {
+      // Cedula libre + mocks de pacientes/link OK para llegar al final del flujo
+      const maybeSingleNoExisting = vi
+        .fn()
+        .mockResolvedValue({ data: null, error: null })
+      const insertPacienteSingle = vi.fn().mockResolvedValue({
+        data: { id: 'pac-1', nombre: 'Test' },
+        error: null,
+      })
+      const upsertLink = vi.fn().mockResolvedValue({ error: null })
+      fromMock.mockImplementation((table: string) => {
+        if (table === 'pacientes') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleNoExisting }),
+            }),
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({ single: insertPacienteSingle }),
+            }),
+          }
+        }
+        if (table === 'auth_paciente_link') return { upsert: upsertLink }
+        throw new Error(`tabla no esperada: ${table}`)
+      })
+    })
+
+    it('signUp con session OK no llama signInWithPassword (sin redundancia)', async () => {
+      signUpMock.mockResolvedValue({
+        // Esta vez SI hay session - Supabase ya logueo al usuario
+        data: { user: { id: 'auth-1' }, session: { access_token: 'tok' } },
+        error: null,
+      })
+      const user = userEvent.setup()
+      render(
+        <MemoryRouter>
+          <Register />
+        </MemoryRouter>,
+      )
+      await user.type(screen.getByLabelText('Nombre completo'), 'Ana')
+      await user.type(screen.getByLabelText('Cédula'), '8-123-4567')
+      await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
+      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+      await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+
+      // Debe completarse el flujo sin llamar signInWithPassword
+      await vi.waitFor(() => {
+        expect(refreshPerfilMock).toHaveBeenCalled()
+      })
+      expect(signInWithPasswordMock).not.toHaveBeenCalled()
+    })
+
+    it('muestra mensaje específico de "verifica tu correo" si signIn falla con "Email not confirmed"', async () => {
+      signUpMock.mockResolvedValue({
+        data: { user: { id: 'auth-1' }, session: null },
+        error: null,
+      })
+      signInWithPasswordMock.mockResolvedValue({
+        data: {},
+        error: { message: 'Email not confirmed' },
+      })
+      const user = userEvent.setup()
+      render(
+        <MemoryRouter>
+          <Register />
+        </MemoryRouter>,
+      )
+      await user.type(screen.getByLabelText('Nombre completo'), 'Ana')
+      await user.type(screen.getByLabelText('Cédula'), '8-123-4567')
+      await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
+      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+      await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+
+      // OBS-1 del review: mensaje específico cuando el error es "Email not confirmed"
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        /revisa tu correo.*para confirmar/i,
+      )
+      // El paciente NO se inserta porque el flujo retorno antes
+      expect(refreshPerfilMock).not.toHaveBeenCalled()
+    })
+
+    it('muestra mensaje genérico si signIn falla con otro error (no email confirmation)', async () => {
+      signUpMock.mockResolvedValue({
+        data: { user: { id: 'auth-1' }, session: null },
+        error: null,
+      })
+      signInWithPasswordMock.mockResolvedValue({
+        data: {},
+        error: { message: 'Network timeout' },
+      })
+      const user = userEvent.setup()
+      render(
+        <MemoryRouter>
+          <Register />
+        </MemoryRouter>,
+      )
+      await user.type(screen.getByLabelText('Nombre completo'), 'Ana')
+      await user.type(screen.getByLabelText('Cédula'), '8-123-4567')
+      await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
+      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+      await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        /no pudimos iniciar sesión automáticamente/i,
+      )
+      expect(refreshPerfilMock).not.toHaveBeenCalled()
     })
   })
 })

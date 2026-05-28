@@ -135,6 +135,48 @@ export function Register() {
         }
         authUid = authData.user.id
         correoFinal = form.correo.trim().toLowerCase()
+
+        /**
+         * Bug B-19 fix: signUp puede devolver session=null en 2 casos:
+         * 1. Email confirmation habilitada (default de Supabase)
+         * 2. Race condition con setSession interno del cliente
+         *
+         * Sin session, el cliente sigue como anon (auth.uid() = NULL) y
+         * el upsert en auth_paciente_link falla SILENCIOSAMENTE porque
+         * su policy RLS requiere auth_uid = auth.uid().
+         *
+         * Resultado: paciente creado sin link → usuario huerfano →
+         * isCompletingProfile=true en el siguiente render → pantalla
+         * "Completa tu perfil" aunque el usuario ya llenó todo.
+         *
+         * Fix: si no hay session, hacer signInWithPassword explicito
+         * con las mismas credenciales. Si Supabase exige verificacion
+         * obligatoria, signIn falla con mensaje claro al usuario.
+         */
+        if (!authData.session) {
+          const { error: signInError } = await withTimeout(
+            supabase.auth.signInWithPassword({
+              email: form.correo,
+              password: form.password,
+            }),
+            AUTH_TIMEOUT_MS,
+          )
+          if (signInError) {
+            // OBS-1 del code review B-19: si Supabase exige verificar email,
+            // el mensaje genérico confunde porque el usuario va a intentar
+            // login manual y va a fallar igual. Mensaje específico.
+            const esEmailNoConfirmado =
+              signInError.message?.toLowerCase().includes('email not confirmed') ||
+              signInError.message?.toLowerCase().includes('confirm')
+            setError(
+              esEmailNoConfirmado
+                ? 'Cuenta creada. Revisa tu correo (incluido spam) para confirmar la cuenta antes de iniciar sesión.'
+                : 'Cuenta creada, pero no pudimos iniciar sesión automáticamente. ' +
+                  'Intenta iniciar sesión manualmente desde la página de login.',
+            )
+            return
+          }
+        }
       }
 
       // Crear paciente
