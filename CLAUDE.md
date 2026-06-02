@@ -185,15 +185,17 @@ Referencia rápida — NO repetir estos patrones:
 | B-23 | Sin doble confirmación de cédula/contraseña → errores de tipeo | `pages/Register.tsx`, `pages/Register.test.tsx` | Agregados campos "Confirmar cédula" y "Confirmar contraseña"; deben coincidir o se bloquea el registro con mensaje claro. La cédula-confirm tiene `onPaste` deshabilitado para forzar re-escritura real |
 | B-24 | Sin validación de teléfono/nombre/correo → datos basura | `lib/validaciones.ts` (NUEVO) + `validaciones.test.ts`, `pages/Register.tsx` | `validarTelefonoPanama` (móvil 8 díg/fijo 7, opcional +507, rechaza letras), `validarNombre` (solo letras/acentos/espacios), `validarEmail` (regex estándar). Inputs con `inputMode`/`type` correctos para teclado móvil |
 | B-25 | Calendario dejaba agendar slots de HOY cuya hora ya pasó (ej. 7 AM por la tarde) | `hooks/useHorarios.ts`, `hooks/useHorarios.test.ts` (NUEVO) | El filtro `gte('fecha', hoy)` solo excluía días pasados, no horas pasadas de hoy. NUEVO `filtrarSlotsFuturos(horarios, ahora)`: descarta slots con `fecha === hoy && hora_inicio <= horaActual`. Comparación local en strings (sin Date/UTC), timezone-safe |
+| B-26 | RLS permisiva `sprint1_all` (FOR ALL USING true) seguía en 7 tablas pese a B-14 → cualquier autenticado podía leer/modificar/borrar datos ajenos | `supabase/migrations/sprint2_b26_cerrar_sprint1_all.sql` (NUEVO) | B-14 agregó policies estrictas pero NO borró las `sprint1_all`; como las policies son OR, el hueco persistía (confirmado por PO: 7 tablas). Migración transaccional: re-crea (idempotente) las estrictas de B-14 y LUEGO elimina las `sprint1_all`. Incluye rollback. Cierra la ESCRITURA ajena. Pendiente menor: `chequeo_cedula_en_registro` (SELECT true en pacientes) → mover a RPC en Sprint 5 |
 
 ---
 
 ## 📈 Métricas del Sprint 1 (a defender el viernes)
 
 - **Cobertura:** 61.4% statements / 82% lines / 90.9% functions
-- **Tests:** 100/100 pasando (65 de Sprint 1 + 35 de Sprint 2: cédula 5 tipos, validaciones teléfono/nombre/correo, vista botones timezone-safe, doble confirmación)
-- **KLOC:** ~2.3 (producto: frontend + SQL + dashboard médico)
-- **Bundle:** 496 KB / 142 KB gzip (bajó desde 754 KB al quitar FullCalendar en B-21)
+- **Tests:** 117/117 pasando (65 de Sprint 1 + 52 de Sprint 2: cédula 5 tipos, validaciones, vista botones timezone-safe, doble confirmación, slots futuros, cancelar/reprogramar hooks+componentes+UI)
+- **KLOC:** ~2.6 (producto: frontend + SQL + dashboard médico + cancelar/reprogramar + historial)
+- **Bundle:** 503 KB / 143 KB gzip (bajó desde 754 KB al quitar FullCalendar en B-21)
+- **Features Sprint 2:** Cancelar cita + Reprogramar cita (RPC SQL atómicas + RLS) + tabla de auditoría `citas_historial` + cierre del hueco de seguridad `sprint1_all` (B-26)
 - **P95 latencia:** 300 ms (Locust 200 usuarios) + <2s F5 con índice B-15
 - **Tasa defectos:** 20 bugs / 2.3 KLOC = **8.70 bugs/KLOC** — sube por bugs detectados en uso real por PO (B-11, B-12, B-15..B-20) en ciclos rápidos Plan→Code→Review→Deploy. Narrativa: "detectamos y arreglamos en la misma jornada gracias a la disciplina del proceso obligatorio del CLAUDE.md". B-20 requirió 4 iteraciones (B-20/.1/.2/.3) — cada una validada en producción con el PO en el mismo día. La causa raíz real (race de React closure con `session?.user?.id` en `useCallback`) sólo se detectó con la pista del PO: *"si cierro sesión y vuelvo a entrar, funciona"*. Demuestra valor del feedback de usuario real vs solo tests automatizados.
 - **Features nuevas del Sprint:** Dashboard de médicos (B-13) + seguridad multicapa RLS por rol (B-14) + vista móvil del calendario (B-18) + flow registro→login con paciente automático (B-20)
