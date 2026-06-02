@@ -3,8 +3,28 @@ import { supabase } from '../lib/supabase'
 import type { Horario } from '../lib/types'
 
 /**
+ * Bug B-25: la query trae los horarios de HOY en adelante (filtro por fecha),
+ * pero un slot de hoy cuya hora ya pasó (ej. 7:00 AM cuando ya son las 5 PM)
+ * NO debe poder agendarse. Esta función filtra esos slots ya vencidos.
+ *
+ * Comparación 100% LOCAL en strings (sin Date/UTC) para evitar desfases de
+ * zona horaria: `fecha` es "YYYY-MM-DD" y `hora_inicio` es "HH:MM:SS", ambos
+ * zero-padded, así que el orden lexicográfico coincide con el cronológico.
+ *
+ * @param horarios - slots crudos traídos de Supabase
+ * @param ahora - momento actual (se inyecta para poder testear)
+ */
+export function filtrarSlotsFuturos(horarios: Horario[], ahora: Date): Horario[] {
+  const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
+  const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`
+  return horarios.filter(
+    (h) => h.fecha > hoy || (h.fecha === hoy && h.hora_inicio > horaActual),
+  )
+}
+
+/**
  * Hook que carga los horarios disponibles de un médico específico desde hoy
- * en adelante (no muestra slots pasados).
+ * en adelante. Excluye slots de hoy cuya hora ya pasó (B-25).
  *
  * Bug B-08 fix: try/catch/finally garantiza setLoading(false) aunque
  * Supabase falle. El early return cuando no hay medicoId también setea
@@ -44,7 +64,8 @@ export function useHorarios(medicoId: string | null) {
           .order('hora_inicio')
         if (!active) return
         if (error) setError(error.message)
-        else setData(data ?? [])
+        // Bug B-25: descartar slots de hoy cuya hora ya pasó (no agendar en el pasado).
+        else setData(filtrarSlotsFuturos(data ?? [], new Date()))
       } catch (err) {
         if (active) {
           console.error('[useHorarios] unexpected:', err)
