@@ -42,8 +42,9 @@ registro para evitar errores humanos, priorizando la seguridad y que el sistema
 la investigación de los tipos de cédula panameña, y el plan de pruebas de
 seguridad (OWASP ZAP) y rendimiento (Lighthouse).
 
-**Resultado:** 105/105 tests pasando, bundle reducido de 754 KB a 496 KB, y
-cero regresiones del Sprint 1.
+**Resultado:** 117/117 tests pasando, bundle 503 KB (bajo de 754), cancelar y
+reprogramar citas en produccion, hueco de seguridad RLS cerrado, y cero
+regresiones del Sprint 1.
 
 ---
 
@@ -178,7 +179,70 @@ mantiene, días futuros se mantienen.
 
 ---
 
-## 7. Pruebas de seguridad - OWASP ZAP
+## 7. Funcionalidad: Cancelar y Reprogramar citas (HELL-3)
+
+Es el corazon del Sprint 2: permitir al paciente gestionar sus citas sin llamar
+al centro medico.
+
+### Backend (SQL, SECURITY DEFINER) — supabase/migrations/sprint2_cancelar_reprogramar.sql
+- **cancelar_cita_atomica(p_cita_id):** valida que la cita sea del paciente
+  (via auth_paciente_link), cambia estado a 'cancelada' y libera el horario.
+  Todo en una transaccion (atomico).
+- **reprogramar_cita_atomica(p_cita_id, p_nuevo_horario_id):** valida dueño +
+  que el nuevo horario sea del mismo medico y este disponible; libera el viejo,
+  reserva el nuevo y actualiza la cita. Usa FOR UPDATE para que dos pacientes no
+  tomen el mismo slot (anti-condicion de carrera).
+- **citas_historial + trigger:** registra automaticamente cada cambio
+  (creada/cancelada/reprogramada/completada/no_asistio) con actor y fecha.
+
+### Fix critico (code review)
+`citas.horario_id` tenia un `UNIQUE` TOTAL. Al cancelar dejabamos estado=
+'cancelada' pero el horario_id seguia apuntando al slot, asi que re-reservarlo
+o reprogramar hacia el violaba el UNIQUE y el slot quedaba inutilizable para
+siempre. **Fix:** indice unico PARCIAL (`WHERE estado <> 'cancelada'`), asi un
+slot liberado se puede volver a usar.
+
+### Frontend
+- Hooks `useCancelarCita` / `useReprogramarCita` (withTimeout + manejo de error).
+- `BotonCancelarCita`: boton + modal de confirmacion (accion no reversible).
+- `ReprogramarCitaModal`: modal que reutiliza el calendario timezone-safe (B-21).
+- `MisCitas`: badges de estado por color + botones solo en citas confirmadas.
+- Dashboard medico: la agenda de "hoy" ya no muestra las canceladas.
+
+### Tests
+9 nuevos: hooks (cancelar/reprogramar OK + error + timeout), componente boton,
+y la UI de MisCitas (botones segun estado + apertura del modal).
+
+---
+
+## 8. Bug B-26 - Seguridad: cerrar hueco RLS sprint1_all
+
+### Problema
+El schema.sql creo policies permisivas `sprint1_all` (FOR ALL USING(true)) en 7
+tablas. B-14 agrego policies estrictas pero NO borro las permisivas. Como las
+policies se combinan con OR, mientras existiera `sprint1_all` cualquier usuario
+autenticado podia leer, modificar o borrar datos ajenos por la API directa.
+Verificado por el PO: las 7 tablas tenian la policy permisiva.
+
+### Solucion (supabase/migrations/sprint2_b26_cerrar_sprint1_all.sql)
+Migracion transaccional (BEGIN/COMMIT) que:
+1. Re-crea (idempotente) TODAS las policies estrictas de B-14 -> garantiza que
+   existen antes de quitar la permisiva (no se rompe el acceso legitimo).
+2. Elimina las `sprint1_all` de las 7 tablas.
+Incluye un ROLLBACK de emergencia comentado y una query de verificacion.
+
+### Importante
+NO borra datos, usuarios ni contraseñas — solo cambia REGLAS de permiso. La
+tabla auth.users queda intacta; las cuentas siguen funcionando igual.
+
+### Pendiente menor (Sprint 5)
+La policy `chequeo_cedula_en_registro` (SELECT true en pacientes, para el chequeo
+de cedula duplicada en el registro) es un read-leak menor. Se movera a una RPC.
+NO es el hueco critico (ese era de ESCRITURA, ya cerrado).
+
+---
+
+## 9. Pruebas de seguridad - OWASP ZAP
 
 **Aclaración importante:** el sitio `zapitmedical.com` que se mencionó NO es una
 herramienta de testing (es un producto de cumplimiento de seguridad radiológica
@@ -207,7 +271,7 @@ hardening. **No** rompe producción porque el baseline solo navega, no ataca.
 
 ---
 
-## 8. Pruebas de rendimiento - Lighthouse
+## 10. Pruebas de rendimiento - Lighthouse
 
 ### Cómo ejecutar
 Desde Chrome: DevTools -> pestaña Lighthouse -> Analyze. O por línea de comandos:
@@ -227,7 +291,7 @@ El bundle reducido en B-21 (754 -> 496 KB) ayuda directamente al LCP y al TBT.
 
 ---
 
-## 9. Subtareas para Jira (HELL-3) - listas para pegar
+## 11. Subtareas para Jira (HELL-3) - listas para pegar
 
 > Nota: el asistente no tiene conectado el MCP de Atlassian, así que estas
 > subtareas se entregan como texto para copiar/pegar en la issue HELL-3.
@@ -242,7 +306,8 @@ cancelar/reprogramar.
 | ST-12 | Doble confirmación cédula y contraseña [B-23] | 2 | Ethan | Done |
 | ST-13 | Validación teléfono/nombre/correo [B-24] | 2 | Ethan | Done |
 | ST-16 | No agendar slots de hoy ya vencidos [B-25] | 1 | Ethan | Done |
-| ST-14 | Pruebas de seguridad OWASP ZAP + documentar | 3 | Ashley/Marian | To Do |
+| ST-17 | Cerrar hueco RLS sprint1_all [B-26] | 2 | Alejandro | Done |
+| ST-14 | Pruebas de seguridad OWASP ZAP + documentar | 3 | Ashley/Marian | To Do (Sprint 5) |
 | ST-15 | Pruebas de rendimiento Lighthouse + documentar | 2 | Ashley | To Do |
 | ST-1 | Función SQL cancelar_cita_atomica | 2 | Alejandro | To Do |
 | ST-2 | Función SQL reprogramar_cita_atomica | 3 | Alejandro | To Do |
@@ -253,6 +318,11 @@ cancelar/reprogramar.
 | ST-7 | Actualizar MisCitas con botones | 1 | Ethan | To Do |
 | ST-8 | Actualizar dashboard médico | 1 | Ethan/Ashley | To Do |
 | ST-9 | Tests E2E + smoke post-deploy | - | Ashley/Marian | To Do |
+
+> **Estado actual (al cierre del Sprint 2):** ST-10 a ST-13, ST-16 y ST-17
+> (bugs + seguridad) estan **DONE**. ST-1 a ST-9 (cancelar/reprogramar) tambien
+> estan **DONE** (BD ejecutada + frontend desplegado + 117 tests). Solo quedan
+> ST-14 y ST-15 (OWASP ZAP + Lighthouse) para el Sprint 5 "Pruebas y cierre".
 
 ### Descripción sugerida para HELL-3 (pegar en el campo Description)
 
@@ -280,9 +350,9 @@ CRITERIOS DE ACEPTACIÓN
 
 ---
 
-## 10. Verificación
+## 12. Verificación
 
-- `pnpm vitest run` -> 105/105 tests pasan
+- `pnpm vitest run` -> 117/117 tests pasan
 - `pnpm build` -> limpio; bundle 496 KB (bajó de 754 KB)
 - Manual: agendar un slot "12:30" -> en "Mis Citas" se ve 12:30
 - Registro: PE-5-687 aceptada; cédula que no coincide -> rechazada; teléfono con
