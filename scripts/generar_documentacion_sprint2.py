@@ -42,7 +42,7 @@ registro para evitar errores humanos, priorizando la seguridad y que el sistema
 la investigación de los tipos de cédula panameña, y el plan de pruebas de
 seguridad (OWASP ZAP) y rendimiento (Lighthouse).
 
-**Resultado:** 100/100 tests pasando, bundle reducido de 754 KB a 496 KB, y
+**Resultado:** 105/105 tests pasando, bundle reducido de 754 KB a 496 KB, y
 cero regresiones del Sprint 1.
 
 ---
@@ -148,7 +148,37 @@ móvil. El teléfono es opcional, pero si se ingresa se valida.
 
 ---
 
-## 6. Pruebas de seguridad - OWASP ZAP
+## 6. Bug B-25 - No agendar slots de hoy cuya hora ya pasó
+
+### Síntoma
+El calendario dejaba seleccionar un horario de HOY cuya hora **ya había pasado**
+(ej. 7:00 AM cuando ya era de tarde).
+
+### Causa raíz
+El filtro de carga de horarios solo excluía **días** pasados
+(`fecha >= hoy`), pero no las **horas** pasadas del día de hoy. Por eso los
+slots tempranos de hoy seguían apareciendo aunque ya no fueran agendables.
+
+### Solución
+Nueva función pura `filtrarSlotsFuturos(horarios, ahora)` que descarta los
+slots con `fecha === hoy` y `hora_inicio <= horaActual`. La comparación es
+100% local en strings (formatos `YYYY-MM-DD` y `HH:MM:SS` con ceros a la
+izquierda, donde el orden alfabético coincide con el cronológico), sin usar
+`Date`/UTC, consistente con el fix de zona horaria B-21.
+
+### Nota
+Es un filtro de **frontend**: oculta los slots vencidos del calendario. Los
+registros siguen en la base de datos como `disponible=true`; si se quisiera
+una limpieza real en BD (marcar `disponible=false` a los vencidos), sería una
+tarea SQL aparte. Para el uso normal, ocultarlos del calendario es suficiente.
+
+### Verificación
+Test `useHorarios.test.ts`: slot de hoy 7 AM se descarta, slot de hoy 6 PM se
+mantiene, días futuros se mantienen.
+
+---
+
+## 7. Pruebas de seguridad - OWASP ZAP
 
 **Aclaración importante:** el sitio `zapitmedical.com` que se mencionó NO es una
 herramienta de testing (es un producto de cumplimiento de seguridad radiológica
@@ -177,7 +207,7 @@ hardening. **No** rompe producción porque el baseline solo navega, no ataca.
 
 ---
 
-## 7. Pruebas de rendimiento - Lighthouse
+## 8. Pruebas de rendimiento - Lighthouse
 
 ### Cómo ejecutar
 Desde Chrome: DevTools -> pestaña Lighthouse -> Analyze. O por línea de comandos:
@@ -197,7 +227,7 @@ El bundle reducido en B-21 (754 -> 496 KB) ayuda directamente al LCP y al TBT.
 
 ---
 
-## 8. Subtareas para Jira (HELL-3) - listas para pegar
+## 9. Subtareas para Jira (HELL-3) - listas para pegar
 
 > Nota: el asistente no tiene conectado el MCP de Atlassian, así que estas
 > subtareas se entregan como texto para copiar/pegar en la issue HELL-3.
@@ -211,6 +241,7 @@ cancelar/reprogramar.
 | ST-11 | Validador cédula 5 tipos + ejemplos + detección [B-22] | 3 | Ethan/Alejandro | Done |
 | ST-12 | Doble confirmación cédula y contraseña [B-23] | 2 | Ethan | Done |
 | ST-13 | Validación teléfono/nombre/correo [B-24] | 2 | Ethan | Done |
+| ST-16 | No agendar slots de hoy ya vencidos [B-25] | 1 | Ethan | Done |
 | ST-14 | Pruebas de seguridad OWASP ZAP + documentar | 3 | Ashley/Marian | To Do |
 | ST-15 | Pruebas de rendimiento Lighthouse + documentar | 2 | Ashley | To Do |
 | ST-1 | Función SQL cancelar_cita_atomica | 2 | Alejandro | To Do |
@@ -249,9 +280,9 @@ CRITERIOS DE ACEPTACIÓN
 
 ---
 
-## 9. Verificación
+## 10. Verificación
 
-- `pnpm vitest run` -> 100/100 tests pasan
+- `pnpm vitest run` -> 105/105 tests pasan
 - `pnpm build` -> limpio; bundle 496 KB (bajó de 754 KB)
 - Manual: agendar un slot "12:30" -> en "Mis Citas" se ve 12:30
 - Registro: PE-5-687 aceptada; cédula que no coincide -> rechazada; teléfono con
