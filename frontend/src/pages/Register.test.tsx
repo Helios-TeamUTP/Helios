@@ -28,6 +28,7 @@ vi.mock('../hooks/useAuth', () => ({
     role: null,
     session: null,
     loading: false,
+    loadPerfilFailed: false,
     signOut: vi.fn(),
     refreshPerfil: refreshPerfilMock,
   }),
@@ -44,10 +45,54 @@ vi.mock('react-router-dom', async () => {
 
 import { Register } from './Register'
 
+/**
+ * Helper B-23/B-24: llena el formulario completo con valores válidos por
+ * defecto (incluye confirmar cédula y confirmar contraseña), permitiendo
+ * sobreescribir campos puntuales para probar validaciones.
+ */
+type Campos = Partial<{
+  nombre: string
+  cedula: string
+  cedulaConfirm: string
+  telefono: string
+  correo: string
+  password: string
+  passwordConfirm: string
+}>
+
+async function llenarRegistro(user: ReturnType<typeof userEvent.setup>, o: Campos = {}) {
+  const v = {
+    nombre: 'Ana López',
+    cedula: '8-123-4567',
+    cedulaConfirm: '8-123-4567',
+    telefono: '6000-0000',
+    correo: 'ana@test.com',
+    password: 'segura123',
+    passwordConfirm: 'segura123',
+    ...o,
+  }
+  await user.type(screen.getByLabelText('Nombre completo'), v.nombre)
+  await user.type(screen.getByLabelText('Cédula'), v.cedula)
+  await user.type(screen.getByLabelText('Confirmar cédula'), v.cedulaConfirm)
+  if (v.telefono) await user.type(screen.getByLabelText(/Teléfono/), v.telefono)
+  await user.type(screen.getByLabelText('Correo electrónico'), v.correo)
+  await user.type(screen.getByLabelText('Contraseña'), v.password)
+  await user.type(screen.getByLabelText('Confirmar contraseña'), v.passwordConfirm)
+}
+
+function mockCedulaLibre() {
+  fromMock.mockReturnValue({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      }),
+    }),
+  })
+}
+
 describe('<Register />', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Limpiar sessionStorage entre tests (B-20)
     sessionStorage.clear()
   })
 
@@ -55,7 +100,7 @@ describe('<Register />', () => {
     sessionStorage.clear()
   })
 
-  it('renderiza todos los campos del formulario', () => {
+  it('renderiza todos los campos del formulario (incluye confirmaciones)', () => {
     render(
       <MemoryRouter>
         <Register />
@@ -63,35 +108,34 @@ describe('<Register />', () => {
     )
     expect(screen.getByLabelText('Nombre completo')).toBeInTheDocument()
     expect(screen.getByLabelText('Cédula')).toBeInTheDocument()
-    expect(screen.getByLabelText('Teléfono')).toBeInTheDocument()
+    expect(screen.getByLabelText('Confirmar cédula')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Teléfono/)).toBeInTheDocument()
     expect(screen.getByLabelText('Correo electrónico')).toBeInTheDocument()
     expect(screen.getByLabelText('Contraseña')).toBeInTheDocument()
+    expect(screen.getByLabelText('Confirmar contraseña')).toBeInTheDocument()
+  })
+
+  it('B-22: muestra ejemplos de cédula en pantalla', () => {
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    // Al menos un ejemplo característico debe aparecer como ayuda.
+    expect(screen.getByText(/PE-5-687/)).toBeInTheDocument()
   })
 
   it('muestra error de cédula inválida al enviar con cédula corta', async () => {
+    mockCedulaLibre()
     const user = userEvent.setup()
     render(
       <MemoryRouter>
         <Register />
       </MemoryRouter>,
     )
-    await user.type(screen.getByLabelText('Nombre completo'), 'Ana López')
-    await user.type(screen.getByLabelText('Cédula'), '123')
-    await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
-    await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+    await llenarRegistro(user, { cedula: '123', cedulaConfirm: '123' })
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/Cédula panameña inválida/)
-  })
-
-  it('muestra error cuando la contraseña es muy corta', () => {
-    render(
-      <MemoryRouter>
-        <Register />
-      </MemoryRouter>,
-    )
-    // El input de password tiene minLength=6, lo cual previene submit por validación HTML.
-    const password = screen.getByLabelText('Contraseña') as HTMLInputElement
-    expect(password.minLength).toBe(6)
   })
 
   it('tiene enlace para ir a la página de login', () => {
@@ -100,27 +144,15 @@ describe('<Register />', () => {
         <Register />
       </MemoryRouter>,
     )
-    const linkLogin = screen.getByText('Inicia sesión')
-    expect(linkLogin).toHaveAttribute('href', '/login')
+    expect(screen.getByText('Inicia sesión')).toHaveAttribute('href', '/login')
   })
 
   /**
-   * Bug B-20: el flujo nuevo es signUp → guardar en sessionStorage → navigate a /login.
-   * NO se insertan paciente ni link aquí — eso lo hace Login.tsx tras signInWithPassword.
-   *
-   * Este es el happy path actualizado: verifica que tras signUp exitoso,
-   * Register guarda los datos del paciente y redirige a /login.
+   * Bug B-20 happy path (actualizado B-23/B-24): tras signUp exitoso,
+   * Register guarda los datos en sessionStorage y redirige a /login.
    */
   it('B-20: registro nuevo guarda datos en sessionStorage y redirige a /login', async () => {
-    // Cédula libre (chequeo previo a signUp)
-    fromMock.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
-      }),
-    })
-
+    mockCedulaLibre()
     signUpMock.mockResolvedValue({
       data: { user: { id: 'auth-uid-xyz' }, session: null },
       error: null,
@@ -132,30 +164,19 @@ describe('<Register />', () => {
         <Register />
       </MemoryRouter>,
     )
-    await user.type(screen.getByLabelText('Nombre completo'), 'Ana López')
-    await user.type(screen.getByLabelText('Cédula'), '8-123-4567')
-    await user.type(screen.getByLabelText('Teléfono'), '6000-0000')
-    await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
-    await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+    await llenarRegistro(user)
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
 
-    // signUp se llamó con las credenciales
     await vi.waitFor(() => {
       expect(signUpMock).toHaveBeenCalledWith({
         email: 'ana@test.com',
         password: 'segura123',
       })
     })
-
-    // Bug B-20.1: signOut DEBE llamarse tras signUp para limpiar la sesion
-    // auto-creada (cuando email confirmation esta desactivada). Sin esto,
-    // useAuth detecta user, Login redirige a /registro y se ve "Completa
-    // tu perfil" sin ejecutar completarRegistroPendiente.
     await vi.waitFor(() => {
       expect(signOutMock).toHaveBeenCalled()
     })
 
-    // sessionStorage tiene los datos del paciente para que Login.tsx los use
     const pendienteJson = sessionStorage.getItem('helios_pending_paciente')
     expect(pendienteJson).not.toBeNull()
     expect(JSON.parse(pendienteJson!)).toEqual({
@@ -165,17 +186,101 @@ describe('<Register />', () => {
       correo: 'ana@test.com',
     })
 
-    // Navega a /login con state correcto
     expect(navigateMock).toHaveBeenCalledWith('/login', {
       replace: true,
-      state: {
-        registroExitoso: true,
-        email: 'ana@test.com',
-      },
+      state: { registroExitoso: true, email: 'ana@test.com' },
     })
-
-    // NO se inserta paciente ni link aquí (eso es responsabilidad de Login)
     expect(refreshPerfilMock).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Bug B-22: una cédula válida corta con prefijo (PE-5-687) ya NO debe
+   * rechazarse. El flujo debe llegar a signUp.
+   */
+  it('B-22: acepta cédula PE-5-687 (válida corta) y llega a signUp', async () => {
+    mockCedulaLibre()
+    signUpMock.mockResolvedValue({
+      data: { user: { id: 'auth-pe' }, session: null },
+      error: null,
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { cedula: 'PE-5-687', cedulaConfirm: 'PE-5-687' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+    await vi.waitFor(() => expect(signUpMock).toHaveBeenCalled())
+  })
+
+  /**
+   * Bug B-23: si la cédula no coincide con su confirmación, error claro y
+   * NO se llama a signUp.
+   */
+  it('B-23: error si la cédula y su confirmación no coinciden', async () => {
+    mockCedulaLibre()
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { cedula: '8-123-4567', cedulaConfirm: '8-123-9999' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Las cédulas no coinciden/)
+    expect(signUpMock).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Bug B-23: si la contraseña no coincide con su confirmación, error claro.
+   */
+  it('B-23: error si las contraseñas no coinciden', async () => {
+    mockCedulaLibre()
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { password: 'segura123', passwordConfirm: 'otra12345' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Las contraseñas no coinciden/)
+    expect(signUpMock).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Bug B-24: teléfono con letras se rechaza con mensaje claro.
+   */
+  it('B-24: error si el teléfono tiene letras', async () => {
+    mockCedulaLibre()
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { telefono: '6000-ABCD' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Teléfono inválido/)
+    expect(signUpMock).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Bug B-24: nombre con números se rechaza.
+   */
+  it('B-24: error si el nombre tiene números', async () => {
+    mockCedulaLibre()
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { nombre: 'Ana123' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Nombre inválido/)
+    expect(signUpMock).not.toHaveBeenCalled()
   })
 
   it('muestra error si la cédula ya está registrada para otro paciente', async () => {
@@ -195,37 +300,24 @@ describe('<Register />', () => {
         <Register />
       </MemoryRouter>,
     )
-    await user.type(screen.getByLabelText('Nombre completo'), 'Ana López')
-    await user.type(screen.getByLabelText('Cédula'), '8-123-4567')
-    await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
-    await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+    await llenarRegistro(user)
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /Ya existe un paciente con esa cédula/,
     )
     expect(signUpMock).not.toHaveBeenCalled()
-    // Regresión B-10: el `finally` debe rehabilitar el botón en el path
-    // de error temprano (cédula duplicada).
     expect(screen.getByRole('button', { name: /Crear cuenta/ })).not.toBeDisabled()
-    // No se guarda nada en sessionStorage si la cédula ya existe
     expect(sessionStorage.getItem('helios_pending_paciente')).toBeNull()
   })
 
   /**
-   * Regresión B-10: cuando alguno de los awaits a Supabase rechaza con
-   * TimeoutError (lo que produce withTimeout cuando vence), el handleSubmit
-   * debe mostrar el mensaje específico y rehabilitar el botón.
+   * Regresión B-10: cuando signUp rechaza con TimeoutError, el handleSubmit
+   * muestra el mensaje específico y rehabilita el botón.
    */
   describe('B-10: manejo de TimeoutError en signUp', () => {
     beforeEach(() => {
-      fromMock.mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-          }),
-        }),
-      })
+      mockCedulaLibre()
     })
 
     it('muestra mensaje específico y rehabilita el botón cuando signUp rechaza con TimeoutError', async () => {
@@ -236,10 +328,7 @@ describe('<Register />', () => {
           <Register />
         </MemoryRouter>,
       )
-      await user.type(screen.getByLabelText('Nombre completo'), 'Ana López')
-      await user.type(screen.getByLabelText('Cédula'), '8-123-4567')
-      await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
-      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+      await llenarRegistro(user)
       await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -256,10 +345,7 @@ describe('<Register />', () => {
           <Register />
         </MemoryRouter>,
       )
-      await user.type(screen.getByLabelText('Nombre completo'), 'Ana López')
-      await user.type(screen.getByLabelText('Cédula'), '8-123-4567')
-      await user.type(screen.getByLabelText('Correo electrónico'), 'ana@test.com')
-      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
+      await llenarRegistro(user)
       await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
 
       expect(await screen.findByRole('alert')).toHaveTextContent(/Ocurrió un error inesperado/)

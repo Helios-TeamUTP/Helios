@@ -1,11 +1,20 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { isValidCedulaPanama, normalizeCedula } from '../lib/cedula'
+import {
+  isValidCedulaPanama,
+  normalizeCedula,
+  detectarTipoCedula,
+  EJEMPLOS_CEDULA,
+} from '../lib/cedula'
+import { validarTelefonoPanama, validarNombre, validarEmail } from '../lib/validaciones'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
+
+/** Texto de ejemplos de cédula para la ayuda visual (B-22). */
+const EJEMPLOS_TEXTO = EJEMPLOS_CEDULA.map((e) => e.ejemplo).join('  ·  ')
 
 export function Register() {
   const navigate = useNavigate()
@@ -13,9 +22,11 @@ export function Register() {
   const [form, setForm] = useState({
     nombre: '',
     cedula: '',
+    cedulaConfirm: '', // B-23: doble confirmación de cédula
     telefono: '',
     correo: '',
     password: '',
+    passwordConfirm: '', // B-23: doble confirmación de contraseña
   })
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -80,6 +91,9 @@ export function Register() {
   const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
 
+  // B-22: tipo de cédula detectado en vivo (ayuda visual mientras escribe).
+  const tipoCedula = form.cedula.trim() ? detectarTipoCedula(form.cedula) : null
+
   /**
    * Bug B-10 fix: try/catch/finally + withTimeout en TODAS las llamadas a
    * Supabase garantiza que setSubmitting(false) siempre corra y que el
@@ -90,14 +104,47 @@ export function Register() {
     event.preventDefault()
     setError(null)
 
-    const cedulaNorm = normalizeCedula(form.cedula)
-    if (!isValidCedulaPanama(cedulaNorm)) {
-      setError('Cédula panameña inválida. Usa solo dígitos (8-10) o formato 8-123-4567.')
+    // B-24: validación de nombre (solo letras, espacios y signos de nombre).
+    if (!validarNombre(form.nombre)) {
+      setError('Nombre inválido. Usa solo letras, espacios, apóstrofo o guion (2-80 caracteres).')
       return
     }
-    if (!isCompletingProfile && form.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.')
+
+    // B-22: validación de cédula (acepta los 5 tipos panameños).
+    const cedulaNorm = normalizeCedula(form.cedula)
+    if (!isValidCedulaPanama(cedulaNorm)) {
+      setError(`Cédula panameña inválida. Ejemplos válidos: ${EJEMPLOS_TEXTO}.`)
       return
+    }
+
+    // B-23: la cédula y su confirmación deben coincidir (evita errores de tipeo).
+    if (normalizeCedula(form.cedulaConfirm) !== cedulaNorm) {
+      setError('Las cédulas no coinciden. Verifica que las escribiste igual en ambos campos.')
+      return
+    }
+
+    // B-24: teléfono es opcional, pero si se ingresa debe ser válido.
+    if (form.telefono.trim() && !validarTelefonoPanama(form.telefono)) {
+      setError('Teléfono inválido. Usa solo números (ej: 6000-0000 o +507 6000 0000).')
+      return
+    }
+
+    if (!isCompletingProfile) {
+      // B-24: correo con formato válido (refuerza el type=email).
+      if (!validarEmail(form.correo)) {
+        setError('Correo electrónico inválido. Revisa el formato (ej: nombre@correo.com).')
+        return
+      }
+      // Contraseña: mínimo 6 caracteres y debe coincidir con su confirmación.
+      if (form.password.length < 6) {
+        setError('La contraseña debe tener al menos 6 caracteres.')
+        return
+      }
+      // B-23: doble confirmación de contraseña.
+      if (form.password !== form.passwordConfirm) {
+        setError('Las contraseñas no coinciden. Verifica que las escribiste igual.')
+        return
+      }
     }
 
     setSubmitting(true)
@@ -267,27 +314,74 @@ export function Register() {
             <label htmlFor="nombre" className="label">
               Nombre completo
             </label>
-            <input id="nombre" required value={form.nombre} onChange={update('nombre')} className="input" />
+            <input
+              id="nombre"
+              required
+              autoComplete="name"
+              value={form.nombre}
+              onChange={update('nombre')}
+              className="input"
+              placeholder="Ej: Ana López"
+            />
           </div>
-          <div>
+
+          {/* B-22: cédula con ejemplos de los tipos que el sistema conoce
+              + tipo detectado en vivo para reducir errores. */}
+          <div className="sm:col-span-2">
             <label htmlFor="cedula" className="label">
               Cédula
             </label>
             <input
               id="cedula"
               required
+              inputMode="text"
               value={form.cedula}
               onChange={update('cedula')}
               className="input"
               placeholder="8-123-4567"
             />
+            <p className="mt-1 text-xs text-helios-ink/50">
+              Ejemplos válidos: {EJEMPLOS_TEXTO}
+            </p>
+            {tipoCedula && (
+              <p
+                className={`mt-1 text-xs ${
+                  tipoCedula.tipo === 'desconocido' ? 'text-amber-600' : 'text-helios-primary'
+                }`}
+              >
+                {tipoCedula.tipo === 'desconocido'
+                  ? 'Formato no reconocido todavía.'
+                  : `Tipo detectado: ${tipoCedula.etiqueta}`}
+              </p>
+            )}
           </div>
-          <div>
+
+          {/* B-23: confirmación de cédula (debe coincidir). */}
+          <div className="sm:col-span-2">
+            <label htmlFor="cedulaConfirm" className="label">
+              Confirmar cédula
+            </label>
+            <input
+              id="cedulaConfirm"
+              required
+              inputMode="text"
+              value={form.cedulaConfirm}
+              onChange={update('cedulaConfirm')}
+              className="input"
+              placeholder="Escribe tu cédula de nuevo"
+              onPaste={(e) => e.preventDefault()}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
             <label htmlFor="telefono" className="label">
-              Teléfono
+              Teléfono <span className="text-helios-ink/40">(opcional)</span>
             </label>
             <input
               id="telefono"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               value={form.telefono}
               onChange={update('telefono')}
               className="input"
@@ -308,6 +402,7 @@ export function Register() {
                   value={form.correo}
                   onChange={update('correo')}
                   className="input"
+                  placeholder="nombre@correo.com"
                 />
               </div>
               <div className="sm:col-span-2">
@@ -323,6 +418,24 @@ export function Register() {
                   value={form.password}
                   onChange={update('password')}
                   className="input"
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              {/* B-23: confirmación de contraseña (debe coincidir). */}
+              <div className="sm:col-span-2">
+                <label htmlFor="passwordConfirm" className="label">
+                  Confirmar contraseña
+                </label>
+                <input
+                  id="passwordConfirm"
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  value={form.passwordConfirm}
+                  onChange={update('passwordConfirm')}
+                  className="input"
+                  placeholder="Escribe la contraseña de nuevo"
                 />
               </div>
             </>

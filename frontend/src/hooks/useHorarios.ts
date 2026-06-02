@@ -27,7 +27,11 @@ export function useHorarios(medicoId: string | null) {
     let active = true
     setLoading(true)
     setError(null)
-    const hoy = new Date().toISOString().slice(0, 10)
+    // Bug B-21: NO usar toISOString() — devuelve la fecha en UTC y en Panamá
+    // (UTC-5) después de las 7 PM eso adelanta al día siguiente, ocultando los
+    // slots de "hoy". Construimos la fecha LOCAL (YYYY-MM-DD) a mano.
+    const ahora = new Date()
+    const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
     ;(async () => {
       try {
         const { data, error } = await supabase

@@ -5,8 +5,7 @@ import type { Horario } from '../../lib/types'
 
 /**
  * Props: recibe horarios ya cargados desde el padre (CalendarioCitas) para
- * evitar duplicar la llamada useHorarios. El padre decide si renderizar
- * esta vista (movil) o FullCalendar (desktop).
+ * evitar duplicar la llamada useHorarios.
  */
 interface Props {
   horarios: Horario[]
@@ -37,13 +36,15 @@ function formatFechaLarga(fechaIso: string): string {
 }
 
 /**
- * Vista de calendario optimizada para móvil: lista de slots agrupados por día.
+ * Vista ÚNICA del selector de horarios: lista de slots agrupados por día,
+ * con un grid de botones (1 por slot) en móvil y desktop.
  *
- * Bug B-18: FullCalendar timeGridWeek se desordena en pantallas <768px.
- * Esta vista alternativa muestra cada día como una sección con grid de
- * botones (1 por slot). Más legible, más táctil, sin librería pesada.
- *
- * Misma API que CalendarioCitas para que el switch en el padre sea trivial.
+ * Bug B-18: nació como vista móvil (FullCalendar timeGridWeek se desordenaba
+ * en pantallas <768px).
+ * Bug B-21: se adoptó también en desktop porque FullCalendar desfasaba la
+ * hora por zona horaria. Esta vista muestra la hora con `slice` directo del
+ * string (sin `Date`), por lo que es 100% timezone-safe. Más legible, más
+ * táctil, sin librería pesada.
  */
 export function CalendarioCitasLista({ horarios, loading, error, value, onChange }: Props) {
   // Agrupar horarios por fecha (ordenados ascendente).
@@ -76,7 +77,7 @@ export function CalendarioCitasLista({ horarios, loading, error, value, onChange
   return (
     <div className="space-y-3">
       <p className="text-sm text-helios-ink/60">
-        Selecciona un horario disponible. Toca cualquier hora para elegirla.
+        Selecciona un horario disponible. Elige cualquier hora de la lista.
       </p>
 
       <ul className="space-y-4">

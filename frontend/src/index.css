@@ -34,24 +34,3 @@
     @apply rounded-2xl border border-helios-ink/5 bg-white p-6 shadow-card;
   }
 }
-
-/* FullCalendar overrides */
-.fc {
-  font-family: 'Inter', system-ui, sans-serif;
-}
-.fc .fc-button-primary {
-  background-color: #0A8478 !important;
-  border-color: #0A8478 !important;
-}
-.fc .fc-button-primary:hover {
-  background-color: #066F66 !important;
-  border-color: #066F66 !important;
-}
-.fc .fc-button-primary:not(:disabled):active,
-.fc .fc-button-primary:not(:disabled).fc-button-active {
-  background-color: #066F66 !important;
-  border-color: #066F66 !important;
-}
-.fc-event {
-  cursor: pointer;
-}

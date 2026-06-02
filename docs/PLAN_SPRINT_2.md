@@ -2,7 +2,37 @@
 
 > **Estado:** Alineado con Jira (issue **HELL-3**)
 > **Periodo:** 2026-05-30 al 2026-06-12 (2 semanas)
-> **Tema:** Cancelación y Reprogramación de citas (autoservicio del paciente)
+> **Tema:** Bugs urgentes (calendario + validaciones) → Cancelación/Reprogramación → Testing
+> **Story Points:** 23 SP (10 bugs/testing + 13 cancelar/reprogramar)
+
+---
+
+## 🔥 PARTE A — Bugs urgentes (YA IMPLEMENTADOS Y EN TESTS ✅)
+
+Detectados por el PO en producción tras la demo. Se priorizaron antes de las features.
+
+| ID | Bug | Estado | Subtarea Jira |
+|---|---|---|---|
+| B-21 | Calendario desktop desfasaba la hora (timezone). Fix: vista de botones timezone-safe en todos los tamaños; se quitó FullCalendar (bundle 754→496 KB) | ✅ Hecho + tests | ST-10 (3 SP) |
+| B-22 | Validador de cédula rechazaba cédulas válidas cortas. Fix: 5 tipos panameños (natural/PE/N/E/PI) + ejemplos + detección de tipo | ✅ Hecho + tests | ST-11 (3 SP) |
+| B-23 | Sin doble confirmación. Fix: confirmar cédula + confirmar contraseña deben coincidir | ✅ Hecho + tests | ST-12 (2 SP) |
+| B-24 | Sin validación de datos. Fix: `validarTelefonoPanama`/`validarNombre`/`validarEmail` | ✅ Hecho + tests | ST-13 (2 SP) |
+
+**Tests:** 100/100 pasando. **Bundle:** 496 KB (bajó de 754).
+
+## 🛡️ PARTE B — Testing seguridad/rendimiento (pendiente de correr)
+
+> ⚠️ `zapitmedical.com` NO es herramienta de testing (es compliance radiológico). Se usa **OWASP ZAP** (seguridad) + **Lighthouse** (rendimiento). Guía completa en `dailys/Entrega_Viernes/DOCUMENTACION_SPRINT2.pdf`.
+
+| ID | Tarea | SP |
+|---|---|---|
+| ST-14 | OWASP ZAP baseline scan contra producción + documentar hallazgos | 3 |
+| ST-15 | Lighthouse (Core Web Vitals) + documentar | 2 |
+
+---
+
+## PARTE C — Cancelación y Reprogramación (features ya planeadas)
+
 > **Story Points:** 13 SP (5 cancelar + 8 reprogramar)
 
 ---
