@@ -54,7 +54,9 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
           .eq('medico_id', medicoId)
 
         if (modo === 'hoy') {
-          query = query.eq('horario.fecha', hoy)
+          // Sprint 2 (ST-8): la agenda de hoy NO muestra las canceladas
+          // (quedan registradas en el historial, pero no estorban la vista).
+          query = query.eq('horario.fecha', hoy).neq('estado', 'cancelada')
         } else {
           query = query.lt('horario.fecha', hoy)
         }
