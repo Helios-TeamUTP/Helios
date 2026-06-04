@@ -21,11 +21,14 @@ export type TipoCedula = 'natural' | 'pe' | 'n' | 'e' | 'pi' | 'desconocido'
 
 /** Patrones por tipo (sobre la cédula normalizada y sin espacios). */
 const PATRONES: Record<Exclude<TipoCedula, 'desconocido'>, RegExp> = {
-  // Clave 1-13 (10 provincias + 3 comarcas; 13 = Panamá Oeste), tomo y asiento.
-  natural: /^([1-9]|1[0-3])-\d{1,4}-\d{1,6}$/,
+  // Clave + tomo + asiento. Hoy la clave va de 1 a 13 (10 provincias + 3
+  // comarcas; 13 = Panamá Oeste), PERO Panamá sigue creando comarcas (ej. Naso
+  // Tjër Di en 2020) que podrian recibir claves nuevas. Para NO rechazar nunca
+  // una cedula valida futura, aceptamos la clave de 1 a 99 (1-2 digitos, sin 0).
+  natural: /^([1-9][0-9]?)-\d{1,4}-\d{1,6}$/,
   pe: /^PE-\d{1,4}-\d{1,6}$/,
   n: /^N-\d{1,4}-\d{1,6}$/,
-  e: /^E-([1-9]|1[0-3])-\d{1,6}$/,
+  e: /^E-([1-9][0-9]?)-\d{1,6}$/,
   pi: /^PI-\d{1,4}-\d{1,6}$/,
 }
 

@@ -113,6 +113,10 @@ Según el **Tribunal Electoral de Panamá**, existen estos tipos:
   13 por ser la ultima en agregarse).
 - El tomo y el asiento son numéricos y de longitud variable (por eso hay cédulas
   con menos dígitos).
+- **Future-proof:** Panama sigue creando comarcas (ej. Naso Tjer Di en 2020) que
+  podrian recibir claves nuevas (>13). Para NO rechazar cedulas validas futuras,
+  el validador acepta la clave de 1 a 99 (con la estructura X-tomo-asiento). La
+  doble confirmacion (B-23) es la red real contra errores de tipeo.
 
 ### Solución
 Se reescribió `lib/cedula.ts` para validar la **estructura por tipo** (no un

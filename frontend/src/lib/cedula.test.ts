@@ -58,10 +58,13 @@ describe('cedula panama', () => {
       expect(isValidCedulaPanama('8/123/4567')).toBe(false)
     })
 
-    it('B-22: rechaza provincia fuera de rango 1-13 en formato natural', () => {
-      // "99" no es una provincia válida (1-13) y con guiones no entra al
-      // fallback de dígitos puros, por lo que debe rechazarse.
-      expect(isValidCedulaPanama('99-1-1')).toBe(false)
+    it('B-22: acepta claves futuras (nuevas comarcas) y rechaza clave 0', () => {
+      // Future-proof: Panamá sigue creando comarcas (ej. Naso Tjër Di 2020) que
+      // podrian recibir claves > 13. Aceptamos 1-99 para no rechazar cedulas
+      // validas futuras. La clave 0 (o 00) NO existe -> se rechaza.
+      expect(isValidCedulaPanama('14-1-1')).toBe(true) // hipotetica comarca nueva
+      expect(isValidCedulaPanama('0-1-1')).toBe(false)
+      expect(isValidCedulaPanama('00-1-1')).toBe(false)
     })
   })
 
