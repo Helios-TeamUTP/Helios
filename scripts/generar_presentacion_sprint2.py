@@ -43,7 +43,9 @@ RED = RGBColor(0xDC, 0x26, 0x26)
 GREEN_OK = RGBColor(0x10, 0xB9, 0x81)
 PURPLE = RGBColor(0x8B, 0x5C, 0xF6)
 
-TOTAL = 8
+TOTAL = 10
+FLUJO_IMG = OUT_DIR / "diagrama_flujo_usuario.png"
+ARQUI_IMG = OUT_DIR / "diagrama_arquitectura.png"
 
 
 def tb(slide, l, t, w, h, text, *, size=14, bold=False, color=INK,
@@ -308,38 +310,101 @@ def s6():
     foot(slide, "Alejandro (Tech Lead) — 35s", 6)
 
 
-# === SLIDE 7: Metricas ===
+# === SLIDE 7: Diagramas (avance del desarrollo) ===
 def s7():
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    title(slide, "METRICAS SPRINT 2", "Lo que medimos (ISTQB)")
-    mets = [
-        ("117", "Tests automatizados", "+52 vs Sprint 1. Todos pasan.", TEAL),
-        ("0", "Bugs pendientes", "6 detectados, 6 resueltos.", TEAL_LIGHT),
-        ("503 KB", "Bundle (gzip 143 KB)", "Bajo de 754 KB (sin FullCalendar).", ACCENT),
-        ("3", "Funciones SQL atomicas", "crear / cancelar / reprogramar.", AMBER),
-    ]
-    cw = Inches(5.9)
-    ch = Inches(2.1)
-    gap = Inches(0.2)
-    for i, (num, t_, d, color) in enumerate(mets):
+    title(slide, "DIAGRAMAS", "Flujo del usuario y arquitectura", chip_w=1.6)
+    if FLUJO_IMG.exists():
+        slide.shapes.add_picture(str(FLUJO_IMG), Inches(0.7), Inches(1.9), height=Inches(5.0))
+    tb(slide, Inches(0.7), Inches(6.95), Inches(4.5), Inches(0.3), "Fig 1. Flujo paciente/medico", size=9, color=INK_MUTED)
+    if ARQUI_IMG.exists():
+        slide.shapes.add_picture(str(ARQUI_IMG), Inches(6.4), Inches(2.1), height=Inches(4.4))
+    tb(slide, Inches(6.4), Inches(6.6), Inches(6.0), Inches(0.3), "Fig 2. Arquitectura: GitHub -> Railway -> React -> Supabase (RLS)", size=9, color=INK_MUTED)
+    foot(slide, "Ethan / Alejandro — diagramas (evidencia)", 7)
+
+
+# === SLIDE 8: Medicion Unidad II (ISTQB + TMMi + TQM) ===
+def s8():
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    title(slide, "MEDICION (UNIDAD II)", "ISTQB · TMMi · TQM", chip_w=2.1)
+
+    # ISTQB (izquierda, 4 numeros)
+    tb(slide, Inches(0.5), Inches(1.75), Inches(6.0), Inches(0.4), "ISTQB — metricas", size=13, bold=True, color=TEAL_DARK)
+    mets = [("117", "tests pasan"), ("61.4%", "cobertura"), ("300 ms", "P95 200 users"), ("6/0", "bugs res./pend.")]
+    for i, (num, lbl) in enumerate(mets):
         col = i % 2
         row = i // 2
-        left = Inches(0.6) + (cw + gap) * col
-        yy = Inches(2.0) + (ch + gap) * row
-        card = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, yy, cw, ch)
-        card.fill.solid()
-        card.fill.fore_color.rgb = WHITE
-        card.line.color.rgb = color
-        card.line.width = Pt(1.5)
-        card.shadow.inherit = False
-        tb(slide, left + Inches(0.2), yy + Inches(0.2), Inches(2.6), Inches(1.0), num, size=40, bold=True, color=color)
-        tb(slide, left + Inches(2.5), yy + Inches(0.3), cw - Inches(2.7), Inches(0.6), t_, size=16, bold=True, color=INK)
-        tb(slide, left + Inches(2.5), yy + Inches(1.0), cw - Inches(2.7), Inches(0.9), d, size=11, color=INK_MUTED)
-    foot(slide, "Jose (PO) — 40s", 7)
+        left = Inches(0.5) + Inches(3.0) * col
+        yy = Inches(2.2) + Inches(1.25) * row
+        card = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, yy, Inches(2.85), Inches(1.1))
+        card.fill.solid(); card.fill.fore_color.rgb = WHITE
+        card.line.color.rgb = TEAL; card.line.width = Pt(1.2); card.shadow.inherit = False
+        tb(slide, left + Inches(0.15), yy + Inches(0.1), Inches(2.6), Inches(0.6), num, size=24, bold=True, color=TEAL)
+        tb(slide, left + Inches(0.15), yy + Inches(0.7), Inches(2.6), Inches(0.35), lbl, size=10, color=INK_MUTED)
+
+    rect(slide, Inches(6.6), Inches(1.7), Inches(0.02), Inches(5.2), INK_MUTED)
+
+    # TMMi + TQM (derecha)
+    tb(slide, Inches(7.0), Inches(1.75), Inches(6.0), Inches(0.4), "TMMi — madurez (Nivel 2)", size=13, bold=True, color=TEAL_DARK)
+    bullets(slide, Inches(7.05), Inches(2.2), Inches(6.0), Inches(1.8), [
+        "Metricas registradas por sprint",
+        "Code review obligatorio antes de merge",
+        "Threshold cobertura >=60% en CI",
+        "Cada bug genera test de regresion",
+    ], size=10.5)
+    tb(slide, Inches(7.0), Inches(4.5), Inches(6.0), Inches(0.4), "TQM — mejora continua", size=13, bold=True, color=ACCENT)
+    bullets(slide, Inches(7.05), Inches(4.95), Inches(6.0), Inches(1.8), [
+        "PO prueba el deploy real antes de entregar",
+        "Bugs de uso real se arreglan en la jornada",
+        "Plan Mode antes de codificar; doc viva",
+        "Bug critico cazado por review (antes de prod)",
+    ], size=10.5)
+    foot(slide, "Jose (PO) — ISTQB + TMMi + TQM", 8)
 
 
-# === SLIDE 8: Cierre ===
-def s8():
+# === SLIDE 9: Registro de metricas + Herramientas + Kanban ===
+def s9():
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    title(slide, "REGISTRO", "Metricas + Herramientas + Kanban", chip_w=1.6)
+
+    # Registro de metricas (izquierda)
+    tb(slide, Inches(0.5), Inches(1.75), Inches(6.0), Inches(0.4), "Registro de metricas", size=13, bold=True, color=TEAL_DARK)
+    reg = [
+        ("Requerimientos", "HELL-3: cancelar + reprogramar 100%"),
+        ("Diseno", "2 RPC SQL + 1 tabla + 4 hooks/comp."),
+        ("Codigo", "~2.6 KLOC · 11 archivos · commits firmados"),
+        ("Defectos", "6 detectados · 6 resueltos · 0 pend."),
+        ("Esfuerzo", "ciclos <30 min/bug · ~2 sem"),
+        ("Productividad", "~2 deploys/dia · bundle -34%"),
+        ("Calidad", "117 tests · P95 300ms · RLS"),
+    ]
+    for i, (k, v) in enumerate(reg):
+        y = Inches(2.25) + Inches(0.62) * i
+        tb(slide, Inches(0.55), y, Inches(1.9), Inches(0.55), k, size=10.5, bold=True, color=INK)
+        tb(slide, Inches(2.5), y, Inches(4.0), Inches(0.55), v, size=10, color=INK_MUTED)
+
+    rect(slide, Inches(6.6), Inches(1.7), Inches(0.02), Inches(5.2), INK_MUTED)
+
+    # Herramientas + Kanban (derecha)
+    tb(slide, Inches(7.0), Inches(1.75), Inches(6.0), Inches(0.4), "Herramientas", size=13, bold=True, color=TEAL_DARK)
+    bullets(slide, Inches(7.05), Inches(2.2), Inches(6.0), Inches(2.0), [
+        "GitHub (commits firmados, code review)",
+        "Jira (Kanban HELL-3 + 13 subtareas)",
+        "Vitest + RTL (117 tests) · Locust (carga)",
+        "Supabase (BD+Auth+RLS) · Railway (deploy)",
+        "SonarCloud configurado (analisis estatico)",
+    ], size=10.5)
+    tb(slide, Inches(7.0), Inches(4.5), Inches(6.0), Inches(0.4), "Kanban HELL-3", size=13, bold=True, color=TEAL_DARK)
+    bullets(slide, Inches(7.05), Inches(4.95), Inches(6.0), Inches(1.8), [
+        "Done: 6 bugs + cancelar + reprogramar + historial",
+        "In Progress: (sprint cerrado)",
+        "To Do (Sprint 5): OWASP ZAP + Lighthouse",
+    ], size=10.5)
+    foot(slide, "Jose (PO) — registro + herramientas + Kanban", 9)
+
+
+# === SLIDE 10: Cierre ===
+def s10():
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     title(slide, "CIERRE", "Sprint 2 completo")
     bullets(slide, Inches(0.6), Inches(2.0), Inches(12.0), Inches(3.0), [
@@ -352,7 +417,7 @@ def s8():
     rect(slide, Inches(0.5), Inches(5.4), Inches(12.3), Inches(1.2), TEAL_DARK)
     tb(slide, Inches(0.5), Inches(5.55), Inches(12.3), Inches(0.5), "Sprint 2 entregado. Siguiente: Sincronizacion entre sedes (Sprint 3).", size=15, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
     tb(slide, Inches(0.5), Inches(6.05), Inches(12.3), Inches(0.4), "Gracias. Preguntas?", size=14, color=ACCENT, align=PP_ALIGN.CENTER)
-    foot(slide, "Jose (PO) — 25s", 8)
+    foot(slide, "Jose (PO) — cierre", 10)
 
 
 def to_pdf(pptx, pdf):
@@ -385,7 +450,7 @@ prs.slide_height = Inches(7.5)
 
 
 def main():
-    s1(); s2(); s3(); s4(); s5(); s6(); s7(); s8()
+    s1(); s2(); s3(); s4(); s5(); s6(); s7(); s8(); s9(); s10()
     prs.save(str(OUT_PPTX))
     print(f"[ok] PPTX: {OUT_PPTX} ({OUT_PPTX.stat().st_size/1024:.1f} KB)")
     if to_pdf(OUT_PPTX, OUT_PDF):
