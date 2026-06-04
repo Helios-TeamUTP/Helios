@@ -21,7 +21,7 @@ from pathlib import Path
 import markdown
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / "dailys" / "Entrega_Viernes"
+OUT_DIR = ROOT / "dailys" / "Entrega_Viernes" / "Sprint_2"
 PDF = OUT_DIR / "REPORTE_SEMANAL_SPRINT2.pdf"
 FLUJO = (OUT_DIR / "diagrama_flujo_usuario.png").as_posix()
 ARQUI = (OUT_DIR / "diagrama_arquitectura.png").as_posix()

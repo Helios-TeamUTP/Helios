@@ -16,7 +16,7 @@ from pathlib import Path
 import markdown
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / "dailys" / "Entrega_Viernes"
+OUT_DIR = ROOT / "dailys" / "Entrega_Viernes" / "Sprint_2"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 CSS = """
