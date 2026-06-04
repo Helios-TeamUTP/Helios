@@ -7,7 +7,10 @@
  * con un fallback permisivo de dígitos para no rechazar nunca una cédula real.
  *
  * Tipos oficiales (Tribunal Electoral de Panamá):
- *  - Natural (por nacimiento): provincia(1-13)-tomo-asiento   ej. 8-926-1601
+ *  - Natural (por nacimiento): clave(1-13)-tomo-asiento       ej. 8-926-1601
+ *      La "clave" (1-13) NO son solo provincias: incluye las 10 provincias +
+ *      3 comarcas indigenas. 1-9 provincias (8=Panama), 10-12 comarcas,
+ *      13 = Panama Oeste (10a provincia, creada en 2014).
  *  - PE  (panameño nacido en el extranjero):  PE-tomo-asiento ej. PE-5-687
  *  - N   (naturalizado):                       N-tomo-asiento ej. N-19-473
  *  - E   (extranjero domiciliado):           E-provincia-orden ej. E-8-74258
@@ -18,7 +21,7 @@ export type TipoCedula = 'natural' | 'pe' | 'n' | 'e' | 'pi' | 'desconocido'
 
 /** Patrones por tipo (sobre la cédula normalizada y sin espacios). */
 const PATRONES: Record<Exclude<TipoCedula, 'desconocido'>, RegExp> = {
-  // Provincia 1-13, tomo hasta 4 dígitos, asiento hasta 6.
+  // Clave 1-13 (10 provincias + 3 comarcas; 13 = Panamá Oeste), tomo y asiento.
   natural: /^([1-9]|1[0-3])-\d{1,4}-\d{1,6}$/,
   pe: /^PE-\d{1,4}-\d{1,6}$/,
   n: /^N-\d{1,4}-\d{1,6}$/,

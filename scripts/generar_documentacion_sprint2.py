@@ -100,13 +100,17 @@ Según el **Tribunal Electoral de Panamá**, existen estos tipos:
 
 | Tipo | Formato | Ejemplo | Descripción |
 |---|---|---|---|
-| Natural (por nacimiento) | provincia(1-13)-tomo-asiento | 8-926-1601 | Panameño nacido en el país |
+| Natural (por nacimiento) | clave(1-13)-tomo-asiento | 8-926-1601 | Panameño (provincia o comarca) |
 | PE | PE-tomo-asiento | PE-5-687 | Panameño nacido en el extranjero |
 | N | N-tomo-asiento | N-19-473 | Naturalizado |
 | E | E-provincia-orden | E-8-74258 | Extranjero domiciliado |
 | PI | PI-tomo-asiento | PI-12-3456 | Indígena / comarca |
 
-- Las provincias se numeran del **1 al 13** (la 13 es Panamá Oeste, agregada en 2014).
+- El primer numero de la cedula (la "clave") va del **1 al 13**, e incluye las
+  **10 provincias + 3 comarcas indigenas** (NO son 13 provincias). Codigos 1-9 =
+  provincias originales (8 = Panama), 10-12 = comarcas (Guna Yala, Embera,
+  Ngabe-Bugle), 13 = Panama Oeste (la 10a provincia, creada en 2014; le toco el
+  13 por ser la ultima en agregarse).
 - El tomo y el asiento son numéricos y de longitud variable (por eso hay cédulas
   con menos dígitos).
 
