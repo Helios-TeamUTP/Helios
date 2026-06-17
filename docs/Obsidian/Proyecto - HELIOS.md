@@ -86,10 +86,10 @@ Es el proyecto más completo de la carrera hasta ahora: combina desarrollo real 
 
 ### En Progreso
 
-- [ ] Crear proyecto React con pnpm + TypeScript
-- [ ] Ejecutar SQL completo de base de datos en Supabase
-- [ ] Conectar frontend a Supabase (credenciales + variables de entorno)
-- [ ] Construir módulo 01 — Agendamiento con Claude Code
+- [x] Crear proyecto React con pnpm + TypeScript ✅ 2026-06-11
+- [x] Ejecutar SQL completo de base de datos en Supabase ✅ 2026-06-11
+- [x] Conectar frontend a Supabase (credenciales + variables de entorno) ✅ 2026-06-11
+- [x] Construir módulo 01 — Agendamiento con Claude Code ✅ 2026-06-11
 - [ ] Creacion de documentación completa:
 	- [[ 1. Documento de Visión del Proyecto]]
 	- [[2. Documento de Requisitos (SRS,  ERS)]]
@@ -101,22 +101,26 @@ Es el proyecto más completo de la carrera hasta ahora: combina desarrollo real 
 	- [[8. Manual de Usuario]]
 	- [[9. Manual Técnico,  Mantenimiento]]
 
-
-
 ### Pendiente
 
-- [ ] Agregar colaboradores al repositorio GitHub
-- [ ] Conectar repositorio a Railway
-- [ ] Configurar SonarQube Community
-- [ ] Configurar GitHub Actions (CI/CD pipeline)
-- [ ] Crear archivos markdown módulos 02, 03 y 04
-- [ ] Crear prototipos en Google Sites (módulo 01 primero)
-- [ ] Definir fechas de sprints 2, 3, 4 y 5 (esperar clase próxima semana)
-- [ ] Ejecutar pruebas funcionales módulo 01 (Vitest)
-- [ ] Ejecutar pruebas de rendimiento módulo 01 (Python)
-- [ ] Aplicar SUS al módulo 01
-- [ ] Primer daily documentado en Obsidian
-- [ ] Actualizar Jira con criterios de aceptación completados
+- [x] Agregar colaboradores al repositorio GitHub ✅ 2026-06-11
+- [x] Conectar repositorio a Railway ✅ 2026-06-11
+- [x] Configurar SonarQube Community ✅ 2026-06-11
+- [x] Configurar GitHub Actions (CI/CD pipeline) ✅ 2026-06-11
+- [x] Crear archivos markdown módulos 02, 03 y 04 ✅ 2026-06-11
+- [x] Crear prototipos en Google Sites (módulo 01 primero) ✅ 2026-06-11
+- [x] Definir fechas de sprints 2, 3, 4 y 5 (esperar clase próxima semana) ✅ 2026-06-11
+- [x] Ejecutar pruebas funcionales módulo 01 (Vitest) ✅ 2026-06-11
+- [x] Ejecutar pruebas de rendimiento módulo 01 (Python) ✅ 2026-06-11
+- [x] Aplicar SUS al módulo 01 ✅ 2026-06-11
+- [x] Primer daily documentado en Obsidian ✅ 2026-06-11
+- [x] Actualizar Jira con criterios de aceptación completados ✅ 2026-06-11
+- [ ] Corregir BUG-01 — regex cédula panameña
+- [ ] Corregir BUG-02 — race condition en registro
+- [ ] Corregir BUG-03 — ProtectedRoute sin validar paciente
+- [ ] Corregir BUG-04 — horarios pasados visibles
+- [ ] Corregir BUG-05 — agregar Realtime a useCitas
+- [ ] Implementar TC-REG-01 a TC-REG-05 en suite Vitest
 
 ### Completado
 
@@ -130,6 +134,7 @@ Es el proyecto más completo de la carrera hasta ahora: combina desarrollo real 
 - [x] Generar SQL completo de base de datos
 - [x] Generar markdown módulo 01 — Agendamiento
 - [x] Entregar Parcial 1 escrito (PDF)
+- [x] Auditoría de bugs — rama origin/sprint1/bootstrap — 5 bugs documentados con ISTQB
 
 ---
 
@@ -182,13 +187,18 @@ Es el proyecto más completo de la carrera hasta ahora: combina desarrollo real 
 ### Estándares aplicados
 
 - [[ISTQB Foundation Level Syllabus 2018]]
-- [[ISO/IEC 25010 — Modelo de calidad de software]]
+- [[ISO-IEC 25010 — Modelo de Calidad de Software]]
 - [[SUS — System Usability Scale (Brooke, 1996)]]
+
+### QA — Bugs y Pruebas
+
+- [[Reporte de Bugs — Sprint 1 y 2]] ← auditoría código rama sprint1/bootstrap — 5 bugs documentados
+- [[Casos de Prueba — Regresión Bugs]] ← TC-REG-01 a TC-REG-05 para verificar correcciones
 
 ### Dailys
 
 - [[Daily — Semana 1 — Sprint 1]]
-- [[Daily — Semana 2 — Sprint 1]]
+- [[Sprint 2 — Cancelación y Reprogramación]]
 - [[Daily — Semana 3 — Sprint 1]]
 
 ### Módulos
@@ -207,6 +217,8 @@ _(Llenar semanalmente después de cada daily)_
 **2026-05-21 — Sprint 0** Arrancamos con buena organización. Tener toda la arquitectura, base de datos y documentación antes de escribir una sola línea de código es algo que normalmente no hacemos en otros proyectos. Se nota la diferencia que hace la metodología. El reto más grande va a ser mantener el ritmo con los dailys y no dejar la documentación para el final.
 
 **2026-05-28 — Sprint 1**
+
+**2026-06-10 — Pre-Parcial 2** Auditoría de código completa sobre la rama `origin/sprint1/bootstrap`. Se encontraron 5 bugs reales con código fuente exacto: BUG-01 validador de cédula defectuoso, BUG-02 race condition en registro que deja cuentas huérfanas, BUG-03 guard de ruta incompleto, BUG-04 horarios del pasado del mismo día visibles, BUG-05 ausencia de Realtime en MisCitas. Todos documentados en formato ISTQB con técnica de detección, pasos para reproducir, impacto y corrección propuesta. Densidad: 5.88 bugs/KLOC — esperada para código sin suite de integración completa.
 
 ---
 

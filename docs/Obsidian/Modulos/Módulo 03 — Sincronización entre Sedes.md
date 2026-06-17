@@ -4,7 +4,7 @@
 **Fecha inicio:** Por definir (depende de cierre del Sprint 2) 
 **Fecha límite:** Por definir 
 **Área:** [[MOC — Proyectos]] 
-**Sprint:** [[Sprint 3 — Sincronización]] 
+**Sprint:** [[Sprint 3 — Sincronización entre Sedes]] 
 **Proyecto:** [[Proyecto - HELIOS]]
 **Tags:** #helios #modulo-03 #sincronizacion #realtime #sprint-3 #supabase #istqb #seguridad
 
@@ -661,8 +661,8 @@ if __name__ == "__main__":
 - [[Proyecto - HELIOS]] ← proyecto padre
 - [[Módulo 02 — Cancelación y Reprogramación]] ← módulo previo
 - [[Módulo 04 — Notificaciones y Recordatorios]] ← siguiente módulo
-- [[Sprint 3 — Sincronización]]
-- [[Daily — Semana 1 — Sprint 3]]
+- [[Sprint 3 — Sincronización entre Sedes]]
+- [[Daily — Semana 6 — Sprint 3]]
 - [Supabase Realtime Docs](https://supabase.com/docs/guides/realtime)
 - [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
 - [Supabase RLS Docs](https://supabase.com/docs/guides/auth/row-level-security)

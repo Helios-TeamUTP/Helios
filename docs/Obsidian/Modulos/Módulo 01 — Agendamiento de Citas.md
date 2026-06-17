@@ -548,7 +548,7 @@ Aplicar a 5 médicos tras usar el módulo. Criterio: **SUS ≥ 75**.
 - [[Proyecto - HELIOS]]← proyecto padre
 - [[Sprint 1 — Agendamiento de Citas]]
 - [[Daily — Semana 1 — Sprint 0]]
-- [[Daily — Semana 2 — Sprint 1]]
+- [[Sprint 2 — Cancelación y Reprogramación]]
 - [[Daily — Semana 3 — Sprint 1]]
 - [[Módulo 02 — Cancelación y Reprogramación]]
 - [Supabase Realtime Docs](https://supabase.com/docs/guides/realtime)

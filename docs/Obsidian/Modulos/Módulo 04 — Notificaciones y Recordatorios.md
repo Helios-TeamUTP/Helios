@@ -4,7 +4,7 @@
 **Fecha inicio:** Por definir (depende de cierre del Sprint 3) 
 **Fecha límite:** Por definir 
 **Área:** [[MOC — Proyectos]] 
-**Sprint:** [[Sprint 4 — Notificaciones]] 
+**Sprint:** [[Sprint 4 — Notificaciones y Cierre]] 
 **Proyecto:** [[Proyecto - HELIOS]] 
 **Tags:** #helios #modulo-04 #notificaciones #recordatorios #sprint-4 #supabase #edge-functions #istqb
 
@@ -763,7 +763,7 @@ def test_paciente_solo_ve_sus_notificaciones():
 
 - [[Proyecto - HELIOS]] ← proyecto padre
 - [[Módulo 03 — Sincronización entre Sedes]] ← módulo previo
-- [[Sprint 4 — Notificaciones]]
+- [[Sprint 4 — Notificaciones y Cierre]]
 - [[Daily — Semana 1 — Sprint 4]]
 - [Supabase Edge Functions Docs](https://supabase.com/docs/guides/functions)
 - [Supabase Realtime Docs](https://supabase.com/docs/guides/realtime)

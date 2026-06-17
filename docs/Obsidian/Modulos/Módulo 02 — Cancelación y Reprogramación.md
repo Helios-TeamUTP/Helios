@@ -1,564 +1,455 @@
-# Módulo 02 — Cancelación y Reprogramación
+# Módulo 02 — Cancelación y Reprogramación (Sprint 2)
 
-**Estado:** #pendiente 
-**Fecha inicio:** Por definir (depende de cierre del Sprint 1) 
-**Fecha límite:** Por definir 
-**Área:** [[MOC — Proyectos]] 
-**Sprint:** [[Sprint 2 — Cancelación]] 
+**Estado:** #activo 
+**Fecha inicio:** 2026-05-30 
+**Fecha fin:** 2026-06-12 
+**Sprint:** Sprint 2 
 **Proyecto:** [[Proyecto - HELIOS]] 
-**Tags:** #helios #modulo-02 #cancelacion #reprogramacion #sprint-2 #react #supabase #istqb
+**URL Producción:** https://helios-web-production.up.railway.app 
+**Repo:** https://github.com/MarianC-programing/Helios 
+**Jira Epic:** HELL-3 
+**Tags:** #helios #modulo-02 #cancelacion #reprogramacion #sprint-2
 
 ---
 
-## ¿Qué es?
+## Contexto del proyecto al inicio del Sprint 2
 
-Módulo que permite al paciente cancelar o reprogramar una cita previamente confirmada desde la sección "Mis Citas", aplicando reglas de negocio (mínimo 24h de anticipación) y notificando automáticamente al médico afectado.
+### Stack tecnológico real (Sprint 1 cerrado)
+
+- **Frontend:** React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 3
+- **Backend:** Supabase 2 (PostgreSQL 15 + Auth + REST API automática)
+- **Routing:** React Router 7
+- **Calendario:** FullCalendar 6 (desktop) + Vista lista custom (mobile)
+- **Testing unitario:** Vitest + RTL 4.1
+- **Pruebas de carga:** Locust 2.x (Python)
+- **Hosting:** Railway (deploy CI automático desde GitHub)
+- **Gestor de paquetes:** pnpm (NUNCA usar npm)
+
+### Estado del código al cierre del Sprint 1
+
+- 65 tests automatizados pasando
+- Cobertura: 61.4% statements / 82% lines / 90.9% functions
+- Latencia P95: 300ms con 200 usuarios concurrentes
+- 20 bugs detectados y resueltos (B-01 a B-20)
+- Deploy en producción verificado HTTP 200
+
+### Estructura de carpetas existente
+
+```
+frontend/src/
+├── components/
+│   ├── agendamiento/     ← Sprint 1 completo
+│   │   ├── SelectorEspecialidad.tsx
+│   │   ├── SelectorSede.tsx
+│   │   ├── ListaMedicos.tsx
+│   │   ├── CalendarioCitas.tsx      ← FullCalendar desktop
+│   │   ├── CalendarioCitasLista.tsx ← Vista mobile
+│   │   ├── FormularioConfirmacion.tsx
+│   │   └── ResumenCita.tsx
+│   ├── auth/
+│   │   └── ProtectedRoute.tsx       ← con requireRole
+│   ├── layout/
+│   │   └── AppLayout.tsx            ← sticky top-0 z-50
+│   ├── medico/
+│   │   └── MedicoDashboard.tsx      ← dashboard médico completo
+│   └── shared/
+│       ├── Spinner.tsx
+│       └── ErrorMessage.tsx
+├── hooks/
+│   ├── useAuth.tsx        ← con withTimeout, sessionStorage
+│   ├── useCitas.ts
+│   ├── useMedicoCitas.ts
+│   └── useIsMobile.ts
+├── lib/
+│   ├── supabase.ts        ← sessionStorage (no localStorage)
+│   ├── cedula.ts          ← CORREGIR bug B-21 (ver abajo)
+│   ├── withTimeout.ts     ← helper timeout 15s
+│   └── types.ts
+├── pages/
+│   ├── Home.tsx
+│   ├── AgendarCita.tsx    ← wizard completo
+│   ├── MisCitas.tsx       ← listar citas del paciente
+│   ├── MedicoDashboard.tsx
+│   ├── Login.tsx
+│   └── Register.tsx
+└── test/
+    └── setup.ts           ← mocks de Supabase
+
+supabase/
+├── schema.sql             ← esquema principal
+└── migrations/            ← migraciones aplicadas
+
+scripts/
+├── seed_data.py           ← seed con Locust
+└── locustfile.py          ← pruebas de carga
+
+docs/
+├── CLAUDE.md              ← LEER PRIMERO — reglas del equipo
+├── CONTEXTO_SESION_ULTIMA.md
+├── MEMORIA_SPRINT_1_FINAL.md
+├── PLAN_SPRINT_2.md
+└── PLAN_SPRINT_3.md
+```
+
+### Base de datos existente (6 tablas principales)
+
+```
+sedes          → 3 registros
+especialidades → 5 registros
+medicos        → 20 registros (con cuentas demo helios2026)
+horarios       → 1200+ slots
+pacientes      → variable (se crean en producción)
+citas          → variable
+```
+
+**Tablas de vínculo con auth:**
+
+- `auth_paciente_link` — vincula auth.users con pacientes
+- `auth_medico_link` — vincula auth.users con medicos
+
+**Funciones RPC atómicas existentes:**
+
+- `crear_cita_atomica(paciente_id, horario_id, ...)` — mutex a nivel BD
 
 ---
 
-## Objetivo Principal
+## Bugs pendientes a resolver ANTES de empezar el Sprint 2
 
-El módulo está listo cuando:
+### B-21: Regex de cédula muy restrictivo
 
-- El paciente puede cancelar una cita en máximo 2 clics
-- El slot liberado queda disponible en la agenda en menos de 5 segundos
-- La reprogramación redirige correctamente al flujo de agendamiento manteniendo médico y especialidad
-- El médico recibe notificación del cambio en menos de 5 segundos
-- Las pruebas funcionales y de integración pasan al 100%
-- SonarQube no reporta issues críticos
+**Síntoma:** La cédula de la profesora (formato corto como `8-123-1`) era rechazada **Causa:** Regex con longitud fija no cubre todos los formatos panameños **Archivo:** `frontend/src/lib/cedula.ts`
+
+**Fix requerido:**
+
+```typescript
+// REEMPLAZAR el regex actual con:
+const REGEX_CEDULA = /^(PE|E|N|[23456789](?:AV|PI)?|1[0123]?(?:AV|PI)?)-(\d{1,4})-(\d{1,6})$/i
+
+export function validarCedula(cedula: string): boolean {
+  if (!cedula || typeof cedula !== 'string') return false
+  const limpia = cedula.trim().toUpperCase()
+  return REGEX_CEDULA.test(limpia)
+}
+```
+
+**Formatos válidos en Panamá:**
+
+|Tipo|Formato|Ejemplo|
+|---|---|---|
+|Nacional|`[1-13]-[1-4 dígitos]-[1-6 dígitos]`|`8-926-1601` o `8-1-1`|
+|Panameño exterior|`PE-[tomo]-[asiento]`|`PE-12-345`|
+|Extranjero|`E-[tomo]-[asiento]`|`E-8-12345`|
+|Naturalizado|`N-[tomo]-[asiento]`|`N-19-12345`|
+|Indígena|`[#]PI-[tomo]-[asiento]`|`9PI-123-456`|
+|Histórico|`[#]AV-[tomo]-[asiento]`|`3AV-12-345`|
+
+**Tests a agregar en `cedula.test.ts`:**
+
+- `8-123-1` → válida (tomo y asiento cortos)
+- `PE-12-345` → válida
+- `9PI-123-456` → válida
+- `0-123-456` → inválida (provincia 0 no existe)
+- `8-1234567-1` → inválida (tomo > 4 dígitos)
 
 ---
 
-## Por Qué Lo Hago
+### B-22: Fechas erróneas en el calendario
 
-Este módulo depende directamente del Módulo 01. Sin citas agendadas no hay nada que cancelar. Es el segundo en importancia porque el 30-55% de los pacientes en Panamá no asiste a sus citas — tener un flujo limpio de cancelación y reprogramación reduce ese índice y optimiza la agenda de los médicos.
+**Síntoma:** Al agendar, las fechas mostradas no correspondían al día correcto **Causa probable:** Diferencia de timezone UTC vs America/Panama (UTC-5) **Archivos a revisar:** Componente de calendario + seed_data.py
+
+**Fix requerido en frontend:**
+
+```typescript
+// Siempre mostrar fechas en timezone de Panamá
+const fechaLocal = new Date(horario.fecha_hora).toLocaleString('es-PA', {
+  timeZone: 'America/Panama',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})
+```
+
+**Fix requerido en seed_data.py:**
+
+```python
+from datetime import datetime, timezone
+# Guardar horarios en UTC (14:00 UTC = 09:00 Panamá)
+fecha = datetime(2026, 6, 10, 14, 0, 0, tzinfo=timezone.utc)
+```
 
 ---
 
-## Dependencias
+## Sprint 2 — Historias de Usuario
 
-> ⚠️ Este módulo no puede iniciarse hasta que el Módulo 01 esté completo y desplegado.
+### HU-06 (HELL-3 ST-4 a ST-7): Cancelar cita confirmada
 
-- [[Módulo 01 — Agendamiento de Citas]] — las tablas `citas`, `medicos`, `sedes` y `pacientes` deben existir
-- Supabase Realtime activo (configurado en módulo 01)
-- Sistema de notificaciones básico (se completa en módulo 04)
+**Como** paciente autenticado, **quiero** cancelar una de mis citas confirmadas, **para** liberar el horario si no puedo asistir.
 
----
-
-## Historias de Usuario
-
-### HU-03 — Cancelar una cita
-
-**Como** paciente, **quiero** cancelar una cita desde "Mis Citas", **para** liberar el espacio si no puedo asistir sin tener que llamar a la clínica.
+**Story Points:** 5
 
 **Criterios de aceptación:**
 
 - [ ] Solo se puede cancelar con mínimo 24 horas de anticipación
-- [ ] El sistema muestra advertencia si no cumple el tiempo mínimo
-- [ ] El slot queda disponible en la agenda en menos de 5 segundos
-- [ ] El médico recibe notificación del cambio
-- [ ] El estado de la cita cambia a `cancelada` en Supabase
-- [ ] La cita cancelada aparece en historial del paciente con estado visible
+- [ ] Si faltan menos de 24h, mostrar mensaje claro con la política
+- [ ] Al cancelar: estado de cita → `cancelada`, horario → `disponible = true`
+- [ ] Operación atómica (función RPC) — no puede quedar cita cancelada con horario aún reservado
+- [ ] El médico ve la cita como cancelada en su dashboard
+- [ ] Registro en `citas_historial` con motivo y timestamp
+- [ ] Confirmación visual inmediata al paciente
+- [ ] Operación completa < 2 segundos
 
 ---
 
-### HU-04 — Reprogramar una cita
+### HU-07 (HELL-3 ST-6 a ST-8): Reprogramar cita
 
-**Como** paciente, **quiero** reprogramar una cita sin cancelarla manualmente y crear una nueva, **para** hacerlo en un solo flujo sin perder mis datos.
+**Como** paciente autenticado, **quiero** reprogramar una de mis citas a otro horario disponible, **para** cambiar la fecha/hora sin perder mi turno con el mismo médico.
+
+**Story Points:** 8
 
 **Criterios de aceptación:**
 
-- [ ] El sistema redirige al flujo de agendamiento manteniendo sede, especialidad y médico
-- [ ] La cita anterior cambia a estado `reprogramada`
-- [ ] La nueva cita queda registrada como `confirmada`
-- [ ] El cambio se refleja en todas las sedes en menos de 3 segundos
-- [ ] El médico recibe notificación de la reprogramación
+- [ ] Mostrar solo horarios disponibles del mismo médico
+- [ ] Al reprogramar: horario anterior → `disponible = true`, nuevo → `disponible = false`
+- [ ] Estado de la cita original → `reprogramada`, nueva cita → `confirmada`
+- [ ] Operación atómica (función RPC)
+- [ ] Registro completo en `citas_historial`
+- [ ] Dashboard médico refleja el cambio
+- [ ] Confirmación visual con nuevo horario
+- [ ] Operación completa < 2 segundos
 
 ---
 
-### HU-05 — Ver historial de citas
+## Tareas técnicas — Sprint 2
 
-**Como** paciente, **quiero** ver mis citas pasadas y sus estados, **para** tener un registro de mi historial médico de citas.
+### Alejandro (Tech Lead — Backend SQL)
 
-**Criterios de aceptación:**
-
-- [ ] Lista de citas ordenada por fecha descendente
-- [ ] Cada cita muestra: fecha, hora, médico, sede y estado
-- [ ] Estados visibles: confirmada, cancelada, reprogramada, completada
-- [ ] Filtro por estado disponible
-
----
-
-## Flujo del Proceso
-
-### Cancelación
-
-```
-[Paciente accede a "Mis Citas"]
-        ↓
-[Sistema carga citas confirmadas del paciente desde Supabase]
-        ↓
-[Paciente selecciona cita a cancelar]
-        ↓
-[Sistema valida: ¿faltan más de 24h para la cita?]
-        ↓
-   [SÍ]                          [NO]
-    ↓                              ↓
-[Muestra confirmación]    [Muestra error: tiempo mínimo
-    ↓                      de cancelación no cumplido]
-[Paciente confirma]
-    ↓
-[Sistema actualiza estado a "cancelada" en Supabase]
-    ↓
-[Supabase Realtime notifica al frontend del médico]
-    ↓
-[Slot liberado en disponibilidad]
-    ↓
-[Paciente ve confirmación de cancelación]
-[Médico ve cita cancelada en su agenda]
-```
-
-### Reprogramación
-
-```
-[Paciente selecciona "Reprogramar" en una cita]
-        ↓
-[Sistema guarda datos de la cita actual]
-        ↓
-[Sistema actualiza estado a "reprogramada"]
-        ↓
-[Redirige a flujo de agendamiento]
-[Pre-carga: sede, especialidad y médico de la cita anterior]
-        ↓
-[Paciente selecciona nueva fecha y hora]
-        ↓
-[Sistema registra nueva cita como "confirmada"]
-        ↓
-[Médico recibe notificación de reprogramación]
-        ↓
-[Paciente ve confirmación de nueva cita]
-```
-
----
-
-## Arquitectura del Módulo
-
-### Capas involucradas
-
-```
-┌─────────────────────────────────────────┐
-│           CAPA DE CLIENTE               │
-│   React + TypeScript (Web Responsive)   │
-│                                         │
-│  MisCitas.tsx      HistorialCitas.tsx   │
-└────────────────────┬────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────┐
-│         CAPA DE SERVICIOS               │
-│      cancelacion.service.ts             │
-│                                         │
-│  getCitasPaciente()                     │
-│  cancelarCita()                         │
-│  reprogramarCita()                      │
-│  validarTiempoMinimo()                  │
-└────────────────────┬────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────┐
-│            SUPABASE                     │
-│                                         │
-│  PostgREST API  →  citas (update)       │
-│  PostgREST API  →  citas (select)       │
-│  Realtime       →  channel agenda       │
-│  Auth           →  RLS por rol          │
-└────────────────────┬────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────┐
-│           BASE DE DATOS                 │
-│           PostgreSQL                    │
-│                                         │
-│  citas (update estado)                  │
-│  disponibilidad (liberar slot)          │
-└─────────────────────────────────────────┘
-```
-
----
-
-## Estructura de Carpetas
-
-```
-frontend/src/
-├── pages/
-│   ├── MisCitas.tsx               ← lista de citas del paciente
-│   └── HistorialCitas.tsx         ← historial con filtros
-├── components/
-│   └── cancelacion/
-│       ├── TarjetaCita.tsx        ← card de cada cita con acciones
-│       ├── ModalCancelar.tsx      ← confirmación de cancelación
-│       ├── ModalReprogramar.tsx   ← inicio del flujo de reprogramación
-│       └── BadgeEstado.tsx        ← chip visual del estado de la cita
-├── services/
-│   └── cancelacion.service.ts    ← llamadas a Supabase
-├── types/
-│   └── cancelacion.types.ts      ← tipos TypeScript del módulo
-└── __tests__/
-    └── cancelacion.test.tsx      ← pruebas Vitest
-```
-
----
-
-## Base de Datos — Cambios del Módulo
-
-> Las tablas ya existen desde el Módulo 01. Este módulo solo hace UPDATE sobre `citas`.
-
-### Queries principales
+**ST-1: `cancelar_cita_atomica(cita_id, motivo)`** — 2 SP
 
 ```sql
--- Ver citas activas del paciente
-select
-  c.id,
-  c.fecha_hora,
-  c.estado,
-  m.nombre as medico,
-  m.especialidad,
-  s.nombre as sede
-from citas c
-join medicos m on c.medico_id = m.id
-join sedes s on c.sede_id = s.id
-where c.paciente_id = $1
-  and c.estado in ('confirmada', 'reprogramada')
-order by c.fecha_hora asc;
-
--- Cancelar cita (validar 24h en servicio antes de ejecutar)
-update citas
-set estado = 'cancelada', updated_at = now()
-where id = $1
-  and paciente_id = $2
-  and estado = 'confirmada';
-
--- Reprogramar cita (marcar anterior + crear nueva)
-update citas
-set estado = 'reprogramada', updated_at = now()
-where id = $1;
-
-insert into citas (paciente_id, medico_id, sede_id, fecha_hora)
-values ($1, $2, $3, $4);
+-- Función RPC que en una transacción:
+-- 1. Verifica que la cita pertenece al paciente autenticado
+-- 2. Verifica que faltan > 24h para la cita
+-- 3. Actualiza cita.estado = 'cancelada'
+-- 4. Actualiza horario.disponible = true
+-- 5. Inserta en citas_historial
+CREATE OR REPLACE FUNCTION cancelar_cita_atomica(
+  p_cita_id uuid,
+  p_motivo text DEFAULT 'No especificado'
+) RETURNS json ...
 ```
 
-### RLS adicional
+**ST-2: `reprogramar_cita_atomica(cita_id, nuevo_horario_id)`** — 3 SP
 
 ```sql
--- Paciente puede actualizar (cancelar/reprogramar) solo sus citas
-create policy "paciente_actualizar_cita"
-on citas for update
-using (
-  auth.uid() = (select user_id from pacientes where id = paciente_id)
-  and estado = 'confirmada'
+-- Función RPC que en una transacción:
+-- 1. Verifica ownership de la cita
+-- 2. Libera horario anterior
+-- 3. Reserva nuevo horario
+-- 4. Actualiza estado cita original → 'reprogramada'
+-- 5. Crea nueva cita con estado 'confirmada'
+-- 6. Inserta en citas_historial (dos registros)
+CREATE OR REPLACE FUNCTION reprogramar_cita_atomica(
+  p_cita_id uuid,
+  p_nuevo_horario_id uuid
+) RETURNS json ...
+```
+
+**ST-3: Tabla `citas_historial` + triggers** — 2 SP
+
+```sql
+CREATE TABLE citas_historial (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cita_id uuid REFERENCES citas(id),
+  accion text CHECK (accion IN ('creada','cancelada','reprogramada','completada','no_asistio')),
+  motivo text,
+  horario_anterior_id uuid,
+  horario_nuevo_id uuid,
+  realizado_por uuid REFERENCES auth.users(id),
+  created_at timestamp DEFAULT now()
 );
+-- RLS: paciente ve su historial, médico ve historial de sus citas
 ```
 
 ---
 
-## Implementación — Servicios Supabase
+### Ethan (Dev Frontend)
+
+**ST-4: Hook `useCancelarCita`** — 1 SP
 
 ```typescript
-// services/cancelacion.service.ts
-import { supabase } from '../lib/supabase'
-
-// Obtener citas activas del paciente
-export async function getCitasPaciente(pacienteId: string) {
-  const { data, error } = await supabase
-    .from('citas')
-    .select(`
-      id, fecha_hora, estado,
-      medicos (nombre, especialidad),
-      sedes (nombre)
-    `)
-    .eq('paciente_id', pacienteId)
-    .in('estado', ['confirmada', 'reprogramada'])
-    .order('fecha_hora', { ascending: true })
-
-  if (error) throw error
-  return data
+// hooks/useCancelarCita.ts
+export function useCancelarCita() {
+  // Llama a cancelar_cita_atomica via supabase.rpc()
+  // Maneja loading, error, success
+  // Invalida cache de useCitas
 }
+```
 
-// Validar si la cita puede cancelarse (min 24h)
-export function validarTiempoMinimo(fechaHoraCita: string): boolean {
-  const ahora = new Date()
-  const cita = new Date(fechaHoraCita)
-  const diferenciaHoras = (cita.getTime() - ahora.getTime()) / (1000 * 60 * 60)
-  return diferenciaHoras >= 24
-}
+**ST-5: Componente `BotonCancelarCita`** — 1 SP
 
-// Cancelar cita
-export async function cancelarCita(citaId: string) {
-  const { data, error } = await supabase
-    .from('citas')
-    .update({ estado: 'cancelada', updated_at: new Date().toISOString() })
-    .eq('id', citaId)
-    .select()
-    .single()
+```typescript
+// components/cancelacion/BotonCancelarCita.tsx
+// Muestra botón "Cancelar cita"
+// Abre modal de confirmación con:
+//   - Resumen de la cita
+//   - Advertencia política 24h
+//   - Selector de motivo
+//   - Botones: "Confirmar cancelación" (rojo) / "Volver"
+// Deshabilita el botón si faltan < 24h
+```
 
-  if (error) throw error
-  return data
-}
+**ST-6: Hook + página `ReprogramarCita`** — 3 SP
 
-// Reprogramar cita (marca anterior + crea nueva)
-export async function reprogramarCita(
-  citaId: string,
-  nuevaCita: {
-    paciente_id: string
-    medico_id: string
-    sede_id: string
-    fecha_hora: string
-  }
-) {
-  // Marcar cita anterior como reprogramada
-  const { error: errorUpdate } = await supabase
-    .from('citas')
-    .update({ estado: 'reprogramada', updated_at: new Date().toISOString() })
-    .eq('id', citaId)
+```typescript
+// pages/ReprogramarCita.tsx
+// Recibe cita_id como param de ruta
+// Muestra: resumen de cita actual + calendario del mismo médico
+// Solo muestra horarios futuros disponibles
+// Al seleccionar nuevo horario: llama reprogramar_cita_atomica
+// Redirige a MisCitas con mensaje de éxito
+```
 
-  if (errorUpdate) throw errorUpdate
+**ST-7: Actualizar `MisCitas.tsx`** — 1 SP
 
-  // Crear nueva cita
-  const { data, error: errorInsert } = await supabase
-    .from('citas')
-    .insert([nuevaCita])
-    .select()
-    .single()
-
-  if (errorInsert) throw errorInsert
-  return data
-}
-
-// Obtener historial completo del paciente
-export async function getHistorialCitas(pacienteId: string) {
-  const { data, error } = await supabase
-    .from('citas')
-    .select(`
-      id, fecha_hora, estado, created_at,
-      medicos (nombre, especialidad),
-      sedes (nombre)
-    `)
-    .eq('paciente_id', pacienteId)
-    .order('fecha_hora', { ascending: false })
-
-  if (error) throw error
-  return data
-}
+```typescript
+// Agregar a cada card de cita:
+// - Botón "Cancelar" → BotonCancelarCita
+// - Botón "Reprogramar" → navega a /reprogramar/:citaId
+// - Badge de estado actualizado (cancelada, reprogramada)
+// - Sección "Historial de cambios" expandible
 ```
 
 ---
 
-## Estrategia de Pruebas (ISTQB)
+### Ashley (QA Engineer)
 
-### Pruebas Funcionales — Vitest + RTL
+**ST-9: Tests + smoke post-deploy**
+
+Pruebas funcionales requeridas:
 
 ```typescript
 // __tests__/cancelacion.test.tsx
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MisCitas } from '../pages/MisCitas'
-import { validarTiempoMinimo } from '../services/cancelacion.service'
+describe('Cancelación de cita', () => {
+  it('muestra botón cancelar en citas confirmadas')
+  it('deshabilita cancelar si faltan < 24h')
+  it('muestra modal de confirmación al hacer click')
+  it('requiere seleccionar motivo antes de confirmar')
+  it('muestra mensaje de éxito tras cancelar')
+  it('la cita desaparece de citas activas tras cancelar')
+})
 
-describe('Módulo Cancelación — Pruebas Funcionales', () => {
-
-  test('HU-03: no permite cancelar con menos de 24h de anticipación', () => {
-    const fechaManana = new Date()
-    fechaManana.setHours(fechaManana.getHours() + 12) // 12h desde ahora
-    expect(validarTiempoMinimo(fechaManana.toISOString())).toBe(false)
-  })
-
-  test('HU-03: permite cancelar con más de 24h de anticipación', () => {
-    const fechaPasada = new Date()
-    fechaPasada.setHours(fechaPasada.getHours() + 48) // 48h desde ahora
-    expect(validarTiempoMinimo(fechaPasada.toISOString())).toBe(true)
-  })
-
-  test('HU-03: slot queda liberado en menos de 5 segundos', async () => {
-    const inicio = Date.now()
-    await cancelarCita('cita-test-id')
-    expect(Date.now() - inicio).toBeLessThan(5000)
-  })
-
-  test('HU-04: reprogramación mantiene datos del médico', async () => {
-    render(<MisCitas pacienteId="p1" />)
-    const btnReprogramar = await screen.findByText('Reprogramar')
-    fireEvent.click(btnReprogramar)
-    await waitFor(() => {
-      expect(screen.getByText('Dr. García')).toBeInTheDocument()
-      expect(screen.getByText('Medicina General')).toBeInTheDocument()
-    })
-  })
-
-  test('HU-05: historial muestra todos los estados', async () => {
-    render(<MisCitas pacienteId="p1" />)
-    await waitFor(() => {
-      expect(screen.getByText('confirmada')).toBeInTheDocument()
-      expect(screen.getByText('cancelada')).toBeInTheDocument()
-    })
-  })
-
+// __tests__/reprogramacion.test.tsx
+describe('Reprogramación de cita', () => {
+  it('muestra solo horarios del mismo médico')
+  it('no muestra horarios ya ocupados')
+  it('no muestra horarios en el pasado')
+  it('confirma reprogramación con nuevo horario')
+  it('redirige a MisCitas con mensaje de éxito')
 })
 ```
 
-### Pruebas de Integración — Vitest
+---
 
-```typescript
-// __tests__/integracion-cancelacion.test.ts
-import { cancelarCita, getCitasPaciente } from '../services/cancelacion.service'
+### Marian (Scrum Master / DevOps)
 
-describe('Integración — Cancelación y Base de Datos', () => {
+**CI/CD — Integrar SonarCloud:**
 
-  test('cancelar cita actualiza estado en Supabase', async () => {
-    const cita = await cancelarCita('cita-test-id')
-    expect(cita.estado).toBe('cancelada')
-    expect(cita.updated_at).toBeDefined()
-  })
-
-  test('cita cancelada no aparece en citas activas', async () => {
-    await cancelarCita('cita-test-id')
-    const citas = await getCitasPaciente('paciente-test-id')
-    const citaCancelada = citas?.find(c => c.id === 'cita-test-id')
-    expect(citaCancelada).toBeUndefined()
-  })
-
-  test('reprogramación crea nueva cita y marca anterior', async () => {
-    const nueva = await reprogramarCita('cita-vieja-id', {
-      paciente_id: 'p1',
-      medico_id: 'm1',
-      sede_id: 's1',
-      fecha_hora: '2026-06-20T10:00:00'
-    })
-    expect(nueva.estado).toBe('confirmada')
-  })
-
-})
+```yaml
+# .github/workflows/ci.yml — agregar:
+- name: SonarCloud Scan
+  uses: SonarSource/sonarcloud-github-action@master
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 ```
 
-### Pruebas de Regresión
+**Locust — Subir a 300 usuarios:**
 
-Correr el suite completo del Módulo 01 después de cada cambio en este módulo para asegurar que el agendamiento sigue funcionando correctamente.
-
-```bash
-pnpm vitest run __tests__/agendamiento.test.tsx
-pnpm vitest run __tests__/cancelacion.test.tsx
+```python
+# scripts/locustfile.py
+# Cambiar: --users 200 → --users 300
+# Meta: P95 < 2000ms con 300 usuarios
 ```
 
 ---
 
-## Criterios de Aceptación del Sprint 2
+## Compromisos del Sprint 2
 
-|Criterio|Métrica|Estado|
+|Compromiso|Responsable|Criterio|
 |---|---|---|
-|Cancelación completa funciona|Pruebas funcionales 100%|⏳ Pendiente|
-|Regla de 24h aplicada|Validación en servicio + UI|⏳ Pendiente|
-|Slot liberado en tiempo|< 5 segundos|⏳ Pendiente|
-|Reprogramación mantiene datos|Prueba de integración pasa|⏳ Pendiente|
-|Módulo 01 no regresiona|Suite módulo 01 pasa al 100%|⏳ Pendiente|
-|Calidad de código|SonarQube 0 issues críticos|⏳ Pendiente|
-|Despliegue actualizado|Railway con módulo 02 activo|⏳ Pendiente|
+|Bug B-21 cédula corregido|Ethan|Tests nuevos pasando|
+|Bug B-22 fechas corregido|Ethan + Alejandro|Fecha correcta en Panamá|
+|Cancelar cita funcional|Alejandro + Ethan|RPC atómica + UI|
+|Reprogramar cita funcional|Alejandro + Ethan|RPC atómica + UI|
+|Tabla citas_historial|Alejandro|Con RLS|
+|Tests funcionales|Ashley|≥ 80% cobertura módulo 2|
+|SonarCloud en CI|Marian|Pipeline verde|
+|Locust 300 usuarios|Marian + Ashley|P95 < 2000ms|
+|Tests E2E básicos (Playwright)|Ashley|Al menos flujo cancelar|
 
 ---
 
-## Tareas
+## Reglas obligatorias del equipo (de CLAUDE.md)
 
-### En Progreso
-
-- [ ] —
-
-### Pendiente
-
-- [ ] Crear `MisCitas.tsx` y `HistorialCitas.tsx`
-- [ ] Crear componentes de cancelacion/
-- [ ] Crear `cancelacion.service.ts`
-- [ ] Crear tipos en `cancelacion.types.ts`
-- [ ] Escribir pruebas funcionales
-- [ ] Escribir pruebas de integración
-- [ ] Correr suite de regresión del módulo 01
-- [ ] Revisar con SonarQube
-- [ ] Actualizar despliegue en Railway
-- [ ] Documentar daily
-
-### Completado
-
-- [x] Definir historias de usuario HU-03, HU-04, HU-05
-- [x] Diseñar flujo de cancelación y reprogramación
-- [x] Definir queries SQL del módulo
-- [x] Definir estructura de carpetas
-
----
-
-## Decisiones Tomadas
-
-|Decisión|Razón|Fecha|
-|---|---|---|
-|Validar 24h en el servicio, no en la BD|El servicio puede dar feedback inmediato al usuario antes de ir a Supabase|2026-05-21|
-|Reprogramar = update + insert (no delete)|Conservar historial completo de la cita original por trazabilidad|2026-05-21|
-|Pre-cargar datos del médico en reprogramación|Mejor UX, el paciente no repite selecciones innecesarias|2026-05-21|
-|Pruebas de regresión del módulo 01 obligatorias|Cualquier cambio en `citas` puede afectar el agendamiento|2026-05-21|
+1. **Plan antes de código** — siempre proponer y esperar aprobación antes de tocar archivos
+2. **pnpm siempre** — nunca npm ni yarn
+3. **TypeScript estricto** — no usar `any`, no ignorar errores de tipos
+4. **Llamadas a Supabase solo en hooks o lib/** — nunca directamente en componentes
+5. **sessionStorage** para auth (no localStorage)
+6. **withTimeout(15s)** en todas las llamadas a Supabase que puedan colgar
+7. **try/catch/finally** en todos los hooks de datos
+8. **Cada bug nuevo genera su test de regresión**
+9. **Code review obligatorio** antes de merge a main
+10. **Colores del sistema:** azul `#003087`, rojo `#CE1126`
 
 ---
 
 ## Instrucciones para Claude Desktop
 
-> Estas instrucciones son para que Claude Desktop pueda construir este módulo con toda la información necesaria.
+**Contexto:** Continúas el trabajo del Sprint 1 de HELIOS. El sistema ya está en producción en https://helios-web-production.up.railway.app. Tienes 65 tests pasando y un MVP funcional de agendamiento.
 
-**Contexto del proyecto:**
+**Lo que debes hacer en el Sprint 2:**
 
-- Sistema: HELIOS — plataforma web de citas médicas
-- Stack: React + TypeScript, Supabase, pnpm, Vitest + RTL
-- Gestor de paquetes: pnpm (NO usar npm)
-- Módulo actual: 02 — Cancelación y Reprogramación
-- Módulo previo completado: [[Módulo 01 — Agendamiento de Citas]]
+1. Corregir B-21 (cédula) en `lib/cedula.ts`
+2. Corregir B-22 (timezone) en el componente de calendario y seed
+3. Crear función SQL `cancelar_cita_atomica`
+4. Crear función SQL `reprogramar_cita_atomica`
+5. Crear tabla `citas_historial` con triggers
+6. Crear hook `useCancelarCita`
+7. Crear componente `BotonCancelarCita` con modal
+8. Crear página `ReprogramarCita`
+9. Actualizar `MisCitas.tsx` con los botones de acción
+10. Escribir tests funcionales para ambos flujos
 
-**Lo que debe construir:**
+**ANTES de escribir cualquier código:**
 
-1. Página `MisCitas.tsx` con lista de citas activas y acciones
-2. Página `HistorialCitas.tsx` con filtros por estado
-3. Componentes en `cancelacion/`: TarjetaCita, ModalCancelar, ModalReprogramar, BadgeEstado
-4. Servicio `cancelacion.service.ts` con todas las funciones definidas
-5. Pruebas funcionales y de integración en `__tests__/cancelacion.test.tsx`
-6. Tipos en `cancelacion.types.ts`
+- Leer `docs/CLAUDE.md` — reglas obligatorias
+- Leer `docs/CONTEXTO_SESION_ULTIMA.md` — estado actual
+- Leer `docs/MEMORIA_SPRINT_1_FINAL.md` — bugs ya resueltos
 
-**Restricciones:**
+**Lo que NO debes hacer:**
 
-- Usar TypeScript estricto en todo el código
-- Usar pnpm, nunca npm
-- Seguir la estructura de carpetas definida exactamente
-- La validación de 24h va en el servicio, no en el componente
-- Las llamadas a Supabase van solo en el archivo de servicios
-- Al reprogramar: marcar cita anterior como `reprogramada` ANTES de crear la nueva
-- Correr suite de regresión del módulo 01 antes de hacer commit
-
-**Archivos de referencia:**
-
-- [[Proyecto - HELIOS]] — nota general del proyecto
-- [[Módulo 01 — Agendamiento de Citas]] — módulo previo, tablas ya creadas
-- [[Módulo 03 — Sincronización entre Sedes]] — siguiente módulo
+- Usar npm o yarn (solo pnpm)
+- Usar localStorage (solo sessionStorage para auth)
+- Poner lógica de Supabase en componentes (solo en hooks o lib/)
+- Usar `any` en TypeScript
+- Omitir try/catch/finally en hooks de datos
+- Olvidar withTimeout en llamadas a Supabase
 
 ---
 
-## Recursos y Referencias
+## Referencias
 
 - [[Proyecto - HELIOS]] ← proyecto padre
-- [[Módulo 01 — Agendamiento de Citas]] ← módulo previo
-- [[Módulo 03 — Sincronización entre Sedes]] ← siguiente módulo
-- [[Sprint 2 — Cancelación]]
-- [[Daily — Semana 1 — Sprint 2]]
-- [Supabase Update Docs](https://supabase.com/docs/reference/javascript/update)
-- [Supabase RLS Docs](https://supabase.com/docs/guides/auth/row-level-security)
-- [Vitest Docs](https://vitest.dev/)
-
----
-
-## Reflexiones del Módulo
-
-_(Llenar después de cada semana de trabajo)_
-
-**2026-05-21 — Planificación** Módulo más lógico del sistema. El reto principal es la regla de negocio de 24h y asegurar que la reprogramación no deje datos huérfanos en la base de datos. Las pruebas de integración van a ser clave aquí.
+- [[Módulo 01 — Agendamiento de Citas]] ← Sprint 1 completo
+- [[Sprint 1 — Agendamiento de Citas]] ← cerrado
+- [[Sprint 2 — Cancelación y Reprogramación]]
+- [[Daily — Semana 1 — Sprint 0]]
+- [Producción](https://helios-web-production.up.railway.app/)
+- [GitHub](https://github.com/MarianC-programing/Helios)
+- [Jira HELL-3](https://helios-group.atlassian.net/)
 
 ---
 
