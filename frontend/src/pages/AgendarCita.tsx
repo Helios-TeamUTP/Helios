@@ -186,7 +186,13 @@ export function AgendarCita() {
 
         {error && <ErrorMessage message={error} />}
 
-        <div className="flex items-center justify-between border-t border-helios-ink/5 pt-5">
+        {/*
+          Barra de acciones. En móvil queda STICKY al fondo de la pantalla
+          (sticky bottom-0 + fondo blanco), así el botón "Confirmar cita" / "Siguiente"
+          siempre se ve sin tener que scrollear hasta abajo (confunde a personas
+          mayores). En desktop (sm:) vuelve a su posición normal al pie del card.
+        */}
+        <div className="sticky bottom-0 z-10 -mx-6 -mb-6 flex items-center justify-between gap-3 rounded-b-2xl border-t border-helios-ink/10 bg-white px-6 py-4 shadow-[0_-6px_16px_-8px_rgba(15,42,54,0.18)] sm:static sm:mx-0 sm:mb-0 sm:rounded-none sm:border-helios-ink/5 sm:bg-transparent sm:px-0 sm:py-0 sm:pt-5 sm:shadow-none">
           <button
             onClick={() => dispatch({ type: 'BACK' })}
             disabled={state.paso === 1 || submitting}
