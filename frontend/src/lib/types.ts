@@ -106,10 +106,47 @@ export interface CitaConPaciente extends Cita {
   horario?: Horario | null
 }
 
+/**
+ * Sprint 4 (HELL-5): notificaciones in-app. Una fila por destinatario
+ * (paciente XOR medico). Las genera un trigger desde citas_historial.
+ */
+export type TipoNotificacion =
+  | 'creada'
+  | 'reprogramada'
+  | 'cancelada'
+  | 'recordatorio'
+  | 'bienvenida'
+
+export type CanalNotificacion = 'in_app' | 'email'
+export type EstadoEnvio = 'pendiente' | 'enviado' | 'fallido' | 'no_aplica'
+
+export interface Notificacion {
+  id: string
+  paciente_id: string | null
+  medico_id: string | null
+  cita_id: string | null
+  destinatario: 'paciente' | 'medico'
+  tipo: TipoNotificacion
+  titulo: string
+  mensaje: string
+  leida: boolean
+  // Campos de envío (diseño fusionado). La campanita usa canal 'in_app';
+  // el correo (Fase C) usará canal 'email' + estado/enviado_at.
+  canal: CanalNotificacion
+  estado: EstadoEnvio
+  enviado_at: string | null
+  created_at: string
+}
+
 export interface Database {
   public: {
     Tables: {
       sedes: { Row: Sede; Insert: Partial<Sede>; Update: Partial<Sede> }
+      notificaciones: {
+        Row: Notificacion
+        Insert: Partial<Notificacion>
+        Update: Partial<Notificacion>
+      }
       especialidades: {
         Row: Especialidad
         Insert: Partial<Especialidad>

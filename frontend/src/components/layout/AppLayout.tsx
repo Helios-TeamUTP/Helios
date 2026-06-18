@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { CampanaNotificaciones } from '../notificaciones/CampanaNotificaciones'
 
 export function AppLayout() {
   const { user, paciente, medico, role, loading, signOut } = useAuth()
@@ -21,11 +22,17 @@ export function AppLayout() {
       <header className="sticky top-0 z-50 border-b border-helios-ink/5 bg-white shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" className="relative z-10 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-helios-primary text-white">
-              <SunIcon />
-            </div>
+            {/* Parcial 2: nuevo logo de marca (cruz roja). El simbolo es un PNG
+                transparente en /public; reemplaza el icono de sol teal. */}
+            <img
+              src="/helios-symbol.png"
+              alt="HELIOS"
+              width={36}
+              height={36}
+              className="h-9 w-9 object-contain"
+            />
             <div>
-              <div className="text-base font-bold leading-tight text-helios-ink">HELIOS</div>
+              <div className="text-base font-bold leading-tight text-helios-logo">HELIOS</div>
               <div className="text-xs text-helios-ink/50">Citas médicas unificadas</div>
             </div>
           </Link>
@@ -49,6 +56,9 @@ export function AppLayout() {
                     {role === null && <NavItem to="/registro">Completa tu perfil</NavItem>}
                   </>
                 )}
+                {/* Sprint 4: campanita de notificaciones (solo con rol resuelto,
+                    para no mostrarla durante el loading transitorio — B-16). */}
+                {!loading && role !== null && <CampanaNotificaciones />}
                 <div className="mx-2 hidden text-sm text-helios-ink/60 sm:block">
                   {loading ? 'Cargando…' : nombreUsuario}
                 </div>
@@ -87,14 +97,5 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     >
       {children}
     </NavLink>
-  )
-}
-
-function SunIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-    </svg>
   )
 }
