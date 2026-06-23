@@ -7,7 +7,7 @@ import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { AgendarCita } from './pages/AgendarCita'
 import { MisCitas } from './pages/MisCitas'
-import { MedicoDashboard } from './pages/MedicoDashboard'
+import { MedicoDashboardV2 } from './pages/MedicoDashboardV2'
 
 export default function App() {
   return (
@@ -23,9 +23,9 @@ export default function App() {
               <Route path="agendar" element={<AgendarCita />} />
               <Route path="mis-citas" element={<MisCitas />} />
             </Route>
-            {/* Bug B-13: ruta protegida del dashboard medico */}
+            {/* Dashboard médico — v2 con tabla */}
             <Route element={<ProtectedRoute requireRole="medico" />}>
-              <Route path="medico" element={<MedicoDashboard />} />
+              <Route path="medico" element={<MedicoDashboardV2 />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

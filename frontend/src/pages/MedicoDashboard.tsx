@@ -1,3 +1,7 @@
+/**
+ * @deprecated Reemplazado por MedicoDashboardV2.tsx (rama feature/dashboard-medico).
+ * Mantenido para referencia histórica — no está montado en el router.
+ */
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useMedicoCitas } from '../hooks/useMedicoCitas'
@@ -9,17 +13,6 @@ import type { Paciente } from '../lib/types'
 
 type Tab = 'hoy' | 'historial'
 
-/**
- * Dashboard para medicos. Bug B-13: pantalla nueva del Sprint 1.
- *
- * Tabs:
- * - "Agenda de hoy": citas asignadas para hoy, con botones para marcar
- *   completada / no asistio.
- * - "Historial": citas pasadas del medico (read-only).
- *
- * Click en "Ver ficha" abre modal FichaPaciente con datos del paciente
- * + sus ultimas 5 citas.
- */
 export function MedicoDashboard() {
   const { medico } = useAuth()
   const [tab, setTab] = useState<Tab>('hoy')
@@ -27,8 +20,6 @@ export function MedicoDashboard() {
 
   const { data: citas, loading, error, marcarEstado } = useMedicoCitas(medico?.id ?? null, tab)
 
-  // medico viene garantizado por ProtectedRoute requireRole='medico'.
-  // Pero defensivo: si por algun motivo no, mostramos mensaje.
   if (!medico) {
     return (
       <div className="mx-auto max-w-3xl">
@@ -41,7 +32,6 @@ export function MedicoDashboard() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      {/* Header con info del medico */}
       <header className="card mb-6">
         <h1 className="text-2xl font-bold text-helios-deep">{medico.nombre}</h1>
         <p className="mt-1 text-sm text-helios-ink/60">
@@ -50,7 +40,6 @@ export function MedicoDashboard() {
         </p>
       </header>
 
-      {/* Tabs */}
       <div className="mb-4 flex gap-2 border-b border-helios-ink/10">
         <button
           type="button"
@@ -76,15 +65,12 @@ export function MedicoDashboard() {
         </button>
       </div>
 
-      {/* Lista de citas */}
       {loading && (
         <div className="flex min-h-[20vh] items-center justify-center">
           <LoadingSpinner label="Cargando agenda…" />
         </div>
       )}
-
       {error && <ErrorMessage message={`No se pudo cargar la agenda: ${error}`} />}
-
       {!loading && !error && citas.length === 0 && (
         <div className="card text-center text-helios-ink/60">
           {tab === 'hoy'
@@ -92,7 +78,6 @@ export function MedicoDashboard() {
             : 'No tienes citas anteriores registradas.'}
         </div>
       )}
-
       {!loading && !error && citas.length > 0 && (
         <ul className="space-y-3">
           {citas.map((cita) => (
@@ -110,7 +95,6 @@ export function MedicoDashboard() {
         </ul>
       )}
 
-      {/* Modal Ficha del paciente */}
       {pacienteFicha && (
         <FichaPaciente paciente={pacienteFicha} onClose={() => setPacienteFicha(null)} />
       )}
