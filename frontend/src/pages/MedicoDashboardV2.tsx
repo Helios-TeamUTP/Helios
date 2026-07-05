@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMedicoCitas } from '../hooks/useMedicoCitas'
 import { FichaPaciente } from '../components/medico/FichaPaciente'
@@ -248,14 +249,19 @@ export function MedicoDashboardV2() {
             {medico.sede?.nombre ? ` · ${medico.sede.nombre}` : ''}
           </p>
         </div>
-        <p className="text-sm text-helios-ink/40">
-          {new Date().toLocaleDateString('es-PA', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          })}
-        </p>
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <p className="text-sm text-helios-ink/40">
+            {new Date().toLocaleDateString('es-PA', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </p>
+          <Link to="/medico/pacientes" className="btn-secondary py-1.5 text-xs">
+            Gestión de Pacientes →
+          </Link>
+        </div>
       </div>
 
       {/* ── Stat cards ─────────────────────────────────────────────────── */}

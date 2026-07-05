@@ -84,6 +84,11 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
 
   useEffect(() => {
     const signal = { active: true }
+    // fetchCitas es async y solo llama setState tras chequear signal.active
+    // (cancelado en el cleanup de abajo). Patron oficial de React para
+    // evitar race conditions en efectos con fetch async; la regla no puede
+    // verificar estaticamente que el guard ya lo hace seguro.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCitas(signal)
     return () => {
       signal.active = false

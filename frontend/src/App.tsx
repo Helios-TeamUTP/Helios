@@ -8,6 +8,7 @@ import { Register } from './pages/Register'
 import { AgendarCita } from './pages/AgendarCita'
 import { MisCitas } from './pages/MisCitas'
 import { MedicoDashboardV2 } from './pages/MedicoDashboardV2'
+import { PacientesMedico } from './pages/PacientesMedico'
 
 export default function App() {
   return (
@@ -23,9 +24,10 @@ export default function App() {
               <Route path="agendar" element={<AgendarCita />} />
               <Route path="mis-citas" element={<MisCitas />} />
             </Route>
-            {/* Dashboard médico — v2 con tabla */}
+            {/* Rutas de médico */}
             <Route element={<ProtectedRoute requireRole="medico" />}>
               <Route path="medico" element={<MedicoDashboardV2 />} />
+              <Route path="medico/pacientes" element={<PacientesMedico />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
