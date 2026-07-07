@@ -24,7 +24,7 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.util import Inches, Pt
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / "dailys" / "Entrega_Viernes"
+OUT_DIR = ROOT / "dailys" / "Entrega_Viernes" / "Sprint_2"
 OUT_PPTX = OUT_DIR / "HELIOS_Sprint2.pptx"
 OUT_PDF = OUT_DIR / "HELIOS_Sprint2_diapositivas.pdf"
 QR_IMG = ROOT / "dailys" / "qr_helios_demo.png"

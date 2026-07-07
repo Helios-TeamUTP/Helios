@@ -1,102 +1,117 @@
 /**
- * Validación de cédula de identidad personal panameña.
+ * Validación de cédula de identidad personal panameña — versión ESTRICTA.
  *
- * Bug B-22: el validador anterior exigía 5-12 dígitos tras quitar el prefijo,
- * lo que RECHAZABA cédulas válidas cortas (ej. `PE-5-687` queda en 4 dígitos).
- * Ahora validamos por ESTRUCTURA según el tipo oficial del Tribunal Electoral,
- * con un fallback permisivo de dígitos para no rechazar nunca una cédula real.
+ * Formato oficial (Tribunal Electoral de Panamá):  [TIPO]-[TOMO]-[ASIENTO]
  *
- * Tipos oficiales (Tribunal Electoral de Panamá):
- *  - Natural (por nacimiento): clave(1-13)-tomo-asiento       ej. 8-926-1601
- *      La "clave" (1-13) NO son solo provincias: incluye las 10 provincias +
- *      3 comarcas indigenas. 1-9 provincias (8=Panama), 10-12 comarcas,
- *      13 = Panama Oeste (10a provincia, creada en 2014).
- *  - PE  (panameño nacido en el extranjero):  PE-tomo-asiento ej. PE-5-687
- *  - N   (naturalizado):                       N-tomo-asiento ej. N-19-473
- *  - E   (extranjero domiciliado):           E-provincia-orden ej. E-8-74258
- *  - PI  (indígena / comarca):                PI-tomo-asiento ej. PI-12-3456
+ *  | Tipo                  | Prefijo                | Ejemplo     |
+ *  |-----------------------|------------------------|-------------|
+ *  | Provincial            | número de provincia    | 8-123-4567  |
+ *  | Naturalizado          | N                      | N-12-34567  |
+ *  | Extranjero residente  | E                      | E-8-123456  |
+ *  | Permiso especial      | PE                     | PE-4-12345  |
+ *  | Indígena / comarca    | PI                     | PI-12-3456  |
+ *
+ * Reglas por componente:
+ *  - Provincia: 1 a 99 (1-13 hoy; hasta 99 para futuras provincias/comarcas),
+ *    sin cero a la izquierda.
+ *  - Tomo: 1 a 4 dígitos, no puede ser 0.
+ *  - Asiento: 1 a 7 dígitos, no puede ser 0.
+ *  - Separador siempre guion `-`, sin espacios.
+ *  - Las letras N, E, PE, PI deben ir en MAYÚSCULAS.
+ *
+ * Corrige BUG-01: el validador anterior aceptaba cualquier secuencia de 5-12
+ * dígitos ("12345", "00000", "999999999999") como válida. Ahora se exige la
+ * estructura completa.
  */
-
-export type TipoCedula = 'natural' | 'pe' | 'n' | 'e' | 'pi' | 'desconocido'
-
-/** Patrones por tipo (sobre la cédula normalizada y sin espacios). */
-const PATRONES: Record<Exclude<TipoCedula, 'desconocido'>, RegExp> = {
-  // Clave + tomo + asiento. Hoy la clave va de 1 a 13 (10 provincias + 3
-  // comarcas; 13 = Panamá Oeste), PERO Panamá sigue creando comarcas (ej. Naso
-  // Tjër Di en 2020) que podrian recibir claves nuevas. Para NO rechazar nunca
-  // una cedula valida futura, aceptamos la clave de 1 a 99 (1-2 digitos, sin 0).
-  natural: /^([1-9][0-9]?)-\d{1,4}-\d{1,6}$/,
-  pe: /^PE-\d{1,4}-\d{1,6}$/,
-  n: /^N-\d{1,4}-\d{1,6}$/,
-  e: /^E-([1-9][0-9]?)-\d{1,6}$/,
-  pi: /^PI-\d{1,4}-\d{1,6}$/,
-}
 
 /**
- * Fallback de seguridad: dígitos puros 5-13 (sin guiones ni prefijo).
- * Garantiza que NUNCA rechacemos una cédula válida escrita sin guiones.
- * Las cédulas cortas con prefijo (ej. PE-5-687) las cubre su propio patrón;
- * por eso el mínimo de dígitos puros se mantiene en 5 (descarta basura como
- * "1234"). La doble confirmación de cédula (B-23) es la red real contra
- * errores de tipeo.
+ * Regex oficial de la cédula panameña — desglose de cada parte:
+ *
+ *   ^                          inicio de la cadena
+ *   (?: [1-9]\d? | N | E | PE | PI )  TIPO (una de cinco opciones):
+ *        [1-9]\d?              · provincia 1-99 (sin cero inicial: "1".."99")
+ *        N                     · naturalizado
+ *        E                     · extranjero residente
+ *        PE                    · permiso especial
+ *        PI                    · indígena / comarca
+ *   -                          separador (guion, sin espacios)
+ *   [1-9]\d{0,3}               TOMO: 1 a 4 dígitos, sin cero inicial → nunca 0
+ *   -                          separador
+ *   [1-9]\d{0,6}               ASIENTO: 1 a 7 dígitos, sin cero inicial → nunca 0
+ *   $                          fin de la cadena
+ *
+ * Es case-sensitive a propósito: N, E, PE, PI deben venir en MAYÚSCULAS.
  */
-const FALLBACK_DIGITOS = /^\d{5,13}$/
+export const CEDULA_REGEX = /^(?:[1-9]\d?|N|E|PE|PI)-[1-9]\d{0,3}-[1-9]\d{0,6}$/
 
-/** Normaliza: quita espacios extremos y pasa a mayúsculas (PE, N, E, PI). */
+/**
+ * Valida una cédula panameña por su ESTRUCTURA completa. No normaliza el
+ * texto: espera la cédula ya en mayúsculas y sin espacios (usar
+ * `normalizeCedula` antes si hace falta). Rechaza dígitos sueltos, letras
+ * minúsculas, espacios, valores 0 y provincias > 99.
+ */
+export function isValidCedulaPanama(cedula: string): boolean {
+  return CEDULA_REGEX.test(cedula)
+}
+
+/** Normaliza: quita espacios extremos y pasa a mayúsculas (N, E, PE). */
 export function normalizeCedula(cedula: string): string {
   return cedula.trim().toUpperCase()
 }
 
-/** Versión compacta usada internamente: sin espacios internos. */
-function compacta(cedula: string): string {
-  return normalizeCedula(cedula).replace(/\s+/g, '')
+/**
+ * Devuelve el tipo de una cédula válida, o 'invalida' si no cumple el formato.
+ * Útil para etiquetar la cédula del usuario o ramificar lógica por tipo.
+ */
+export function tipoCedula(
+  cedula: string,
+): 'provincial' | 'naturalizado' | 'extranjero' | 'permiso-especial' | 'indigena' | 'invalida' {
+  if (!isValidCedulaPanama(cedula)) return 'invalida'
+  if (cedula.startsWith('PE-')) return 'permiso-especial'
+  if (cedula.startsWith('PI-')) return 'indigena'
+  if (cedula.startsWith('N-')) return 'naturalizado'
+  if (cedula.startsWith('E-')) return 'extranjero'
+  return 'provincial' // empieza con dígito de provincia
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Helpers de UI (usados por Register.tsx). Se mantienen para no romper el form;
+// se apoyan en el validador estricto de arriba.
+// ───────────────────────────────────────────────────────────────────────────
+
+export type TipoCedula = 'natural' | 'n' | 'e' | 'pe' | 'pi' | 'desconocido'
+
 /**
- * Detecta el tipo de cédula. Útil para mostrarle al usuario qué tipo
- * reconoció el sistema mientras escribe.
+ * Detecta el tipo de cédula para mostrarlo en vivo mientras el usuario escribe.
+ * Normaliza primero (acepta minúsculas y espacios extremos) y luego clasifica
+ * con el validador estricto. Devuelve 'desconocido' si el formato no es válido.
  */
 export function detectarTipoCedula(cedula: string): {
   tipo: TipoCedula
   etiqueta: string
 } {
-  const c = compacta(cedula)
-  if (PATRONES.pe.test(c)) return { tipo: 'pe', etiqueta: 'Panameño nacido en el extranjero (PE)' }
-  if (PATRONES.pi.test(c)) return { tipo: 'pi', etiqueta: 'Indígena / comarca (PI)' }
-  if (PATRONES.n.test(c)) return { tipo: 'n', etiqueta: 'Naturalizado (N)' }
-  if (PATRONES.e.test(c)) return { tipo: 'e', etiqueta: 'Extranjero domiciliado (E)' }
-  if (PATRONES.natural.test(c)) return { tipo: 'natural', etiqueta: 'Panameño por nacimiento' }
-  if (FALLBACK_DIGITOS.test(c)) return { tipo: 'natural', etiqueta: 'Cédula (solo dígitos)' }
-  return { tipo: 'desconocido', etiqueta: 'Formato no reconocido' }
+  const t = tipoCedula(normalizeCedula(cedula))
+  switch (t) {
+    case 'provincial':
+      return { tipo: 'natural', etiqueta: 'Panameño por nacimiento' }
+    case 'naturalizado':
+      return { tipo: 'n', etiqueta: 'Naturalizado (N)' }
+    case 'extranjero':
+      return { tipo: 'e', etiqueta: 'Extranjero residente (E)' }
+    case 'permiso-especial':
+      return { tipo: 'pe', etiqueta: 'Permiso especial (PE)' }
+    case 'indigena':
+      return { tipo: 'pi', etiqueta: 'Indígena / comarca (PI)' }
+    default:
+      return { tipo: 'desconocido', etiqueta: 'Formato no reconocido' }
+  }
 }
 
-/**
- * Valida una cédula panameña. Acepta los 5 tipos oficiales (con guiones) y,
- * como red de seguridad, dígitos puros (4-13). Rechaza letras intermedias,
- * símbolos y cadenas vacías.
- */
-export function isValidCedulaPanama(cedula: string): boolean {
-  if (!cedula) return false
-  const c = compacta(cedula)
-  return (
-    PATRONES.natural.test(c) ||
-    PATRONES.pe.test(c) ||
-    PATRONES.n.test(c) ||
-    PATRONES.e.test(c) ||
-    PATRONES.pi.test(c) ||
-    FALLBACK_DIGITOS.test(c)
-  )
-}
-
-/**
- * Ejemplos por tipo para mostrar en la UI (placeholder y ayuda visual).
- * Bug B-22: el PO pidió que el usuario vea ejemplos de los tipos que el
- * sistema conoce, para reducir errores al escribir la cédula.
- */
+/** Ejemplos por tipo para mostrar en la UI (placeholder y ayuda visual). */
 export const EJEMPLOS_CEDULA: ReadonlyArray<{ tipo: string; ejemplo: string }> = [
-  { tipo: 'Panameño por nacimiento', ejemplo: '8-926-1601' },
-  { tipo: 'Nacido en el extranjero', ejemplo: 'PE-5-687' },
+  { tipo: 'Provincial', ejemplo: '8-123-4567' },
   { tipo: 'Naturalizado', ejemplo: 'N-19-473' },
-  { tipo: 'Extranjero', ejemplo: 'E-8-74258' },
+  { tipo: 'Extranjero residente', ejemplo: 'E-8-74258' },
+  { tipo: 'Permiso especial', ejemplo: 'PE-5-687' },
   { tipo: 'Indígena / comarca', ejemplo: 'PI-12-3456' },
 ]

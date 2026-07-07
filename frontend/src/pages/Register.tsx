@@ -176,6 +176,22 @@ export function Register() {
        */
 
       if (!isCompletingProfile) {
+        // Bug B-02: verificar el CORREO antes de crear la cuenta auth (igual que
+        // ya se verifica la cédula). Evita dejar una cuenta auth.users huérfana
+        // cuando el correo ya pertenece a otro paciente: cortamos antes del signUp.
+        const { data: existingCorreo } = await withTimeout(
+          supabase
+            .from('pacientes')
+            .select('id')
+            .eq('correo', form.correo.trim().toLowerCase())
+            .maybeSingle(),
+          AUTH_TIMEOUT_MS,
+        )
+        if (existingCorreo) {
+          setError('Ese correo ya está registrado. Inicia sesión.')
+          return
+        }
+
         // Caso A: nuevo usuario
         const { data: authData, error: authError } = await withTimeout(
           supabase.auth.signUp({

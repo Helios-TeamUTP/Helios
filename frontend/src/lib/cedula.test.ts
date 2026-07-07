@@ -1,111 +1,76 @@
-import { describe, expect, it } from 'vitest'
+import { describe, test, expect } from 'vitest'
 import {
   isValidCedulaPanama,
   normalizeCedula,
-  detectarTipoCedula,
-  EJEMPLOS_CEDULA,
+  tipoCedula,
+  CEDULA_REGEX,
 } from './cedula'
 
-describe('cedula panama', () => {
-  describe('isValidCedulaPanama', () => {
-    it('acepta cedulas numericas de 8 digitos', () => {
-      expect(isValidCedulaPanama('12345678')).toBe(true)
-    })
+describe('isValidCedulaPanama — cédulas VÁLIDAS', () => {
+  test.each([
+    ['8-123-4567', 'provincial estándar'],
+    ['1-1-1', 'valores mínimos'],
+    ['99-9999-9999999', 'máximos (provincia 99, tomo 4 dígitos, asiento 7 dígitos)'],
+    ['13-1-1', 'comarca Ngäbe-Buglé (provincia 13)'],
+    ['N-12-34567', 'naturalizado'],
+    ['E-8-123456', 'extranjero residente'],
+    ['PE-4-12345', 'permiso especial'],
+    ['PI-12-3456', 'indígena / comarca'],
+    ['8-1-1234567', 'asiento en el máximo de 7 dígitos'],
+  ])('"%s" → true (%s)', (cedula) => {
+    expect(isValidCedulaPanama(cedula)).toBe(true)
+  })
+})
 
-    it('acepta cedulas numericas de 9 a 10 digitos', () => {
-      expect(isValidCedulaPanama('123456789')).toBe(true)
-      expect(isValidCedulaPanama('1234567890')).toBe(true)
-    })
+describe('isValidCedulaPanama — cédulas INVÁLIDAS', () => {
+  test.each([
+    ['12345', 'bug original — solo dígitos sin estructura'],
+    ['00000', 'bug original — ceros sin estructura'],
+    ['999999999999', 'bug original — 12 dígitos sin formato'],
+    ['100-1-1', 'provincia 100, supera el máximo de 99'],
+    ['0-1-1', 'provincia 0 no existe'],
+    ['8-0-1', 'tomo 0 inválido'],
+    ['8-1-0', 'asiento 0 inválido'],
+    ['8-1-12345678', 'asiento de 8 dígitos, supera el máximo de 7'],
+    ['8 123 4567', 'espacios en lugar de guiones'],
+    ['n-12-34567', 'minúsculas sin normalizar'],
+    ['', 'cadena vacía'],
+  ])('"%s" → false (%s)', (cedula) => {
+    expect(isValidCedulaPanama(cedula)).toBe(false)
+  })
+})
 
-    it('acepta formato natural con guiones tipo 8-123-4567', () => {
-      expect(isValidCedulaPanama('8-123-4567')).toBe(true)
-    })
+describe('tipoCedula', () => {
+  test.each([
+    ['8-123-4567', 'provincial'],
+    ['13-1-1', 'provincial'],
+    ['N-12-34567', 'naturalizado'],
+    ['E-8-123456', 'extranjero'],
+    ['PE-4-12345', 'permiso-especial'],
+    ['PI-12-3456', 'indigena'],
+    ['12345', 'invalida'],
+    ['100-1-1', 'invalida'],
+    ['', 'invalida'],
+  ])('"%s" → %s', (cedula, esperado) => {
+    expect(tipoCedula(cedula)).toBe(esperado)
+  })
+})
 
-    it('acepta formato con prefijo PE, N o E', () => {
-      expect(isValidCedulaPanama('PE-12-345')).toBe(true)
-      expect(isValidCedulaPanama('N-12-345')).toBe(true)
-      expect(isValidCedulaPanama('E-12-345')).toBe(true)
-    })
-
-    /**
-     * Bug B-22: el validador anterior rechazaba cédulas válidas cortas
-     * porque exigía >=5 dígitos tras quitar el prefijo. Estos casos reales
-     * (del Tribunal Electoral) ahora DEBEN aceptarse.
-     */
-    it('B-22: acepta cedulas validas cortas por tipo', () => {
-      expect(isValidCedulaPanama('PE-5-687')).toBe(true) // antes fallaba (4 digitos)
-      expect(isValidCedulaPanama('N-19-473')).toBe(true)
-      expect(isValidCedulaPanama('E-8-74258')).toBe(true)
-      expect(isValidCedulaPanama('8-926-1601')).toBe(true)
-      expect(isValidCedulaPanama('PI-12-3456')).toBe(true)
-    })
-
-    it('B-22: normaliza minusculas y espacios antes de validar', () => {
-      expect(isValidCedulaPanama('  pe-5-687  ')).toBe(true)
-    })
-
-    it('rechaza strings vacios o muy cortos', () => {
-      expect(isValidCedulaPanama('')).toBe(false)
-      expect(isValidCedulaPanama('1234')).toBe(false)
-    })
-
-    it('rechaza strings con letras al medio (no PE/N/E/PI)', () => {
-      expect(isValidCedulaPanama('abc12345')).toBe(false)
-    })
-
-    it('rechaza con caracteres no permitidos', () => {
-      expect(isValidCedulaPanama('123.456.789')).toBe(false)
-      expect(isValidCedulaPanama('8/123/4567')).toBe(false)
-    })
-
-    it('B-22: acepta claves futuras (nuevas comarcas) y rechaza clave 0', () => {
-      // Future-proof: Panamá sigue creando comarcas (ej. Naso Tjër Di 2020) que
-      // podrian recibir claves > 13. Aceptamos 1-99 para no rechazar cedulas
-      // validas futuras. La clave 0 (o 00) NO existe -> se rechaza.
-      expect(isValidCedulaPanama('14-1-1')).toBe(true) // hipotetica comarca nueva
-      expect(isValidCedulaPanama('0-1-1')).toBe(false)
-      expect(isValidCedulaPanama('00-1-1')).toBe(false)
-    })
+describe('normalizeCedula', () => {
+  test('quita espacios extremos y pasa a mayúsculas', () => {
+    expect(normalizeCedula('  n-12-34567  ')).toBe('N-12-34567')
+    expect(normalizeCedula('pe-4-12345')).toBe('PE-4-12345')
   })
 
-  describe('detectarTipoCedula (B-22)', () => {
-    it('detecta tipo PE', () => {
-      expect(detectarTipoCedula('PE-5-687').tipo).toBe('pe')
-    })
-    it('detecta tipo N (naturalizado)', () => {
-      expect(detectarTipoCedula('N-19-473').tipo).toBe('n')
-    })
-    it('detecta tipo E (extranjero)', () => {
-      expect(detectarTipoCedula('E-8-74258').tipo).toBe('e')
-    })
-    it('detecta tipo PI (comarca)', () => {
-      expect(detectarTipoCedula('PI-12-3456').tipo).toBe('pi')
-    })
-    it('detecta tipo natural', () => {
-      expect(detectarTipoCedula('8-926-1601').tipo).toBe('natural')
-    })
-    it('marca desconocido para basura', () => {
-      expect(detectarTipoCedula('abc!!').tipo).toBe('desconocido')
-    })
+  test('una cédula minúscula es inválida sin normalizar, válida al normalizar', () => {
+    expect(isValidCedulaPanama('n-12-34567')).toBe(false)
+    expect(isValidCedulaPanama(normalizeCedula('n-12-34567'))).toBe(true)
   })
+})
 
-  describe('EJEMPLOS_CEDULA (B-22)', () => {
-    it('expone ejemplos por tipo para la UI', () => {
-      expect(EJEMPLOS_CEDULA.length).toBeGreaterThanOrEqual(5)
-      // Cada ejemplo debe ser una cédula válida segun el propio validador.
-      for (const { ejemplo } of EJEMPLOS_CEDULA) {
-        expect(isValidCedulaPanama(ejemplo)).toBe(true)
-      }
-    })
-  })
-
-  describe('normalizeCedula', () => {
-    it('quita espacios y pasa a mayusculas', () => {
-      expect(normalizeCedula(' pe-12-345 ')).toBe('PE-12-345')
-    })
-
-    it('preserva la cedula original cuando ya esta normalizada', () => {
-      expect(normalizeCedula('8-123-4567')).toBe('8-123-4567')
-    })
+describe('CEDULA_REGEX', () => {
+  test('matchea una cédula válida y rechaza dígitos sueltos', () => {
+    expect(CEDULA_REGEX.test('8-123-4567')).toBe(true)
+    expect(CEDULA_REGEX.test('12345')).toBe(false)
   })
 })
