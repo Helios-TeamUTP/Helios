@@ -1,38 +1,50 @@
 /**
- * HELIOS — Worker de correo.
+ * HELIOS — Worker de correo (vía API HTTP de Brevo).
  *
  * Lee la cola de la tabla `notificaciones` (canal='email', estado='pendiente'),
- * envia cada correo por Gmail (Nodemailer) y marca la fila 'enviado' o 'fallido'.
- * Corre en loop (poll). Pensado para un servicio en Railway.
+ * envia cada correo por la API de Brevo (HTTP, puerto 443) y marca la fila
+ * 'enviado' o 'fallido'. Corre en loop (poll). Pensado para Railway.
  *
- * Variables de entorno requeridas (se ponen en Railway, NUNCA en el codigo):
+ * Por qué Brevo API y no SMTP directo: Railway (como casi todos los PaaS)
+ * BLOQUEA el SMTP saliente (puertos 25/465/587) → Nodemailer/Gmail da
+ * "Connection timeout". La API HTTP de Brevo usa 443, que no está bloqueado.
+ *
+ * Variables de entorno (se ponen en Railway, NUNCA en el codigo):
  *   SUPABASE_URL                - URL del proyecto Supabase
  *   SUPABASE_SERVICE_ROLE_KEY   - service_role key (lee/actualiza saltando RLS)
- *   GMAIL_USER                  - correo Gmail remitente
- *   GMAIL_APP_PASSWORD          - App Password de 16 letras (no la clave normal)
+ *   BREVO_API_KEY               - API key de Brevo (Settings > SMTP & API)
+ *   SENDER_EMAIL (o GMAIL_USER) - correo remitente VERIFICADO en Brevo
+ *   SENDER_NAME (opcional)      - nombre visible del remitente
  *   POLL_MS (opcional)          - intervalo de sondeo, default 8000 ms
  */
 
 import dotenv from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
-import nodemailer from 'nodemailer'
 
-// Local: carga email-worker/.env (Gmail) y reutiliza SUPABASE_* de scripts/.env
-// si existen (asi solo pones las credenciales de Gmail). En Railway: usa las
-// Variables del servicio (estos archivos no existen alli y no pasa nada).
+// Local: carga email-worker/.env y reutiliza SUPABASE_* de scripts/.env si
+// existen. En Railway: usa las Variables del servicio (estos archivos no
+// existen alli y no pasa nada).
 dotenv.config()
 dotenv.config({ path: '../scripts/.env' })
 
 const {
   SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,
-  GMAIL_USER,
-  GMAIL_APP_PASSWORD,
+  BREVO_API_KEY,
   POLL_MS = '8000',
 } = process.env
 
-const faltan = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'GMAIL_USER', 'GMAIL_APP_PASSWORD']
-  .filter((k) => !process.env[k])
+// El remitente: SENDER_EMAIL nuevo, con fallback a GMAIL_USER (que ya estaba
+// configurado en Railway) para no tener que renombrar la variable.
+const SENDER_EMAIL = process.env.SENDER_EMAIL || process.env.GMAIL_USER
+const SENDER_NAME = process.env.SENDER_NAME || 'HELIOS Citas'
+
+const faltan = Object.entries({
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+  BREVO_API_KEY,
+  SENDER_EMAIL,
+}).filter(([, v]) => !v).map(([k]) => k)
 if (faltan.length) {
   console.error('[config] Faltan variables de entorno:', faltan.join(', '))
   process.exit(1)
@@ -40,22 +52,7 @@ if (faltan.length) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587, // puerto de "submission": suele estar menos bloqueado que el 465
-  secure: false, // 587 usa STARTTLS (se cifra despues de conectar)
-  requireTLS: true,
-  pool: true, // reusa la conexion SMTP -> menos "connect ETIMEDOUT"
-  maxConnections: 1,
-  rateDelta: 1000,
-  rateLimit: 3, // maximo 3 correos por segundo (evita rafagas que Gmail corta)
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  auth: {
-    user: GMAIL_USER,
-    pass: GMAIL_APP_PASSWORD.replace(/\s/g, ''), // por si la pegan con espacios
-  },
-})
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
 
 /** Plantilla HTML simple con la marca HELIOS (rojo). */
 function plantilla(titulo, mensaje) {
@@ -81,6 +78,29 @@ async function marcar(id, estado) {
   if (error) console.error(`[marcar ${estado}] ${id}:`, error.message)
 }
 
+/** Envia UN correo por la API de Brevo. Lanza si la API responde con error. */
+async function enviarBrevo(to, subject, text, html) {
+  const res = await fetch(BREVO_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'api-key': BREVO_API_KEY,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { email: SENDER_EMAIL, name: SENDER_NAME },
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+    }),
+  })
+  if (!res.ok) {
+    const cuerpo = await res.text().catch(() => '')
+    throw new Error(`Brevo HTTP ${res.status}: ${cuerpo.slice(0, 200)}`)
+  }
+}
+
 async function procesarCola() {
   const { data: pendientes, error } = await supabase
     .from('notificaciones')
@@ -104,25 +124,18 @@ async function procesarCola() {
       console.warn(`[skip] notif ${n.id} sin correo de ${n.destinatario}`)
       continue
     }
-    // Reintenta hasta 3 veces si hay un bajon de red (ETIMEDOUT). Asi un
-    // corte momentaneo de internet no marca el correo como fallido.
+    // Reintenta hasta 3 veces si la API falla puntualmente (5xx / red).
     let enviado = false
     let ultimoError
     for (let intento = 1; intento <= 3 && !enviado; intento++) {
       try {
-        await transporter.sendMail({
-          from: `HELIOS Citas <${GMAIL_USER}>`,
-          to,
-          subject: n.titulo,
-          text: n.mensaje,
-          html: plantilla(n.titulo, n.mensaje),
-        })
+        await enviarBrevo(to, n.titulo, n.mensaje, plantilla(n.titulo, n.mensaje))
         enviado = true
       } catch (e) {
         ultimoError = e
         if (intento < 3) {
           console.warn(`[retry ${intento}/3] ${to}: ${e.message}`)
-          await new Promise((r) => setTimeout(r, 2500)) // espera 2.5s y reintenta
+          await new Promise((r) => setTimeout(r, 2500))
         }
       }
     }
@@ -145,27 +158,5 @@ async function loop() {
   setTimeout(loop, Number(POLL_MS))
 }
 
-// Arranque robusto: verifica Gmail con reintentos. Si las credenciales estan
-// mal -> sale (no hay nada que hacer). Si es la red la que falla (timeout) ->
-// reintenta, y si tras 3 intentos sigue sin responder, arranca el loop igual
-// (los envios tienen su propio reintento). Asi un bajon de internet no mata el worker.
-async function iniciar() {
-  for (let intento = 1; intento <= 3; intento++) {
-    try {
-      await transporter.verify()
-      console.log(`[helios-email-worker] Gmail OK (${GMAIL_USER}). Poll cada ${POLL_MS} ms.`)
-      return loop()
-    } catch (err) {
-      const msg = err && err.message ? err.message : String(err)
-      if (/invalid login|535|password not accepted|credentials|badcredentials/i.test(msg)) {
-        console.error('[helios-email-worker] Gmail NO autentica (credenciales malas):', msg)
-        process.exit(1)
-      }
-      console.warn(`[verify ${intento}/3] Gmail no respondió (${msg}). Reintentando en 3s...`)
-      await new Promise((r) => setTimeout(r, 3000))
-    }
-  }
-  console.warn('[helios-email-worker] Gmail no verificó (red inestable), pero arranco el loop igual.')
-  loop()
-}
-iniciar()
+console.log(`[helios-email-worker] Brevo listo (remitente ${SENDER_EMAIL}). Poll cada ${POLL_MS} ms.`)
+loop()
