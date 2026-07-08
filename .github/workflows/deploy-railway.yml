@@ -1,0 +1,42 @@
+name: Deploy a Railway (helios-web)
+
+# Despliega el frontend a Railway automaticamente.
+# Corre en los servidores de GitHub (Linux) -> NO usa el railway.exe de la
+# maquina de Jose, asi esquiva el bloqueo de Smart App Control (Windows 11).
+#
+# Se dispara solo en cada push a main, y tambien a mano desde la pestana
+# "Actions" del repo (boton "Run workflow").
+#
+# Requiere el secret RAILWAY_API_TOKEN (token de cuenta de Railway) ya
+# guardado en: repo -> Settings -> Secrets and variables -> Actions.
+# El Project ID / service / environment NO son secretos (van aqui abajo).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  RAILWAY_PROJECT_ID: e9def4c0-2df1-4dfa-bb52-329e9e9463c4
+  RAILWAY_SERVICE: helios-web
+  RAILWAY_ENVIRONMENT: production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Traer el codigo del repo
+        uses: actions/checkout@v4
+
+      - name: Instalar el CLI de Railway
+        run: npm install -g @railway/cli
+
+      - name: Vincular el proyecto Railway
+        run: railway link --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT" --service "$RAILWAY_SERVICE"
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+
+      - name: Desplegar helios-web
+        run: railway up --service "$RAILWAY_SERVICE" --ci
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
