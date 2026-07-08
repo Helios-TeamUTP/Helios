@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMedicoCitas } from '../hooks/useMedicoCitas'
+import { useHistorialClinico } from '../hooks/useHistorialClinico'
 import { FichaPaciente } from '../components/medico/FichaPaciente'
+import { ModalCompletarCita } from '../components/medico/ModalCompletarCita'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import type { CitaConPaciente, EstadoCita, Paciente } from '../lib/types'
@@ -84,22 +86,29 @@ function StatCard({ icon, label, value, sub, color }: StatCardProps) {
 interface FilaCitaProps {
   cita: CitaConPaciente
   onVerFicha: () => void
-  onMarcar: (estado: EstadoCita) => Promise<void>
+  onIniciarCompletar: () => void
+  onMarcarNoAsistio: () => Promise<void>
   modoHistorial: boolean
 }
-function FilaCita({ cita, onVerFicha, onMarcar, modoHistorial }: FilaCitaProps) {
-  const [working, setWorking] = useState<EstadoCita | null>(null)
+function FilaCita({
+  cita,
+  onVerFicha,
+  onIniciarCompletar,
+  onMarcarNoAsistio,
+  modoHistorial,
+}: FilaCitaProps) {
+  const [working, setWorking] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  const handleMarcar = async (estado: EstadoCita) => {
-    setWorking(estado)
+  const handleNoAsistio = async () => {
+    setWorking(true)
     setErr(null)
     try {
-      await onMarcar(estado)
+      await onMarcarNoAsistio()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Error')
     } finally {
-      setWorking(null)
+      setWorking(false)
     }
   }
 
@@ -161,30 +170,26 @@ function FilaCita({ cita, onVerFicha, onMarcar, modoHistorial }: FilaCitaProps) 
       <td className="py-3.5 pl-3 pr-5">
         <div className="flex items-center justify-end gap-2">
           {err && <span className="text-xs text-rose-500">{err}</span>}
-          <button
-            type="button"
-            onClick={onVerFicha}
-            className="btn-ghost py-1.5 text-xs"
-          >
+          <button type="button" onClick={onVerFicha} className="btn-ghost py-1.5 text-xs">
             Ver ficha
           </button>
           {!modoHistorial && cita.estado === 'confirmada' && (
             <>
               <button
                 type="button"
-                disabled={working !== null}
-                onClick={() => handleMarcar('completada')}
+                disabled={working}
+                onClick={onIniciarCompletar}
                 className="btn-primary py-1.5 text-xs"
               >
-                {working === 'completada' ? '…' : '✓ Completada'}
+                ✓ Completada
               </button>
               <button
                 type="button"
-                disabled={working !== null}
-                onClick={() => handleMarcar('no_asistio')}
+                disabled={working}
+                onClick={handleNoAsistio}
                 className="btn-secondary py-1.5 text-xs"
               >
-                {working === 'no_asistio' ? '…' : '✗ No asistió'}
+                {working ? '…' : '✗ No asistió'}
               </button>
             </>
           )}
@@ -202,6 +207,7 @@ export function MedicoDashboardV2() {
   const { medico } = useAuth()
   const [tab, setTab] = useState<Tab>('hoy')
   const [pacienteFicha, setPacienteFicha] = useState<Paciente | null>(null)
+  const [citaParaCompletar, setCitaParaCompletar] = useState<CitaConPaciente | null>(null)
 
   const {
     data: citas,
@@ -209,6 +215,8 @@ export function MedicoDashboardV2() {
     error,
     marcarEstado,
   } = useMedicoCitas(medico?.id ?? null, tab)
+
+  const { crearHistorial } = useHistorialClinico()
 
   if (!medico) {
     return (
@@ -233,6 +241,29 @@ export function MedicoDashboardV2() {
   const hora = new Date().getHours()
   const saludo =
     hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
+
+  /**
+   * Guarda el historial clinico (dolencia + receta) y RECIEN DESPUES
+   * marca la cita como completada. Si el insert de historial falla,
+   * la cita NO se marca completada (evita perder el registro clinico).
+   */
+  const handleGuardarCompletar = async (input: {
+    dolenciaPrincipal: string
+    receta: string | null
+    notasClinicas: string | null
+  }) => {
+    if (!citaParaCompletar || !medico) return
+    await crearHistorial({
+      citaId: citaParaCompletar.id,
+      pacienteId: citaParaCompletar.paciente_id!,
+      medicoId: medico.id,
+      dolenciaPrincipal: input.dolenciaPrincipal,
+      receta: input.receta,
+      notasClinicas: input.notasClinicas,
+    })
+    await marcarEstado(citaParaCompletar.id, 'completada')
+    setCitaParaCompletar(null)
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -369,7 +400,8 @@ export function MedicoDashboardV2() {
                   key={cita.id}
                   cita={cita}
                   modoHistorial={tab === 'historial'}
-                  onMarcar={(estado) => marcarEstado(cita.id, estado)}
+                  onIniciarCompletar={() => setCitaParaCompletar(cita)}
+                  onMarcarNoAsistio={() => marcarEstado(cita.id, 'no_asistio')}
                   onVerFicha={() => {
                     if (cita.paciente) setPacienteFicha(cita.paciente)
                   }}
@@ -385,6 +417,15 @@ export function MedicoDashboardV2() {
         <FichaPaciente
           paciente={pacienteFicha}
           onClose={() => setPacienteFicha(null)}
+        />
+      )}
+
+      {/* ── Modal completar cita (dolencia + receta) ───────────────────── */}
+      {citaParaCompletar && (
+        <ModalCompletarCita
+          cita={citaParaCompletar}
+          onClose={() => setCitaParaCompletar(null)}
+          onGuardar={handleGuardarCompletar}
         />
       )}
     </div>

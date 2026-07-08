@@ -32,13 +32,17 @@ function avatarColor(nombre: string): string {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
+/** Formato "04 JUL 2026" — día con cero + mes abreviado en mayúsculas */
 function formatFecha(fechaIso: string): string {
   try {
-    return new Date(`${fechaIso}T00:00:00`).toLocaleDateString('es-PA', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
+    const d = new Date(`${fechaIso}T00:00:00`)
+    const dia = String(d.getDate()).padStart(2, '0')
+    const mes = d
+      .toLocaleDateString('es-PA', { month: 'short' })
+      .replace('.', '')
+      .toUpperCase()
+    const anio = d.getFullYear()
+    return `${dia} ${mes} ${anio}`
   } catch {
     return fechaIso
   }
@@ -85,9 +89,10 @@ export function PacientesMedico() {
             ← Volver al resumen
           </Link>
           <h1 className="text-2xl font-bold text-helios-ink">Gestión de Pacientes</h1>
-          <p className="mt-0.5 text-sm text-helios-ink/50">
-            {pacientes.length} paciente{pacientes.length === 1 ? '' : 's'} atendido
-            {pacientes.length === 1 ? '' : 's'} · Dr. {medico.nombre.split(' ')[0]}
+          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-helios-ink/50">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-helios-primary" />
+            {pacientes.length} paciente{pacientes.length === 1 ? '' : 's'} registrado
+            {pacientes.length === 1 ? '' : 's'} bajo su cuidado
           </p>
         </div>
 
@@ -165,7 +170,7 @@ export function PacientesMedico() {
                     <td className="py-3.5 pl-5 pr-3">
                       <div className="flex items-center gap-3">
                         <span
-                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${col}`}
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${col}`}
                         >
                           {initials(paciente.nombre)}
                         </span>
@@ -173,9 +178,10 @@ export function PacientesMedico() {
                           <p className="text-sm font-semibold text-helios-ink">
                             {paciente.nombre}
                           </p>
-                          <p className="text-xs text-helios-ink/40">
+                          {/* cédula en recuadro gris — detalle del mockup */}
+                          <span className="mt-0.5 inline-flex items-center rounded-md bg-helios-mist px-1.5 py-0.5 text-[11px] font-medium text-helios-ink/50">
                             Cédula {paciente.cedula}
-                          </p>
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -189,7 +195,7 @@ export function PacientesMedico() {
 
                     {/* Última visita */}
                     <td className="whitespace-nowrap px-3 py-3.5">
-                      <span className="text-sm text-helios-ink/70">
+                      <span className="text-sm font-medium tracking-wide text-helios-ink/70">
                         {formatFecha(ultima_visita)}
                       </span>
                     </td>
@@ -197,7 +203,10 @@ export function PacientesMedico() {
                     {/* Última receta */}
                     <td className="max-w-xs px-3 py-3.5">
                       {receta ? (
-                        <p className="line-clamp-2 text-sm text-helios-ink/80">{receta}</p>
+                        <div className="flex items-start gap-1.5">
+                          <PillIcon />
+                          <p className="line-clamp-2 text-sm text-helios-ink/80">{receta}</p>
+                        </div>
                       ) : (
                         <span className="text-xs italic text-helios-ink/30">
                           Sin receta registrada
@@ -210,7 +219,7 @@ export function PacientesMedico() {
                       <button
                         type="button"
                         onClick={() => setPacienteFicha(paciente)}
-                        className="btn-ghost py-1.5 text-xs"
+                        className="rounded-full bg-helios-primary px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-helios-primary-dark"
                       >
                         Ver ficha
                       </button>
@@ -238,6 +247,26 @@ function UsersIcon() {
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  )
+}
+
+/** Icono pequeño tipo receta/pastilla, junto al texto de la receta */
+function PillIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="mt-0.5 shrink-0 text-helios-primary/70"
+    >
+      <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+      <path d="m8.5 8.5 7 7" />
     </svg>
   )
 }
