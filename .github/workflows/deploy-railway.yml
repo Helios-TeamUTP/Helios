@@ -7,19 +7,15 @@ name: Deploy a Railway (helios-web)
 # Se dispara solo en cada push a main, y tambien a mano desde la pestana
 # "Actions" del repo (boton "Run workflow").
 #
-# Requiere el secret RAILWAY_API_TOKEN (token de cuenta de Railway) ya
-# guardado en: repo -> Settings -> Secrets and variables -> Actions.
-# El Project ID / service / environment NO son secretos (van aqui abajo).
+# Requiere el secret RAILWAY_TOKEN = un PROJECT TOKEN de Railway (no account
+# token). Se crea en: proyecto -> Settings -> Tokens (asociado al environment
+# production). Un project token ya identifica el proyecto+environment, asi que
+# NO hace falta 'railway link'.
 
 on:
   push:
     branches: [main]
   workflow_dispatch: {}
-
-env:
-  RAILWAY_PROJECT_ID: e9def4c0-2df1-4dfa-bb52-329e9e9463c4
-  RAILWAY_SERVICE: helios-web
-  RAILWAY_ENVIRONMENT: production
 
 jobs:
   deploy:
@@ -31,12 +27,7 @@ jobs:
       - name: Instalar el CLI de Railway
         run: npm install -g @railway/cli
 
-      - name: Vincular el proyecto Railway
-        run: railway link --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT" --service "$RAILWAY_SERVICE"
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-
       - name: Desplegar helios-web
-        run: railway up --service "$RAILWAY_SERVICE" --ci
+        run: railway up --service helios-web --ci
         env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
