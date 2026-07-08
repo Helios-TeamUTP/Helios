@@ -1,0 +1,15 @@
+{
+  "name": "helios-email-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Worker que envia por Gmail los correos encolados en notificaciones (canal=email).",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "dotenv": "^16.4.5",
+    "nodemailer": "^6.9.16"
+  }
+}
