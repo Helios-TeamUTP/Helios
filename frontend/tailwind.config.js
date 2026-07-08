@@ -12,6 +12,9 @@ export default {
           accent: '#3DDC97',
           ink: '#0F2A36',
           mist: '#F4F7F8',
+          // Color de marca del logo (Parcial 2). Solo se usa en el logo/wordmark;
+          // los botones y enlaces siguen en `primary` (teal).
+          logo: '#F34B56',
         },
       },
       fontFamily: {

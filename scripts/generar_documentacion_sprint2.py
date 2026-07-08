@@ -20,7 +20,7 @@ from pathlib import Path
 import markdown
 
 ROOT = Path(__file__).resolve().parent.parent
-PDF = ROOT / "dailys" / "Entrega_Viernes" / "DOCUMENTACION_SPRINT2.pdf"
+PDF = ROOT / "dailys" / "Entrega_Viernes" / "Sprint_2" / "DOCUMENTACION_SPRINT2.pdf"
 PDF.parent.mkdir(parents=True, exist_ok=True)
 
 

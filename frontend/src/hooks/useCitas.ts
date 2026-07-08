@@ -77,10 +77,38 @@ export function useCitas(pacienteId: string | null) {
     // el guard ya lo hace seguro.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCitas(signal)
+
+    /**
+     * Bug B-05: suscripción Realtime para que "Mis Citas" se actualice sola
+     * cuando una cita cambia (cancelada, reprogramada, nueva) — sin recargar.
+     * Requiere que la tabla `citas` esté en la publicación supabase_realtime
+     * (migración sprint5_realtime_citas.sql). La RLS garantiza que solo lleguen
+     * los cambios de las citas del propio paciente. Cleanup con removeChannel.
+     */
+    let canal: ReturnType<typeof supabase.channel> | null = null
+    if (pacienteId) {
+      canal = supabase
+        .channel(`citas-${pacienteId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'citas',
+            filter: `paciente_id=eq.${pacienteId}`,
+          },
+          () => {
+            if (signal.active) fetchCitas()
+          },
+        )
+        .subscribe()
+    }
+
     return () => {
       signal.active = false
+      if (canal) supabase.removeChannel(canal)
     }
-  }, [fetchCitas])
+  }, [fetchCitas, pacienteId])
 
   return { data, loading, error, refetch: () => fetchCitas() }
 }

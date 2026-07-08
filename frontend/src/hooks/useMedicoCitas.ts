@@ -5,9 +5,10 @@ import type { CitaConPaciente, EstadoCita } from '../lib/types'
 /**
  * Modo de filtrado de citas:
  * - 'hoy': solo las citas confirmadas con fecha = hoy (agenda del dia)
+ * - 'semana': citas de los proximos 7 dias (hoy incluido), sin canceladas
  * - 'historial': todas las citas con fecha < hoy (vista historica)
  */
-export type ModoMedicoCitas = 'hoy' | 'historial'
+export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial'
 
 /**
  * Hook que carga las citas asignadas a un medico con join al paciente
@@ -57,11 +58,22 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
           // Sprint 2 (ST-8): la agenda de hoy NO muestra las canceladas
           // (quedan registradas en el historial, pero no estorban la vista).
           query = query.eq('horario.fecha', hoy).neq('estado', 'cancelada')
+        } else if (modo === 'semana') {
+          // Agenda de los proximos 7 dias (hoy incluido), sin canceladas.
+          // Fecha LOCAL (no UTC) por la misma razon que `hoy` (B-21).
+          const finDate = new Date(ahora)
+          finDate.setDate(finDate.getDate() + 6)
+          const fin = `${finDate.getFullYear()}-${String(finDate.getMonth() + 1).padStart(2, '0')}-${String(finDate.getDate()).padStart(2, '0')}`
+          query = query.gte('horario.fecha', hoy).lte('horario.fecha', fin).neq('estado', 'cancelada')
         } else {
           query = query.lt('horario.fecha', hoy)
         }
 
-        const { data, error } = await query.order('horario(hora_inicio)', { ascending: true })
+        // Orden por fecha y luego por hora: clave para la vista de semana, que
+        // abarca varios dias. Para 'hoy' es un solo dia, asi que no cambia nada.
+        const { data, error } = await query
+          .order('horario(fecha)', { ascending: true })
+          .order('horario(hora_inicio)', { ascending: true })
 
         if (signal && !signal.active) return
 

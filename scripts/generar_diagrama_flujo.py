@@ -4,8 +4,8 @@ Usa kroki.io (servicio publico) para renderizar Mermaid a PNG sin
 necesidad de instalar mermaid-cli ni Chrome headless.
 
 Output:
-    dailys/Entrega_Viernes/diagrama_flujo_usuario.png
-    dailys/Entrega_Viernes/diagrama_arquitectura.png
+    dailys/Entrega_Viernes/Sprint_2/diagrama_flujo_usuario.png
+    dailys/Entrega_Viernes/Sprint_2/diagrama_arquitectura.png
 
 Uso:
     python scripts/generar_diagrama_flujo.py
@@ -19,7 +19,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUT_DIR = ROOT / "dailys" / "Entrega_Viernes"
+OUTPUT_DIR = ROOT / "dailys" / "Entrega_Viernes" / "Sprint_2"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -149,7 +149,7 @@ def main() -> None:
     url2 = kroki_url("mermaid", "png", ARQUITECTURA)
     download(url2, OUTPUT_DIR / "diagrama_arquitectura.png")
 
-    print("\n[exito] Diagramas listos en dailys/Entrega_Viernes/")
+    print("\n[exito] Diagramas listos en dailys/Entrega_Viernes/Sprint_2/")
 
 
 if __name__ == "__main__":
