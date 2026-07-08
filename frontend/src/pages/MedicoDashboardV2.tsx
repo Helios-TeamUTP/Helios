@@ -1,0 +1,531 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { useMedicoCitas } from '../hooks/useMedicoCitas'
+import { useHistorialClinico } from '../hooks/useHistorialClinico'
+import { FichaPaciente } from '../components/medico/FichaPaciente'
+import { ModalCompletarCita } from '../components/medico/ModalCompletarCita'
+import { LoadingSpinner } from '../components/shared/LoadingSpinner'
+import { ErrorMessage } from '../components/shared/ErrorMessage'
+import type { CitaConPaciente, EstadoCita, Paciente } from '../lib/types'
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+const ESTADO_META: Record<EstadoCita, { label: string; dot: string; badge: string }> = {
+  confirmada: {
+    label: 'En espera',
+    dot: 'bg-blue-400',
+    badge: 'bg-blue-50 text-blue-700 ring-blue-200',
+  },
+  completada: {
+    label: 'Completada',
+    dot: 'bg-helios-primary',
+    badge: 'bg-green-50 text-green-700 ring-green-200',
+  },
+  no_asistio: {
+    label: 'No asistió',
+    dot: 'bg-amber-400',
+    badge: 'bg-amber-50 text-amber-700 ring-amber-200',
+  },
+  cancelada: {
+    label: 'Cancelada',
+    dot: 'bg-rose-400',
+    badge: 'bg-rose-50 text-rose-700 ring-rose-200',
+  },
+}
+
+const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+/**
+ * Formatea 'YYYY-MM-DD' a 'Lunes 18 de junio'. Local-safe (parsea los
+ * componentes a mano, sin pasar por Date/UTC) para evitar el desfase de
+ * timezone en Panamá (mismo criterio que el fix B-21).
+ */
+function formatFechaLarga(fechaIso: string): string {
+  const [y, m, d] = fechaIso.split('-').map(Number)
+  if (!y || !m || !d) return fechaIso
+  const fecha = new Date(y, m - 1, d)
+  return `${DIAS[fecha.getDay()]} ${d} de ${MESES[fecha.getMonth()]}`
+}
+
+/** Agrupa citas (ya vienen ordenadas por fecha+hora del hook) en bloques por día. */
+function agruparPorFecha(
+  citas: CitaConPaciente[],
+): { fecha: string; citas: CitaConPaciente[] }[] {
+  const grupos: { fecha: string; citas: CitaConPaciente[] }[] = []
+  for (const cita of citas) {
+    const fecha = (cita as CitaConPaciente & { horario?: { fecha?: string } }).horario?.fecha ?? ''
+    const ultimo = grupos[grupos.length - 1]
+    if (ultimo && ultimo.fecha === fecha) ultimo.citas.push(cita)
+    else grupos.push({ fecha, citas: [cita] })
+  }
+  return grupos
+}
+
+/** Iniciales para avatar — máx 2 letras */
+function initials(nombre: string): string {
+  return nombre
+    .split(' ')
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase()
+}
+
+/** Color de avatar determinista por nombre */
+const AVATAR_COLORS = [
+  'bg-violet-100 text-violet-700',
+  'bg-sky-100 text-sky-700',
+  'bg-teal-100 text-teal-700',
+  'bg-rose-100 text-rose-700',
+  'bg-amber-100 text-amber-700',
+  'bg-indigo-100 text-indigo-700',
+]
+function avatarColor(nombre: string): string {
+  let hash = 0
+  for (const ch of nombre) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+}
+
+// ─── sub-componentes ─────────────────────────────────────────────────────────
+
+interface StatCardProps {
+  icon: React.ReactNode
+  label: string
+  value: number | string
+  sub?: string
+  color: string
+}
+function StatCard({ icon, label, value, sub, color }: StatCardProps) {
+  return (
+    <div className="card flex items-center gap-4 p-5">
+      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-xs font-medium text-helios-ink/50">{label}</p>
+        <p className="text-2xl font-bold text-helios-ink">{value}</p>
+        {sub && <p className="text-xs text-helios-ink/40">{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
+/** Fila de encabezado de día — solo se usa en la vista "Esta semana". */
+function FilaDia({ fecha }: { fecha: string }) {
+  return (
+    <tr>
+      <td colSpan={5} className="bg-helios-mist px-5 py-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-helios-primary">
+          {formatFechaLarga(fecha)}
+        </span>
+      </td>
+    </tr>
+  )
+}
+
+interface FilaCitaProps {
+  cita: CitaConPaciente
+  onVerFicha: () => void
+  onIniciarCompletar: () => void
+  onMarcarNoAsistio: () => Promise<void>
+  soloLectura: boolean
+}
+function FilaCita({
+  cita,
+  onVerFicha,
+  onIniciarCompletar,
+  onMarcarNoAsistio,
+  soloLectura,
+}: FilaCitaProps) {
+  const [working, setWorking] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const handleNoAsistio = async () => {
+    setWorking(true)
+    setErr(null)
+    try {
+      await onMarcarNoAsistio()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const meta = ESTADO_META[cita.estado]
+  const hora = cita.horario?.hora_inicio?.slice(0, 5) ?? '—:—'
+  const pac = cita.paciente
+  const nombre = pac?.nombre ?? 'Paciente sin datos'
+  const col = avatarColor(nombre)
+
+  return (
+    <tr className="group border-b border-helios-ink/5 transition hover:bg-helios-mist/60">
+      {/* Hora */}
+      <td className="py-3.5 pl-5 pr-3 tabular-nums">
+        <span className="text-sm font-semibold text-helios-ink">{hora}</span>
+      </td>
+
+      {/* Paciente */}
+      <td className="px-3 py-3.5">
+        <div className="flex items-center gap-3">
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${col}`}
+          >
+            {initials(nombre)}
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-helios-ink">{nombre}</p>
+            {pac?.cedula && (
+              <p className="text-xs text-helios-ink/40">Cédula {pac.cedula}</p>
+            )}
+          </div>
+        </div>
+      </td>
+
+      {/* Estado */}
+      <td className="px-3 py-3.5">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${meta.badge}`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+          {meta.label}
+        </span>
+      </td>
+
+      {/* Teléfono */}
+      <td className="hidden px-3 py-3.5 sm:table-cell">
+        {pac?.telefono ? (
+          <a
+            href={`tel:${pac.telefono}`}
+            className="text-sm text-helios-primary hover:underline"
+          >
+            {pac.telefono}
+          </a>
+        ) : (
+          <span className="text-xs text-helios-ink/30">—</span>
+        )}
+      </td>
+
+      {/* Acciones */}
+      <td className="py-3.5 pl-3 pr-5">
+        <div className="flex items-center justify-end gap-2">
+          {err && <span className="text-xs text-rose-500">{err}</span>}
+          <button type="button" onClick={onVerFicha} className="btn-ghost py-1.5 text-xs">
+            Ver ficha
+          </button>
+          {!soloLectura && cita.estado === 'confirmada' && (
+            <>
+              <button
+                type="button"
+                disabled={working}
+                onClick={onIniciarCompletar}
+                className="btn-primary py-1.5 text-xs"
+              >
+                ✓ Completada
+              </button>
+              <button
+                type="button"
+                disabled={working}
+                onClick={handleNoAsistio}
+                className="btn-secondary py-1.5 text-xs"
+              >
+                {working ? '…' : '✗ No asistió'}
+              </button>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+// ─── página principal ─────────────────────────────────────────────────────────
+
+type Tab = 'hoy' | 'semana' | 'historial'
+
+const TAB_LABELS: Record<Tab, string> = {
+  hoy: 'Agenda de hoy',
+  semana: 'Esta semana',
+  historial: 'Historial de citas',
+}
+
+const TAB_VACIO: Record<Tab, string> = {
+  hoy: 'No tienes citas asignadas para hoy.',
+  semana: 'No tienes citas en los próximos 7 días.',
+  historial: 'No hay citas anteriores registradas.',
+}
+
+export function MedicoDashboardV2() {
+  const { medico } = useAuth()
+  const [tab, setTab] = useState<Tab>('hoy')
+  const [pacienteFicha, setPacienteFicha] = useState<Paciente | null>(null)
+  const [citaParaCompletar, setCitaParaCompletar] = useState<CitaConPaciente | null>(null)
+
+  const {
+    data: citas,
+    loading,
+    error,
+    marcarEstado,
+  } = useMedicoCitas(medico?.id ?? null, tab)
+
+  const { crearHistorial } = useHistorialClinico()
+
+  if (!medico) {
+    return (
+      <div className="mx-auto max-w-5xl">
+        <div className="card">
+          <ErrorMessage message="No se pudo cargar el perfil del médico. Cierra sesión e intenta de nuevo." />
+        </div>
+      </div>
+    )
+  }
+
+  // ── métricas: validas para 'hoy' y 'semana' (snapshot en vivo); 'historial' no aplica ──
+  const statsAplican = tab !== 'historial'
+  const total = citas.length
+  const completadas = citas.filter((c) => c.estado === 'completada').length
+  const enEspera = citas.filter((c) => c.estado === 'confirmada').length
+  const noAsistio = citas.filter((c) => c.estado === 'no_asistio').length
+
+  // ── nombre corto para el saludo ──────────────────────────────────────────
+  const nombreCorto = medico.nombre.split(' ')[0]
+
+  // ── hora actual para saludo ───────────────────────────────────────────────
+  const hora = new Date().getHours()
+  const saludo =
+    hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
+
+  /**
+   * Guarda el historial clinico (dolencia + receta) y RECIEN DESPUES
+   * marca la cita como completada. Si el insert de historial falla,
+   * la cita NO se marca completada (evita perder el registro clinico).
+   */
+  const handleGuardarCompletar = async (input: {
+    dolenciaPrincipal: string
+    receta: string | null
+    notasClinicas: string | null
+  }) => {
+    if (!citaParaCompletar || !medico) return
+    await crearHistorial({
+      citaId: citaParaCompletar.id,
+      pacienteId: citaParaCompletar.paciente_id!,
+      medicoId: medico.id,
+      dolenciaPrincipal: input.dolenciaPrincipal,
+      receta: input.receta,
+      notasClinicas: input.notasClinicas,
+    })
+    await marcarEstado(citaParaCompletar.id, 'completada')
+    setCitaParaCompletar(null)
+  }
+
+  // ── filas de la tabla: planas (hoy/historial) o agrupadas por día (semana) ──
+  const filas =
+    tab === 'semana'
+      ? agruparPorFecha(citas).flatMap((grupo) => [
+          <FilaDia key={`dia-${grupo.fecha}`} fecha={grupo.fecha} />,
+          ...grupo.citas.map((cita) => (
+            <FilaCita
+              key={cita.id}
+              cita={cita}
+              soloLectura={false}
+              onIniciarCompletar={() => setCitaParaCompletar(cita)}
+              onMarcarNoAsistio={() => marcarEstado(cita.id, 'no_asistio')}
+              onVerFicha={() => {
+                if (cita.paciente) setPacienteFicha(cita.paciente)
+              }}
+            />
+          )),
+        ])
+      : citas.map((cita) => (
+          <FilaCita
+            key={cita.id}
+            cita={cita}
+            soloLectura={tab === 'historial'}
+            onIniciarCompletar={() => setCitaParaCompletar(cita)}
+            onMarcarNoAsistio={() => marcarEstado(cita.id, 'no_asistio')}
+            onVerFicha={() => {
+              if (cita.paciente) setPacienteFicha(cita.paciente)
+            }}
+          />
+        ))
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-helios-ink/50">{saludo},</p>
+          <h1 className="text-2xl font-bold text-helios-ink">
+            Dr. {nombreCorto}
+          </h1>
+          <p className="mt-0.5 text-sm text-helios-ink/50">
+            {medico.especialidad?.nombre ?? 'Sin especialidad'}
+            {medico.sede?.nombre ? ` · ${medico.sede.nombre}` : ''}
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <p className="text-sm text-helios-ink/40">
+            {new Date().toLocaleDateString('es-PA', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </p>
+          <Link to="/medico/pacientes" className="btn-secondary py-1.5 text-xs">
+            Gestión de Pacientes →
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Stat cards ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard
+          icon={<CalendarIcon />}
+          label={tab === 'semana' ? 'Citas esta semana' : 'Citas de hoy'}
+          value={statsAplican ? total : '—'}
+          sub={!statsAplican ? 'Ver pestaña Hoy' : undefined}
+          color="bg-helios-primary/10 text-helios-primary"
+        />
+        <StatCard
+          icon={<CheckIcon />}
+          label="Completadas"
+          value={statsAplican ? completadas : '—'}
+          color="bg-green-50 text-green-600"
+        />
+        <StatCard
+          icon={<ClockIcon />}
+          label="En espera"
+          value={statsAplican ? enEspera : '—'}
+          color="bg-blue-50 text-blue-600"
+        />
+        <StatCard
+          icon={<XIcon />}
+          label="No asistió"
+          value={statsAplican ? noAsistio : '—'}
+          color="bg-amber-50 text-amber-600"
+        />
+      </div>
+
+      {/* ── Tabla de citas ─────────────────────────────────────────────── */}
+      <div className="card overflow-hidden p-0">
+
+        {/* cabecera de la card */}
+        <div className="flex items-center justify-between border-b border-helios-ink/5 px-5 py-4">
+          <h2 className="font-semibold text-helios-ink">{TAB_LABELS[tab]}</h2>
+
+          {/* tabs */}
+          <div className="flex rounded-lg border border-helios-ink/10 bg-helios-mist p-0.5 text-sm">
+            {(['hoy', 'semana', 'historial'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`rounded-md px-3 py-1.5 font-medium transition ${
+                  tab === t
+                    ? 'bg-white text-helios-ink shadow-sm'
+                    : 'text-helios-ink/50 hover:text-helios-ink'
+                }`}
+              >
+                {t === 'hoy' ? 'Hoy' : t === 'semana' ? 'Esta semana' : 'Historial'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* estados de carga / error / vacío */}
+        {loading && (
+          <div className="flex min-h-[180px] items-center justify-center">
+            <LoadingSpinner label="Cargando agenda…" />
+          </div>
+        )}
+        {!loading && error && (
+          <div className="p-5">
+            <ErrorMessage message={`No se pudo cargar la agenda: ${error}`} />
+          </div>
+        )}
+        {!loading && !error && citas.length === 0 && (
+          <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-helios-ink/40">
+            <CalendarIcon />
+            <p className="text-sm">{TAB_VACIO[tab]}</p>
+          </div>
+        )}
+
+        {/* tabla */}
+        {!loading && !error && citas.length > 0 && (
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-helios-ink/5 text-xs font-medium text-helios-ink/40">
+                <th className="py-3 pl-5 pr-3">Hora</th>
+                <th className="px-3 py-3">Paciente</th>
+                <th className="px-3 py-3">Estado</th>
+                <th className="hidden px-3 py-3 sm:table-cell">Teléfono</th>
+                <th className="py-3 pl-3 pr-5 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>{filas}</tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ── Modal ficha paciente ────────────────────────────────────────── */}
+      {pacienteFicha && (
+        <FichaPaciente
+          paciente={pacienteFicha}
+          onClose={() => setPacienteFicha(null)}
+        />
+      )}
+
+      {/* ── Modal completar cita (dolencia + receta) ───────────────────── */}
+      {citaParaCompletar && (
+        <ModalCompletarCita
+          cita={citaParaCompletar}
+          onClose={() => setCitaParaCompletar(null)}
+          onGuardar={handleGuardarCompletar}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── iconos SVG inline (sin dependencias extra) ───────────────────────────────
+
+function CalendarIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  )
+}
+function CheckIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+function ClockIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  )
+}
+function XIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
+}

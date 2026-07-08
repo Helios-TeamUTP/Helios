@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCitas } from '../hooks/useCitas'
+import { useHistorialPaciente, type HistorialConMedico } from '../hooks/useHistorialPaciente'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { BotonCancelarCita } from '../components/citas/BotonCancelarCita'
@@ -22,11 +23,62 @@ const ESTADO_LABEL: Record<EstadoCita, string> = {
   no_asistio: 'No asistió',
 }
 
+/** Formato "4 de julio de 2026" para la fecha de la última receta. */
+function formatFechaLarga(fechaIso: string): string {
+  try {
+    return new Date(fechaIso).toLocaleDateString('es-PA', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+  } catch {
+    return fechaIso
+  }
+}
+
+/**
+ * Bloque compacto de dolencia + receta de UNA visita puntual.
+ * Se usa tanto en la card resumen de arriba como dentro de cada
+ * cita individual que ya tenga historial_clinico registrado.
+ */
+function BloqueHistorial({ hist }: { hist: HistorialConMedico }) {
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-sm">
+        <span className="font-semibold text-helios-ink/70">Motivo de consulta: </span>
+        <span className="text-helios-ink">{hist.dolencia_principal}</span>
+      </p>
+
+      {hist.receta ? (
+        <div className="rounded-lg bg-helios-mist px-3 py-2">
+          <p className="text-sm">
+            <span className="font-semibold text-helios-ink/70">Receta: </span>
+            <span className="text-helios-ink">{hist.receta}</span>
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm italic text-helios-ink/40">
+          No se te recetó ningún medicamento en esta visita.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function MisCitas() {
   const { paciente } = useAuth()
   const { data, loading, error, refetch } = useCitas(paciente?.id ?? null)
+  const { data: historial } = useHistorialPaciente(paciente?.id ?? null)
   // Sprint 2 (ST-38): cita que se está reprogramando (abre el modal con calendario).
   const [citaAReprogramar, setCitaAReprogramar] = useState<CitaConRelaciones | null>(null)
+
+  // Un lookup rapido cita_id -> historial, para pintar la dolencia/receta
+  // de ESA cita puntual dentro de su propia card (no solo la mas reciente).
+  const historialPorCita = useMemo(
+    () => new Map(historial.map((h) => [h.cita_id, h])),
+    [historial],
+  )
+  const ultimoHistorial = historial[0] // ya viene ordenado desc por created_at
 
   if (!paciente) {
     return (
@@ -56,6 +108,23 @@ export function MisCitas() {
         </Link>
       </header>
 
+      {/* Tu última receta — resumen de la visita completada mas reciente */}
+      {ultimoHistorial && (
+        <div className="card border-l-4 border-l-helios-primary">
+          <div className="flex items-center gap-2">
+            <img src="/reloj.png" alt="" width={18} height={18} className="h-[18px] w-[18px]" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-helios-primary">
+              Tu última receta
+            </h2>
+          </div>
+          <p className="mt-2 text-sm text-helios-ink/60">
+            Dr(a). {ultimoHistorial.medico?.nombre ?? 'Médico'} ·{' '}
+            {formatFechaLarga(ultimoHistorial.created_at)}
+          </p>
+          <BloqueHistorial hist={ultimoHistorial} />
+        </div>
+      )}
+
       {loading && <LoadingSpinner label="Cargando tus citas…" />}
       {error && <ErrorMessage message={error} />}
 
@@ -69,6 +138,7 @@ export function MisCitas() {
         {data.map((cita) => {
           const estado = cita.estado as EstadoCita
           const esConfirmada = estado === 'confirmada'
+          const histDeEstaCita = historialPorCita.get(cita.id)
           const resumen = `Dr(a). ${cita.medico?.nombre ?? ''} · ${
             cita.horario ? `${cita.horario.fecha} ${cita.horario.hora_inicio.slice(0, 5)}` : ''
           }`
@@ -100,12 +170,21 @@ export function MisCitas() {
 
               {cita.horario && (
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-helios-ink/80">
-                  <span>
-                    📅 <strong>{cita.horario.fecha}</strong>
+                  <span className="inline-flex items-center gap-1.5">
+                    <img src="/calendario.png" alt="" width={16} height={16} className="h-4 w-4" />
+                    <strong>{cita.horario.fecha}</strong>
                   </span>
-                  <span>
-                    🕒 {cita.horario.hora_inicio.slice(0, 5)} — {cita.horario.hora_fin.slice(0, 5)}
+                  <span className="inline-flex items-center gap-1.5">
+                    <img src="/reloj.png" alt="" width={16} height={16} className="h-4 w-4" />
+                    {cita.horario.hora_inicio.slice(0, 5)} — {cita.horario.hora_fin.slice(0, 5)}
                   </span>
+                </div>
+              )}
+
+              {/* Dolencia + receta de ESTA cita puntual, si el medico ya la registro */}
+              {histDeEstaCita && (
+                <div className="mt-3 border-t border-helios-ink/5 pt-3">
+                  <BloqueHistorial hist={histDeEstaCita} />
                 </div>
               )}
 

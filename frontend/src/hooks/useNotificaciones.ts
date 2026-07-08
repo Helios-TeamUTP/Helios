@@ -65,6 +65,10 @@ export function useNotificaciones(pacienteId: string | null, medicoId: string | 
 
   useEffect(() => {
     let active = true
+    // fetchNotificaciones es async y solo llama setState tras chequear
+    // `active` (cancelado en el cleanup de abajo). Mismo patron ya
+    // documentado en useCitas.ts, useMedicoCitas.ts y usePacientesMedico.ts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotificaciones()
 
     const id = pacienteId ?? medicoId

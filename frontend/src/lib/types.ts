@@ -107,6 +107,35 @@ export interface CitaConPaciente extends Cita {
 }
 
 /**
+ * Historial clínico — dolencia principal y receta por cita.
+ * Relacionado 1:1 con citas via indice unico en cita_id.
+ * RLS: el medico solo ve/edita el suyo, el paciente solo lee el suyo.
+ * Migracion: database/migrations/001_historial_clinico.sql
+ */
+export interface HistorialClinico {
+  id: string
+  cita_id: string
+  paciente_id: string
+  medico_id: string
+  dolencia_principal: string
+  receta: string | null
+  notas_clinicas: string | null
+  created_at: string
+}
+
+/**
+ * Resumen por paciente para el dashboard "Gestión de Pacientes" del medico.
+ * Se arma con la cita 'completada' mas reciente de cada paciente + su
+ * historial_clinico asociado (si existe). Ver usePacientesMedico.ts.
+ */
+export interface PacienteConHistorial {
+  paciente: Paciente
+  dolencia_principal: string
+  receta: string | null
+  ultima_visita: string // fecha ISO (YYYY-MM-DD) de la ultima cita completada
+}
+
+/**
  * Sprint 4 (HELL-5): notificaciones in-app. Una fila por destinatario
  * (paciente XOR medico). Las genera un trigger desde citas_historial.
  */
@@ -165,6 +194,11 @@ export interface Database {
         Row: AuthMedicoLink
         Insert: Partial<AuthMedicoLink>
         Update: Partial<AuthMedicoLink>
+      }
+      historial_clinico: {
+        Row: HistorialClinico
+        Insert: Partial<HistorialClinico>
+        Update: Partial<HistorialClinico>
       }
     }
   }

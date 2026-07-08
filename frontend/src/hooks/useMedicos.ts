@@ -20,6 +20,9 @@ export function useMedicos(sedeId: string | null, especialidadId: string | null)
 
   useEffect(() => {
     if (!sedeId || !especialidadId) {
+      // Reset sincrono cuando aun no hay seleccion completa — patron valido
+      // de React (mismo criterio ya documentado en useCitas.ts/useSedes.ts).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setData([])
       setLoading(false)
       return

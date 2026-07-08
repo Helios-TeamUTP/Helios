@@ -1,61 +1,114 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { TimeoutError } from '../lib/withTimeout'
-
-const { rpcMock } = vi.hoisted(() => ({ rpcMock: vi.fn() }))
-vi.mock('../lib/supabase', () => ({ supabase: { rpc: rpcMock } }))
-
 import { useReprogramarCita } from './useReprogramarCita'
 
-describe('useReprogramarCita (ST-38)', () => {
-  beforeEach(() => vi.clearAllMocks())
+// Mock supabase
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    rpc: vi.fn(),
+  },
+}))
 
-  it('reprograma OK: llama la RPC con cita y nuevo horario, retorna true', async () => {
-    rpcMock.mockResolvedValue({
-      data: [{ cita_id: 'c1', nuevo_horario_id: 'h2' }],
-      error: null,
-    })
+vi.mock('../lib/withTimeout', () => ({
+  AUTH_TIMEOUT_MS: 5000,
+  TimeoutError: class TimeoutError extends Error {},
+  withTimeout: vi.fn((promise) => promise),
+}))
+
+import { supabase } from '../lib/supabase'
+import { withTimeout, TimeoutError } from '../lib/withTimeout'
+
+describe('useReprogramarCita', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Restaura el passthrough por defecto: clearAllMocks() limpia llamadas
+    // pero NO restaura mockImplementation/mockRejectedValue de tests previos.
+    vi.mocked(withTimeout).mockImplementation((promise) => Promise.resolve(promise))
+  })
+
+  it('retorna loading=false y error=null en estado inicial', () => {
     const { result } = renderHook(() => useReprogramarCita())
-
-    let ok: boolean | undefined
-    await act(async () => {
-      ok = await result.current.reprogramar('c1', 'h2')
-    })
-
-    expect(rpcMock).toHaveBeenCalledWith('reprogramar_cita_atomica', {
-      p_cita_id: 'c1',
-      p_nuevo_horario_id: 'h2',
-    })
-    expect(ok).toBe(true)
+    expect(result.current.loading).toBe(false)
     expect(result.current.error).toBeNull()
   })
 
-  it('muestra el error de la RPC (ej. horario ya reservado) y retorna false', async () => {
-    rpcMock.mockResolvedValue({
-      data: null,
-      error: { message: 'El nuevo horario ya está reservado' },
-    })
+  it('retorna true y no setea error cuando RPC es exitosa', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({ error: null } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
+
     const { result } = renderHook(() => useReprogramarCita())
+    let ok: boolean
 
-    let ok: boolean | undefined
     await act(async () => {
-      ok = await result.current.reprogramar('c1', 'h2')
+      ok = await result.current.reprogramar('cita-123', 'horario-456')
     })
 
-    expect(ok).toBe(false)
-    expect(result.current.error).toMatch(/ya está reservado/)
+    expect(ok!).toBe(true)
+    expect(result.current.error).toBeNull()
+    expect(result.current.loading).toBe(false)
   })
 
-  it('maneja TimeoutError', async () => {
-    rpcMock.mockRejectedValue(new TimeoutError(15_000))
-    const { result } = renderHook(() => useReprogramarCita())
+  it('retorna false y setea el mensaje de error cuando RPC falla', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      error: { message: 'Horario no disponible' },
+    } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
 
-    let ok: boolean | undefined
+    const { result } = renderHook(() => useReprogramarCita())
+    let ok: boolean
+
     await act(async () => {
-      ok = await result.current.reprogramar('c1', 'h2')
+      ok = await result.current.reprogramar('cita-123', 'horario-456')
     })
 
-    expect(ok).toBe(false)
-    expect(result.current.error).toMatch(/tardó demasiado/)
+    expect(ok!).toBe(false)
+    expect(result.current.error).toBe('Horario no disponible')
+  })
+
+  it('maneja TimeoutError correctamente', async () => {
+    vi.mocked(withTimeout).mockRejectedValue(new TimeoutError(15000))
+
+    const { result } = renderHook(() => useReprogramarCita())
+    let ok: boolean
+
+    await act(async () => {
+      ok = await result.current.reprogramar('cita-123', 'horario-456')
+    })
+
+    expect(ok!).toBe(false)
+    expect(result.current.error).toContain('tardó demasiado')
+  })
+
+  it('setError permite limpiar el error manualmente', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      error: { message: 'Error de prueba' },
+    } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
+
+    const { result } = renderHook(() => useReprogramarCita())
+
+    await act(async () => {
+      await result.current.reprogramar('cita-123', 'horario-456')
+    })
+
+    expect(result.current.error).toBe('Error de prueba')
+
+    act(() => {
+      result.current.setError(null)
+    })
+
+    expect(result.current.error).toBeNull()
+  })
+
+  it('llama a supabase.rpc con los parámetros correctos', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({ error: null } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
+
+    const { result } = renderHook(() => useReprogramarCita())
+
+    await act(async () => {
+      await result.current.reprogramar('cita-abc', 'horario-xyz')
+    })
+
+    expect(supabase.rpc).toHaveBeenCalledWith('reprogramar_cita_atomica', {
+      p_cita_id: 'cita-abc',
+      p_nuevo_horario_id: 'horario-xyz',
+    })
   })
 })

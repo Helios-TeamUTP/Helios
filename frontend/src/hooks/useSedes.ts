@@ -18,6 +18,10 @@ export function useSedes() {
 
   useEffect(() => {
     let active = true
+    // Reset sincrono de loading/error al iniciar el efecto — patron valido
+    // de React para preparar el estado antes de un fetch async (ver
+    // fetchCitas en useCitas.ts para el mismo criterio ya documentado).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     setError(null)
     ;(async () => {

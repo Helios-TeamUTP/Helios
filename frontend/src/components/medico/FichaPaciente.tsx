@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import type { CitaConRelaciones, Paciente } from '../../lib/types'
+import type { CitaConRelaciones, HistorialClinico, Paciente } from '../../lib/types'
 import { LoadingSpinner } from '../shared/LoadingSpinner'
 
 interface FichaPacienteProps {
@@ -11,14 +11,19 @@ interface FichaPacienteProps {
 
 /**
  * Modal con los datos de un paciente + sus ultimas 5 citas con cualquier
- * medico. Util para que el medico vea contexto antes/durante la cita.
+ * medico, incluyendo dolencia principal y receta cuando existan.
  *
  * Bug B-13: componente nuevo del dashboard de medicos.
+ * v2: agrega historial_clinico (dolencia_principal, receta) por cita.
+ * RLS de historial_clinico solo permite ver lo que el medico logueado
+ * escribio — si otro medico atendio esa cita, el campo simplemente no
+ * aparece (comportamiento correcto de privacidad, no es un bug).
  *
  * UX: cierra con boton X, click en backdrop, o tecla Escape.
  */
 export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
   const [historial, setHistorial] = useState<CitaConRelaciones[]>([])
+  const [clinico, setClinico] = useState<Map<string, HistorialClinico>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,7 +31,7 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
     const signal = { active: true }
     ;(async () => {
       try {
-        const { data, error } = await supabase
+        const { data: citas, error: citasError } = await supabase
           .from('citas')
           .select(
             '*, horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)',
@@ -35,13 +40,23 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
           .order('created_at', { ascending: false })
           .limit(5)
 
+        if (citasError) throw citasError
+
+        // Historial clinico de estas citas (RLS ya filtra a lo que el
+        // medico logueado puede ver: solo lo que el mismo escribio).
+        const { data: hist, error: histError } = await supabase
+          .from('historial_clinico')
+          .select('*')
+          .eq('paciente_id', paciente.id)
+
+        if (histError) throw histError
+
         if (!signal.active) return
 
-        if (error) {
-          setError(error.message)
-        } else {
-          setHistorial((data ?? []) as unknown as CitaConRelaciones[])
-        }
+        setHistorial((citas ?? []) as unknown as CitaConRelaciones[])
+        setClinico(
+          new Map(((hist ?? []) as HistorialClinico[]).map((h) => [h.cita_id, h])),
+        )
       } catch (err) {
         if (signal.active) {
           console.error('[FichaPaciente] unexpected:', err)
@@ -148,25 +163,49 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
         )}
         {!loading && !error && historial.length > 0 && (
           <ul className="mt-3 space-y-2">
-            {historial.map((c) => (
-              <li
-                key={c.id}
-                className="rounded-lg border border-helios-ink/10 p-3 text-sm"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">
-                    {c.horario?.fecha ?? '—'} · {c.horario?.hora_inicio?.slice(0, 5) ?? '—'}
-                  </span>
-                  <span className="text-xs uppercase tracking-wide text-helios-ink/50">
-                    {c.estado}
-                  </span>
-                </div>
-                <p className="text-helios-ink/70">
-                  {c.medico?.nombre ?? 'Médico desconocido'}
-                  {c.medico?.especialidad?.nombre && ` — ${c.medico.especialidad.nombre}`}
-                </p>
-              </li>
-            ))}
+            {historial.map((c) => {
+              const hist = clinico.get(c.id)
+              return (
+                <li
+                  key={c.id}
+                  className="rounded-lg border border-helios-ink/10 p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">
+                      {c.horario?.fecha ?? '—'} · {c.horario?.hora_inicio?.slice(0, 5) ?? '—'}
+                    </span>
+                    <span className="text-xs uppercase tracking-wide text-helios-ink/50">
+                      {c.estado}
+                    </span>
+                  </div>
+                  <p className="text-helios-ink/70">
+                    {c.medico?.nombre ?? 'Médico desconocido'}
+                    {c.medico?.especialidad?.nombre && ` — ${c.medico.especialidad.nombre}`}
+                  </p>
+
+                  {hist && (
+                    <div className="mt-2 space-y-1 border-t border-helios-ink/5 pt-2">
+                      <p>
+                        <span className="font-semibold text-helios-ink/60">Dolencia: </span>
+                        <span className="text-helios-ink/80">{hist.dolencia_principal}</span>
+                      </p>
+                      {hist.receta && (
+                        <p>
+                          <span className="font-semibold text-helios-ink/60">Receta: </span>
+                          <span className="text-helios-ink/80">{hist.receta}</span>
+                        </p>
+                      )}
+                      {hist.notas_clinicas && (
+                        <p>
+                          <span className="font-semibold text-helios-ink/60">Notas: </span>
+                          <span className="text-helios-ink/80">{hist.notas_clinicas}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

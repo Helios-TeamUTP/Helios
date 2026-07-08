@@ -8,7 +8,7 @@ export function Home() {
     <section className="grid items-center gap-12 md:grid-cols-2">
       <div>
         <span className="inline-flex items-center rounded-full bg-helios-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-helios-primary">
-          Sprint 1 · Agendamiento
+          Agenda tu cita en minutos
         </span>
         <h1 className="mt-4 text-4xl font-bold text-helios-ink md:text-5xl">
           Tu cita médica, sin filas y en menos de 2 minutos.
