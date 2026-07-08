@@ -70,6 +70,7 @@ export function ReprogramarCitaModal({ cita, onClose, onReprogramada }: Props) {
               medicoId={cita.medico_id}
               value={seleccion}
               onChange={setSeleccion}
+              excluirCitaId={cita.id}
             />
           ) : (
             <ErrorMessage message="Esta cita no tiene un médico asignado; no se puede reprogramar." />

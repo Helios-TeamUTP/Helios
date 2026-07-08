@@ -1,14 +1,14 @@
 import { useMemo } from 'react'
 import { LoadingSpinner } from '../shared/LoadingSpinner'
 import { ErrorMessage } from '../shared/ErrorMessage'
-import type { Horario } from '../../lib/types'
+import type { Horario, HorarioAgendable } from '../../lib/types'
 
 /**
  * Props: recibe horarios ya cargados desde el padre (CalendarioCitas) para
  * evitar duplicar la llamada useHorarios.
  */
 interface Props {
-  horarios: Horario[]
+  horarios: HorarioAgendable[]
   loading: boolean
   error: string | null
   value: Horario | null
@@ -49,7 +49,7 @@ function formatFechaLarga(fechaIso: string): string {
 export function CalendarioCitasLista({ horarios, loading, error, value, onChange }: Props) {
   // Agrupar horarios por fecha (ordenados ascendente).
   const porDia = useMemo(() => {
-    const grupos = new Map<string, Horario[]>()
+    const grupos = new Map<string, HorarioAgendable[]>()
     for (const h of horarios) {
       const lista = grupos.get(h.fecha) ?? []
       lista.push(h)
@@ -81,39 +81,60 @@ export function CalendarioCitasLista({ horarios, loading, error, value, onChange
       </p>
 
       <ul className="space-y-4">
-        {porDia.map(([fecha, slotsDelDia]) => (
-          <li
-            key={fecha}
-            className="rounded-xl border border-helios-ink/10 bg-white p-4"
-          >
-            <h3 className="mb-3 text-sm font-semibold capitalize text-helios-deep">
-              {formatFechaLarga(fecha)}
-            </h3>
-            <div
-              className="grid gap-2"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))' }}
+        {porDia.map(([fecha, slotsDelDia]) => {
+          // Sprint 5: un día está completo si el médico ya llegó al tope de
+          // citas ese día (la RPC lo marca igual en todos los slots del día).
+          const diaCompleto = slotsDelDia.some((h) => h.dia_completo)
+          return (
+            <li
+              key={fecha}
+              className={`rounded-xl border p-4 ${
+                diaCompleto ? 'border-helios-ink/10 bg-helios-mist' : 'border-helios-ink/10 bg-white'
+              }`}
             >
-              {slotsDelDia.map((h) => {
-                const seleccionado = value?.id === h.id
-                return (
-                  <button
-                    key={h.id}
-                    type="button"
-                    onClick={() => onChange(h)}
-                    aria-pressed={seleccionado}
-                    className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-helios-primary focus-visible:ring-offset-2 ${
-                      seleccionado
-                        ? 'border-helios-deep bg-helios-deep text-white shadow-card'
-                        : 'border-helios-primary/30 bg-helios-primary/5 text-helios-primary hover:bg-helios-primary/15 active:bg-helios-primary/25'
-                    }`}
-                  >
-                    {h.hora_inicio.slice(0, 5)}
-                  </button>
-                )
-              })}
-            </div>
-          </li>
-        ))}
+              <h3 className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold capitalize text-helios-deep">
+                <span>{formatFechaLarga(fecha)}</span>
+                {diaCompleto && (
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                    Día completo
+                  </span>
+                )}
+              </h3>
+              <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))' }}
+              >
+                {slotsDelDia.map((h) => {
+                  const seleccionado = value?.id === h.id
+                  return (
+                    <button
+                      key={h.id}
+                      type="button"
+                      disabled={diaCompleto}
+                      onClick={() => onChange(h)}
+                      aria-pressed={seleccionado}
+                      title={diaCompleto ? 'Este día ya está completo. Elige otro día.' : undefined}
+                      className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-helios-primary focus-visible:ring-offset-2 ${
+                        diaCompleto
+                          ? 'cursor-not-allowed border-helios-ink/10 bg-helios-ink/5 text-helios-ink/30 line-through'
+                          : seleccionado
+                          ? 'border-helios-deep bg-helios-deep text-white shadow-card'
+                          : 'border-helios-primary/30 bg-helios-primary/5 text-helios-primary hover:bg-helios-primary/15 active:bg-helios-primary/25'
+                      }`}
+                    >
+                      {h.hora_inicio.slice(0, 5)}
+                    </button>
+                  )
+                })}
+              </div>
+              {diaCompleto && (
+                <p className="mt-2 text-xs text-amber-700">
+                  Este médico ya tiene todas sus citas para este día. Elige otro día disponible.
+                </p>
+              )}
+            </li>
+          )
+        })}
       </ul>
 
       {value && (

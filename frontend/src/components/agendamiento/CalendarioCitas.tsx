@@ -6,6 +6,12 @@ interface Props {
   medicoId: string
   value: Horario | null
   onChange: (horario: Horario) => void
+  /**
+   * Sprint 5: al reprogramar, la cita que se está moviendo no debe contar para
+   * el tope de citas/día (así no se bloquea un cambio válido del mismo día).
+   * Se omite al agendar una cita nueva.
+   */
+  excluirCitaId?: string
 }
 
 /**
@@ -29,8 +35,8 @@ interface Props {
  * El contrato del componente (medicoId, value, onChange) se mantiene igual
  * para que AgendarCita.tsx no requiera cambios.
  */
-export function CalendarioCitas({ medicoId, value, onChange }: Props) {
-  const { data, loading, error } = useHorarios(medicoId)
+export function CalendarioCitas({ medicoId, value, onChange, excluirCitaId }: Props) {
+  const { data, loading, error } = useHorarios(medicoId, excluirCitaId)
 
   return (
     <CalendarioCitasLista
