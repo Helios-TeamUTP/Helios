@@ -18,6 +18,9 @@ export function useEspecialidades() {
 
   useEffect(() => {
     let active = true
+    // Reset sincrono de loading/error al iniciar el efecto — mismo patron
+    // ya documentado en useSedes.ts/useMedicos.ts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     setError(null)
     ;(async () => {

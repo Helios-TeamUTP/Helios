@@ -80,9 +80,6 @@ export function AppLayout() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <Outlet />
       </main>
-      <footer className="mx-auto max-w-6xl px-6 pb-10 pt-4 text-center text-xs text-helios-ink/40">
-        HELIOS · Sprint 1 · UTP Calidad de Software 2026
-      </footer>
     </div>
   )
 }

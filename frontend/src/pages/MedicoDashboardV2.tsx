@@ -34,6 +34,38 @@ const ESTADO_META: Record<EstadoCita, { label: string; dot: string; badge: strin
   },
 }
 
+const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
+
+/**
+ * Formatea 'YYYY-MM-DD' a 'Lunes 18 de junio'. Local-safe (parsea los
+ * componentes a mano, sin pasar por Date/UTC) para evitar el desfase de
+ * timezone en Panamá (mismo criterio que el fix B-21).
+ */
+function formatFechaLarga(fechaIso: string): string {
+  const [y, m, d] = fechaIso.split('-').map(Number)
+  if (!y || !m || !d) return fechaIso
+  const fecha = new Date(y, m - 1, d)
+  return `${DIAS[fecha.getDay()]} ${d} de ${MESES[fecha.getMonth()]}`
+}
+
+/** Agrupa citas (ya vienen ordenadas por fecha+hora del hook) en bloques por día. */
+function agruparPorFecha(
+  citas: CitaConPaciente[],
+): { fecha: string; citas: CitaConPaciente[] }[] {
+  const grupos: { fecha: string; citas: CitaConPaciente[] }[] = []
+  for (const cita of citas) {
+    const fecha = (cita as CitaConPaciente & { horario?: { fecha?: string } }).horario?.fecha ?? ''
+    const ultimo = grupos[grupos.length - 1]
+    if (ultimo && ultimo.fecha === fecha) ultimo.citas.push(cita)
+    else grupos.push({ fecha, citas: [cita] })
+  }
+  return grupos
+}
+
 /** Iniciales para avatar — máx 2 letras */
 function initials(nombre: string): string {
   return nombre
@@ -83,19 +115,32 @@ function StatCard({ icon, label, value, sub, color }: StatCardProps) {
   )
 }
 
+/** Fila de encabezado de día — solo se usa en la vista "Esta semana". */
+function FilaDia({ fecha }: { fecha: string }) {
+  return (
+    <tr>
+      <td colSpan={5} className="bg-helios-mist px-5 py-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-helios-primary">
+          {formatFechaLarga(fecha)}
+        </span>
+      </td>
+    </tr>
+  )
+}
+
 interface FilaCitaProps {
   cita: CitaConPaciente
   onVerFicha: () => void
   onIniciarCompletar: () => void
   onMarcarNoAsistio: () => Promise<void>
-  modoHistorial: boolean
+  soloLectura: boolean
 }
 function FilaCita({
   cita,
   onVerFicha,
   onIniciarCompletar,
   onMarcarNoAsistio,
-  modoHistorial,
+  soloLectura,
 }: FilaCitaProps) {
   const [working, setWorking] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -173,7 +218,7 @@ function FilaCita({
           <button type="button" onClick={onVerFicha} className="btn-ghost py-1.5 text-xs">
             Ver ficha
           </button>
-          {!modoHistorial && cita.estado === 'confirmada' && (
+          {!soloLectura && cita.estado === 'confirmada' && (
             <>
               <button
                 type="button"
@@ -201,7 +246,19 @@ function FilaCita({
 
 // ─── página principal ─────────────────────────────────────────────────────────
 
-type Tab = 'hoy' | 'historial'
+type Tab = 'hoy' | 'semana' | 'historial'
+
+const TAB_LABELS: Record<Tab, string> = {
+  hoy: 'Agenda de hoy',
+  semana: 'Esta semana',
+  historial: 'Historial de citas',
+}
+
+const TAB_VACIO: Record<Tab, string> = {
+  hoy: 'No tienes citas asignadas para hoy.',
+  semana: 'No tienes citas en los próximos 7 días.',
+  historial: 'No hay citas anteriores registradas.',
+}
 
 export function MedicoDashboardV2() {
   const { medico } = useAuth()
@@ -228,8 +285,9 @@ export function MedicoDashboardV2() {
     )
   }
 
-  // ── métricas derivadas de las citas del día ──────────────────────────────
-  const totalHoy = citas.length
+  // ── métricas: validas para 'hoy' y 'semana' (snapshot en vivo); 'historial' no aplica ──
+  const statsAplican = tab !== 'historial'
+  const total = citas.length
   const completadas = citas.filter((c) => c.estado === 'completada').length
   const enEspera = citas.filter((c) => c.estado === 'confirmada').length
   const noAsistio = citas.filter((c) => c.estado === 'no_asistio').length
@@ -265,6 +323,37 @@ export function MedicoDashboardV2() {
     setCitaParaCompletar(null)
   }
 
+  // ── filas de la tabla: planas (hoy/historial) o agrupadas por día (semana) ──
+  const filas =
+    tab === 'semana'
+      ? agruparPorFecha(citas).flatMap((grupo) => [
+          <FilaDia key={`dia-${grupo.fecha}`} fecha={grupo.fecha} />,
+          ...grupo.citas.map((cita) => (
+            <FilaCita
+              key={cita.id}
+              cita={cita}
+              soloLectura={false}
+              onIniciarCompletar={() => setCitaParaCompletar(cita)}
+              onMarcarNoAsistio={() => marcarEstado(cita.id, 'no_asistio')}
+              onVerFicha={() => {
+                if (cita.paciente) setPacienteFicha(cita.paciente)
+              }}
+            />
+          )),
+        ])
+      : citas.map((cita) => (
+          <FilaCita
+            key={cita.id}
+            cita={cita}
+            soloLectura={tab === 'historial'}
+            onIniciarCompletar={() => setCitaParaCompletar(cita)}
+            onMarcarNoAsistio={() => marcarEstado(cita.id, 'no_asistio')}
+            onVerFicha={() => {
+              if (cita.paciente) setPacienteFicha(cita.paciente)
+            }}
+          />
+        ))
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
 
@@ -299,27 +388,27 @@ export function MedicoDashboardV2() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard
           icon={<CalendarIcon />}
-          label="Citas de hoy"
-          value={tab === 'hoy' ? totalHoy : '—'}
-          sub={tab === 'historial' ? 'Ver pestaña Hoy' : undefined}
+          label={tab === 'semana' ? 'Citas esta semana' : 'Citas de hoy'}
+          value={statsAplican ? total : '—'}
+          sub={!statsAplican ? 'Ver pestaña Hoy' : undefined}
           color="bg-helios-primary/10 text-helios-primary"
         />
         <StatCard
           icon={<CheckIcon />}
           label="Completadas"
-          value={tab === 'hoy' ? completadas : '—'}
+          value={statsAplican ? completadas : '—'}
           color="bg-green-50 text-green-600"
         />
         <StatCard
           icon={<ClockIcon />}
           label="En espera"
-          value={tab === 'hoy' ? enEspera : '—'}
+          value={statsAplican ? enEspera : '—'}
           color="bg-blue-50 text-blue-600"
         />
         <StatCard
           icon={<XIcon />}
           label="No asistió"
-          value={tab === 'hoy' ? noAsistio : '—'}
+          value={statsAplican ? noAsistio : '—'}
           color="bg-amber-50 text-amber-600"
         />
       </div>
@@ -329,34 +418,24 @@ export function MedicoDashboardV2() {
 
         {/* cabecera de la card */}
         <div className="flex items-center justify-between border-b border-helios-ink/5 px-5 py-4">
-          <h2 className="font-semibold text-helios-ink">
-            {tab === 'hoy' ? 'Agenda de hoy' : 'Historial de citas'}
-          </h2>
+          <h2 className="font-semibold text-helios-ink">{TAB_LABELS[tab]}</h2>
 
           {/* tabs */}
           <div className="flex rounded-lg border border-helios-ink/10 bg-helios-mist p-0.5 text-sm">
-            <button
-              type="button"
-              onClick={() => setTab('hoy')}
-              className={`rounded-md px-3 py-1.5 font-medium transition ${
-                tab === 'hoy'
-                  ? 'bg-white text-helios-ink shadow-sm'
-                  : 'text-helios-ink/50 hover:text-helios-ink'
-              }`}
-            >
-              Hoy
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('historial')}
-              className={`rounded-md px-3 py-1.5 font-medium transition ${
-                tab === 'historial'
-                  ? 'bg-white text-helios-ink shadow-sm'
-                  : 'text-helios-ink/50 hover:text-helios-ink'
-              }`}
-            >
-              Historial
-            </button>
+            {(['hoy', 'semana', 'historial'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`rounded-md px-3 py-1.5 font-medium transition ${
+                  tab === t
+                    ? 'bg-white text-helios-ink shadow-sm'
+                    : 'text-helios-ink/50 hover:text-helios-ink'
+                }`}
+              >
+                {t === 'hoy' ? 'Hoy' : t === 'semana' ? 'Esta semana' : 'Historial'}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -374,11 +453,7 @@ export function MedicoDashboardV2() {
         {!loading && !error && citas.length === 0 && (
           <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-helios-ink/40">
             <CalendarIcon />
-            <p className="text-sm">
-              {tab === 'hoy'
-                ? 'No tienes citas asignadas para hoy.'
-                : 'No hay citas anteriores registradas.'}
-            </p>
+            <p className="text-sm">{TAB_VACIO[tab]}</p>
           </div>
         )}
 
@@ -394,20 +469,7 @@ export function MedicoDashboardV2() {
                 <th className="py-3 pl-3 pr-5 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              {citas.map((cita) => (
-                <FilaCita
-                  key={cita.id}
-                  cita={cita}
-                  modoHistorial={tab === 'historial'}
-                  onIniciarCompletar={() => setCitaParaCompletar(cita)}
-                  onMarcarNoAsistio={() => marcarEstado(cita.id, 'no_asistio')}
-                  onVerFicha={() => {
-                    if (cita.paciente) setPacienteFicha(cita.paciente)
-                  }}
-                />
-              ))}
-            </tbody>
+            <tbody>{filas}</tbody>
           </table>
         )}
       </div>
