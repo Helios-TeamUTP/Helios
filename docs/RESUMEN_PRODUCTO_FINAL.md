@@ -27,7 +27,7 @@ clínico, cancelación/reprogramación, notificaciones y correos automáticos.
 |---|---|---|
 | **Registro y login** | Alta de pacientes con validación de cédula panameña (5 tipos), teléfono, nombre y correo; doble confirmación anti-error | ✅ En vivo |
 | **Agendamiento** | Wizard de 4 pasos: especialidad+sede → médico → horario → confirmar | ✅ En vivo |
-| **Límite real de citas/día** | Un médico no puede exceder **6 citas por día** (tope físico, atómico en BD) | ✅ Nuevo hoy |
+| **Límite real de citas/día** | Un médico no puede exceder **15 citas por día** (recomendación de un médico real; tope físico, atómico en BD) | ✅ Nuevo hoy |
 | **Cancelar / Reprogramar** | Autoservicio del paciente, con liberación de cupo y auditoría | ✅ En vivo |
 | **Dashboard médico** | Agenda del día, marcar completada/no asistió, gestión de pacientes | ✅ En vivo |
 | **Historial clínico** | Dolencia y receta por cita, visible para médico y paciente | ✅ En vivo |
@@ -54,7 +54,7 @@ clínico, cancelación/reprogramación, notificaciones y correos automáticos.
 
 ### 3.3 Nueva funcionalidad: límite de citas por médico/día
 - **Problema:** sin control, un médico podía terminar con 20+ citas en un día.
-- **Solución:** tope de **6 citas por día por médico**, aplicado en 3 capas:
+- **Solución:** tope de **15 citas por día por médico** (número recomendado por un médico real que probó el sistema), aplicado en 3 capas:
   1. **Base de datos** (el límite real, imposible de saltar): rechaza la
      cita #7 con un candado de concurrencia por médico+día.
   2. **Reglas de reprogramación**: no se puede mover una cita a un día lleno.

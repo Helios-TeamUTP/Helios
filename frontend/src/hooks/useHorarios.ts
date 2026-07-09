@@ -69,7 +69,7 @@ export function useHorarios(medicoId: string | null, excluirCitaId?: string | nu
     ;(async () => {
       try {
         // Sprint 5: la RPC devuelve los slots libres del médico marcando con
-        // `dia_completo` los días que ya llegaron al tope de 6 citas. Va por RPC
+        // `dia_completo` los días que ya llegaron al tope de 15 citas. Va por RPC
         // (no query directa) porque el paciente, por RLS, no puede contar las
         // citas ajenas del médico para saber qué días están llenos.
         const { data, error } = await supabase.rpc('horarios_agendables', {

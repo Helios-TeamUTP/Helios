@@ -1,7 +1,9 @@
 -- ============================================================
--- SPRINT 5 — Límite de citas por médico por día (tope 6)
+-- SPRINT 5 — Límite de citas por médico por día (tope 15)
 -- ============================================================
--- Un médico no puede tener más de 6 citas NO canceladas el mismo día
+-- Tope de 15 basado en la recomendación de un médico real de salud pública
+-- que probó HELIOS (su carga diaria típica gestionando consultas).
+-- Un médico no puede tener más de 15 citas NO canceladas el mismo día
 -- (confirmada + completada + no_asistio; algunas consultas duran más de
 -- una hora → un tope realista de la agenda física del médico).
 --
@@ -36,7 +38,7 @@
 
 
 -- ─────────────────────────────────────────────────────────────
--- 1. crear_cita_atomica: agregar el tope de 6 citas/día
+-- 1. crear_cita_atomica: agregar el tope de 15 citas/día
 -- ─────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION crear_cita_atomica(
   p_paciente_id UUID,
@@ -46,7 +48,7 @@ CREATE OR REPLACE FUNCTION crear_cita_atomica(
   p_notas TEXT DEFAULT NULL
 ) RETURNS TABLE(cita_id UUID, codigo TEXT) AS $$
 DECLARE
-  c_max_citas_dia CONSTANT INT := 6;   -- tope fijo de citas por médico por día
+  c_max_citas_dia CONSTANT INT := 15;   -- tope fijo de citas por médico por día
   v_disponible BOOLEAN;
   v_fecha      DATE;
   v_citas_dia  INT;
@@ -108,7 +110,7 @@ GRANT  EXECUTE ON FUNCTION crear_cita_atomica(UUID, UUID, UUID, UUID, TEXT) TO a
 CREATE OR REPLACE FUNCTION reprogramar_cita_atomica(p_cita_id UUID, p_nuevo_horario_id UUID)
 RETURNS TABLE(cita_id UUID, nuevo_horario_id UUID) AS $$
 DECLARE
-  c_max_citas_dia CONSTANT INT := 6;
+  c_max_citas_dia CONSTANT INT := 15;
   v_paciente_id   UUID;
   v_medico_id     UUID;
   v_horario_viejo UUID;
@@ -218,7 +220,7 @@ RETURNS TABLE(
   dia_completo BOOLEAN
 ) AS $$
 DECLARE
-  c_max_citas_dia CONSTANT INT := 6;
+  c_max_citas_dia CONSTANT INT := 15;
 BEGIN
   RETURN QUERY
   WITH citas_por_dia AS (

@@ -11,7 +11,7 @@ import type { HorarioAgendable } from '../../lib/types'
  * que al elegirlo se pase EXACTAMENTE ese horario.
  *
  * Sprint 5: `dia_completo` (default false) marca los días que ya llegaron al
- * tope de 6 citas; esos slots se muestran deshabilitados.
+ * tope de 15 citas; esos slots se muestran deshabilitados.
  */
 function horario(over: Partial<HorarioAgendable>): HorarioAgendable {
   return {
@@ -74,7 +74,7 @@ describe('<CalendarioCitasLista /> (B-21 timezone-safe)', () => {
   })
 
   /**
-   * Sprint 5 (límite de citas/día): cuando un día llegó al tope de 6 citas, la
+   * Sprint 5 (límite de citas/día): cuando un día llegó al tope de 15 citas, la
    * RPC marca sus slots con dia_completo=true. La UI debe:
    *  - mostrar la etiqueta "Día completo",
    *  - deshabilitar los botones de ese día,
