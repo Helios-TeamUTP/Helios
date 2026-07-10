@@ -55,7 +55,6 @@ export function useHorarios(medicoId: string | null, excluirCitaId?: string | nu
   useEffect(() => {
     if (!medicoId) {
       setData([])
-      setLoading(false)
       return
     }
     let active = true
