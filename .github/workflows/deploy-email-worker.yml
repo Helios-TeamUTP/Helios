@@ -1,0 +1,34 @@
+name: Deploy email-worker a Railway
+
+# Despliega el worker de correos (servicio helios-email-worker) a Railway.
+# Corre en un runner Linux de GitHub (esquiva el bloqueo de Smart App Control).
+#
+# railway up sube el repo; Railway aplica el Root Directory del servicio
+# (= email-worker) → construye esa carpeta (npm install + npm start).
+# Las credenciales (Gmail + Supabase) ya están como variables del servicio en
+# Railway. Usa el mismo secret RAILWAY_TOKEN (project token) que helios-web.
+#
+# Se dispara al cambiar el worker (o este archivo) y a mano desde "Actions".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'email-worker/**'
+      - '.github/workflows/deploy-email-worker.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Traer el codigo del repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.2.2
+
+      - name: Instalar el CLI de Railway
+        run: npm install -g @railway/cli
+
+      - name: Desplegar el worker de correos
+        run: railway up --service helios-email-worker --ci
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

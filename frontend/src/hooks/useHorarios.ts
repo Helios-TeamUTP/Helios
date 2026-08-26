@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Horario } from '../lib/types'
+import type { HorarioAgendable } from '../lib/types'
 
 /**
  * Bug B-25: la query trae los horarios de HOY en adelante (filtro por fecha),
@@ -11,10 +11,16 @@ import type { Horario } from '../lib/types'
  * zona horaria: `fecha` es "YYYY-MM-DD" y `hora_inicio` es "HH:MM:SS", ambos
  * zero-padded, así que el orden lexicográfico coincide con el cronológico.
  *
+ * Genérico en `T extends { fecha; hora_inicio }` para preservar el tipo del
+ * slot (Sprint 5: conserva el campo `dia_completo` de HorarioAgendable).
+ *
  * @param horarios - slots crudos traídos de Supabase
  * @param ahora - momento actual (se inyecta para poder testear)
  */
-export function filtrarSlotsFuturos(horarios: Horario[], ahora: Date): Horario[] {
+export function filtrarSlotsFuturos<T extends { fecha: string; hora_inicio: string }>(
+  horarios: T[],
+  ahora: Date,
+): T[] {
   const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
   const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`
   return horarios.filter(
@@ -33,15 +39,22 @@ export function filtrarSlotsFuturos(horarios: Horario[], ahora: Date): Horario[]
  * @param medicoId - ID del médico o null
  * @returns data (horarios disponibles), loading, error
  */
-export function useHorarios(medicoId: string | null) {
-  const [data, setData] = useState<Horario[]>([])
+/**
+ * @param medicoId - ID del médico o null
+ * @param excluirCitaId - Sprint 5: al REPROGRAMAR, la cita que se está moviendo
+ *   no debe contar para el tope del día (si no, un día en el tope donde una de
+ *   las citas es la propia se marcaría "completo" y bloquearía en la UI un
+ *   cambio del mismo día que el backend sí permite). Se deja undefined/null al
+ *   agendar una cita nueva.
+ */
+export function useHorarios(medicoId: string | null, excluirCitaId?: string | null) {
+  const [data, setData] = useState<HorarioAgendable[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!medicoId) {
       setData([])
-      setLoading(false)
       return
     }
     let active = true
@@ -54,18 +67,19 @@ export function useHorarios(medicoId: string | null) {
     const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
     ;(async () => {
       try {
-        const { data, error } = await supabase
-          .from('horarios')
-          .select('*')
-          .eq('medico_id', medicoId)
-          .eq('disponible', true)
-          .gte('fecha', hoy)
-          .order('fecha')
-          .order('hora_inicio')
+        // Sprint 5: la RPC devuelve los slots libres del médico marcando con
+        // `dia_completo` los días que ya llegaron al tope de 15 citas. Va por RPC
+        // (no query directa) porque el paciente, por RLS, no puede contar las
+        // citas ajenas del médico para saber qué días están llenos.
+        const { data, error } = await supabase.rpc('horarios_agendables', {
+          p_medico_id: medicoId,
+          p_hoy: hoy,
+          p_excluir_cita_id: excluirCitaId ?? null,
+        })
         if (!active) return
         if (error) setError(error.message)
         // Bug B-25: descartar slots de hoy cuya hora ya pasó (no agendar en el pasado).
-        else setData(filtrarSlotsFuturos(data ?? [], new Date()))
+        else setData(filtrarSlotsFuturos((data ?? []) as HorarioAgendable[], new Date()))
       } catch (err) {
         if (active) {
           console.error('[useHorarios] unexpected:', err)
@@ -78,7 +92,7 @@ export function useHorarios(medicoId: string | null) {
     return () => {
       active = false
     }
-  }, [medicoId])
+  }, [medicoId, excluirCitaId])
 
   return { data, loading, error }
 }

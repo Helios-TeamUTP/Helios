@@ -43,6 +43,17 @@ export interface Horario {
   created_at: string
 }
 
+/**
+ * Sprint 5 (límite de citas/día): slot devuelto por la RPC `horarios_agendables`.
+ * Extiende Horario con `dia_completo`: true si ese día ya alcanzó el tope de
+ * citas del médico (6). El calendario muestra esos días como "Día completo"
+ * (deshabilitados). El tope real se aplica en la BD (crear/reprogramar), esto
+ * es solo para la experiencia del paciente.
+ */
+export interface HorarioAgendable extends Horario {
+  dia_completo: boolean
+}
+
 export interface Paciente {
   id: string
   nombre: string

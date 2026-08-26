@@ -59,8 +59,26 @@ export function AppLayout() {
                 {/* Sprint 4: campanita de notificaciones (solo con rol resuelto,
                     para no mostrarla durante el loading transitorio — B-16). */}
                 {!loading && role !== null && <CampanaNotificaciones />}
-                <div className="mx-2 hidden text-sm text-helios-ink/60 sm:block">
-                  {loading ? 'Cargando…' : nombreUsuario}
+                {/* Rol + nombre del usuario. La etiqueta de rol (Médico/Paciente)
+                    deja claro con qué tipo de cuenta se está navegando. */}
+                <div className="mx-2 hidden items-center gap-2 text-sm sm:flex">
+                  {loading ? (
+                    <span className="text-helios-ink/60">Cargando…</span>
+                  ) : (
+                    <>
+                      {role === 'medico' && (
+                        <span className="rounded-full bg-helios-primary/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-helios-primary">
+                          Médico
+                        </span>
+                      )}
+                      {role === 'paciente' && (
+                        <span className="rounded-full bg-helios-deep/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-helios-deep">
+                          Paciente
+                        </span>
+                      )}
+                      <span className="font-medium text-helios-ink/70">{nombreUsuario}</span>
+                    </>
+                  )}
                 </div>
                 <button onClick={handleSignOut} className="btn-ghost">
                   Cerrar sesión
