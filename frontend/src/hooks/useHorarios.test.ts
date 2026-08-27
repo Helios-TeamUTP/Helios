@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filtrarSlotsFuturos } from './useHorarios'
+import { filtrarSlotsFuturos, limitarVentanaDias } from './useHorarios'
 import type { Horario } from '../lib/types'
 
 /**
@@ -53,5 +53,54 @@ describe('filtrarSlotsFuturos (B-25)', () => {
       h({ id: 'manana', fecha: '2026-06-03', hora_inicio: '08:00:00' }), // futuro
     ]
     expect(filtrarSlotsFuturos(entrada, ahora).map((x) => x.id)).toEqual(['hoy-6pm', 'manana'])
+  })
+})
+
+describe('limitarVentanaDias', () => {
+  // "Ahora" fijo: 2 de junio de 2026 (hora local).
+  const ahora = new Date(2026, 5, 2, 10, 0, 0)
+
+  it('mantiene un slot dentro de la ventana de 14 días', () => {
+    const r = limitarVentanaDias([h({ id: 'dia-10', fecha: '2026-06-12' })], ahora, 14)
+    expect(r.map((x) => x.id)).toEqual(['dia-10'])
+  })
+
+  it('mantiene el slot exactamente en el último día de la ventana', () => {
+    // 2 de junio + 14 dias = 16 de junio (limite inclusivo)
+    const r = limitarVentanaDias([h({ id: 'limite', fecha: '2026-06-16' })], ahora, 14)
+    expect(r.map((x) => x.id)).toEqual(['limite'])
+  })
+
+  it('descarta un slot un día después del límite de la ventana', () => {
+    const r = limitarVentanaDias([h({ id: 'fuera', fecha: '2026-06-17' })], ahora, 14)
+    expect(r).toHaveLength(0)
+  })
+
+  it('descarta slots de meses más adelante (el caso real: RPC sin tope superior)', () => {
+    const r = limitarVentanaDias(
+      [h({ id: 'agosto', fecha: '2026-08-24' }), h({ id: 'febrero', fecha: '2027-02-20' })],
+      ahora,
+      14,
+    )
+    expect(r).toHaveLength(0)
+  })
+
+  it('usa VENTANA_DIAS_AGENDABLES (14) como default si no se pasa dias', () => {
+    const dentro = limitarVentanaDias([h({ id: 'dentro', fecha: '2026-06-14' })], ahora)
+    const fuera = limitarVentanaDias([h({ id: 'fuera', fecha: '2026-06-20' })], ahora)
+    expect(dentro).toHaveLength(1)
+    expect(fuera).toHaveLength(0)
+  })
+
+  it('combinado con filtrarSlotsFuturos: solo quedan los futuros Y dentro de 2 semanas', () => {
+    const entrada = [
+      h({ id: 'pasado', fecha: '2026-05-30' }),
+      h({ id: 'hoy-tarde', fecha: '2026-06-02', hora_inicio: '18:00:00' }),
+      h({ id: 'semana-1', fecha: '2026-06-08' }),
+      h({ id: 'muy-lejos', fecha: '2026-08-24' }),
+    ]
+    const futuros = filtrarSlotsFuturos(entrada, ahora)
+    const resultado = limitarVentanaDias(futuros, ahora)
+    expect(resultado.map((x) => x.id)).toEqual(['hoy-tarde', 'semana-1'])
   })
 })
