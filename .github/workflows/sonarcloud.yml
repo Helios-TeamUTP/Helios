@@ -28,16 +28,22 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
         with:
-          version: 9
+          version: 11
+          # v9 no coincidia con el pnpm local (11.2.2) que genera el lockfile
+          # committeado (mismo fix aplicado en ci.yml).
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         working-directory: frontend
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
+        # Lockfile real committeado -> instalacion reproducible (mismo fix
+        # aplicado en ci.yml).
 
       - name: Run tests with coverage
         working-directory: frontend

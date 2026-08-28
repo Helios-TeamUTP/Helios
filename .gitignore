@@ -40,7 +40,11 @@ docs/CREDENCIALES_DEMO_MEDICOS.md
 
 # Dependencias generadas
 package-lock.json
-pnpm-lock.yaml
+# frontend/pnpm-lock.yaml SI se commitea (fix CI: sin lockfile cada corrida
+# resolvia versiones distintas de paquetes, causando fallas intermitentes
+# imposibles de reproducir en local). El lockfile huerfano de la raiz
+# (sin package.json que le corresponda, resto de Sprint 0) si se ignora:
+/pnpm-lock.yaml
 
 # Reportes generados por herramientas QA
 coverage/
