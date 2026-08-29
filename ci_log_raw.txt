@@ -1,0 +1,372 @@
+﻿2026-08-28T05:34:58.2275394Z Current runner version: '2.336.0'
+2026-08-28T05:34:58.2352401Z ##[group]Runner Image Provisioner
+2026-08-28T05:34:58.2353885Z Hosted Compute Agent
+2026-08-28T05:34:58.2355001Z Version: 20260819.586
+2026-08-28T05:34:58.2356198Z Commit: 3cc4a88dfa507ef76119ad1bb3eccc6378bb2b76
+2026-08-28T05:34:58.2378022Z Build Date: 2026-08-18T23:20:18Z
+2026-08-28T05:34:58.2379444Z Worker ID: {e79615d2-04c8-46e5-a0fb-13e9690d4a90}
+2026-08-28T05:34:58.2381029Z Azure Region: northcentralus
+2026-08-28T05:34:58.2382226Z ##[endgroup]
+2026-08-28T05:34:58.2384870Z ##[group]Operating System
+2026-08-28T05:34:58.2386160Z Ubuntu
+2026-08-28T05:34:58.2387124Z 24.04.4
+2026-08-28T05:34:58.2388489Z LTS
+2026-08-28T05:34:58.2389466Z ##[endgroup]
+2026-08-28T05:34:58.2390620Z ##[group]Runner Image
+2026-08-28T05:34:58.2391736Z Image: ubuntu-24.04
+2026-08-28T05:34:58.2392722Z Version: 20260823.283.1
+2026-08-28T05:34:58.2395423Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260823.283/images/ubuntu/Ubuntu2404-Readme.md
+2026-08-28T05:34:58.2418758Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260823.283
+2026-08-28T05:34:58.2420569Z ##[endgroup]
+2026-08-28T05:34:58.2422817Z ##[group]GITHUB_TOKEN Permissions
+2026-08-28T05:34:58.2426069Z Contents: read
+2026-08-28T05:34:58.2427115Z Metadata: read
+2026-08-28T05:34:58.2428637Z Packages: read
+2026-08-28T05:34:58.2429605Z ##[endgroup]
+2026-08-28T05:34:58.2433197Z Secret source: Actions
+2026-08-28T05:34:58.2435682Z Prepare workflow directory
+2026-08-28T05:34:58.3378184Z Prepare all required actions
+2026-08-28T05:34:58.3507212Z Getting action download info
+2026-08-28T05:34:58.6194995Z Download action repository 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' (SHA:b4ffde65f46336ab88eb53be808477a3936bae11)
+2026-08-28T05:34:58.7557113Z Download action repository 'pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2' (SHA:fe02b34f77f8bc703788d5817da081398fad5dd2)
+2026-08-28T05:34:59.1672007Z Download action repository 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-08-28T05:34:59.8443540Z Complete job name: Build · Lint · Test
+2026-08-28T05:34:59.9423887Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:34:59.9435405Z ##[group]Run actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+2026-08-28T05:34:59.9437016Z with:
+2026-08-28T05:34:59.9438027Z   repository: Helios-TeamUTP/Helios
+2026-08-28T05:34:59.9446135Z   token: ***
+2026-08-28T05:34:59.9446890Z   ssh-strict: true
+2026-08-28T05:34:59.9447836Z   persist-credentials: true
+2026-08-28T05:34:59.9448731Z   clean: true
+2026-08-28T05:34:59.9449522Z   sparse-checkout-cone-mode: true
+2026-08-28T05:34:59.9450498Z   fetch-depth: 1
+2026-08-28T05:34:59.9451287Z   fetch-tags: false
+2026-08-28T05:34:59.9452071Z   show-progress: true
+2026-08-28T05:34:59.9452855Z   lfs: false
+2026-08-28T05:34:59.9453631Z   submodules: false
+2026-08-28T05:34:59.9454435Z   set-safe-directory: true
+2026-08-28T05:34:59.9455588Z ##[endgroup]
+2026-08-28T05:35:00.0347963Z (node:1889) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-08-28T05:35:00.0352243Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:35:00.0471446Z Syncing repository: Helios-TeamUTP/Helios
+2026-08-28T05:35:00.0474547Z ##[group]Getting Git version info
+2026-08-28T05:35:00.0476273Z Working directory is '/home/runner/work/Helios/Helios'
+2026-08-28T05:35:00.0479164Z [command]/usr/bin/git version
+2026-08-28T05:35:00.2262000Z git version 2.55.0
+2026-08-28T05:35:00.2279985Z ##[endgroup]
+2026-08-28T05:35:00.2287278Z Temporarily overriding HOME='/home/runner/work/_temp/0eb9dfc7-b9be-49bb-8b5c-cabcbd0bd31e' before making global git config changes
+2026-08-28T05:35:00.2291425Z Adding repository directory to the temporary git global config as a safe directory
+2026-08-28T05:35:00.2294143Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Helios/Helios
+2026-08-28T05:35:00.3282718Z Deleting the contents of '/home/runner/work/Helios/Helios'
+2026-08-28T05:35:00.3285398Z ##[group]Initializing the repository
+2026-08-28T05:35:00.3287188Z [command]/usr/bin/git init /home/runner/work/Helios/Helios
+2026-08-28T05:35:00.3705902Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-08-28T05:35:00.3709565Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-08-28T05:35:00.3712743Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-08-28T05:35:00.3715976Z hint: call:
+2026-08-28T05:35:00.3717359Z hint:
+2026-08-28T05:35:00.3719681Z hint: 	git config --global init.defaultBranch <name>
+2026-08-28T05:35:00.3721664Z hint:
+2026-08-28T05:35:00.3723991Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-08-28T05:35:00.3727344Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-08-28T05:35:00.3730624Z hint:
+2026-08-28T05:35:00.3732108Z hint: 	git branch -m <name>
+2026-08-28T05:35:00.3734086Z hint:
+2026-08-28T05:35:00.3736291Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-08-28T05:35:00.4115034Z Initialized empty Git repository in /home/runner/work/Helios/Helios/.git/
+2026-08-28T05:35:00.4129502Z [command]/usr/bin/git remote add origin https://github.com/Helios-TeamUTP/Helios
+2026-08-28T05:35:01.0199606Z ##[endgroup]
+2026-08-28T05:35:01.0229263Z ##[group]Disabling automatic garbage collection
+2026-08-28T05:35:01.0230631Z [command]/usr/bin/git config --local gc.auto 0
+2026-08-28T05:35:01.0630226Z ##[endgroup]
+2026-08-28T05:35:01.0654055Z ##[group]Setting up auth
+2026-08-28T05:35:01.0669467Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-08-28T05:35:01.0680779Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-08-28T05:35:01.1317248Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-08-28T05:35:01.1351379Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-08-28T05:35:01.1590851Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-08-28T05:35:01.1631181Z ##[endgroup]
+2026-08-28T05:35:01.1633272Z ##[group]Fetching the repository
+2026-08-28T05:35:01.1641813Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +f824b665926a792da872377dfbc295d3cd2cbc37:refs/remotes/origin/main
+2026-08-28T05:35:01.9537236Z From https://github.com/Helios-TeamUTP/Helios
+2026-08-28T05:35:01.9540969Z  * [new ref]         f824b665926a792da872377dfbc295d3cd2cbc37 -> origin/main
+2026-08-28T05:35:01.9590196Z ##[endgroup]
+2026-08-28T05:35:01.9608718Z ##[group]Determining the checkout info
+2026-08-28T05:35:01.9609908Z ##[endgroup]
+2026-08-28T05:35:01.9610857Z ##[group]Checking out the ref
+2026-08-28T05:35:01.9614020Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-08-28T05:35:02.0364677Z Switched to a new branch 'main'
+2026-08-28T05:35:02.0377586Z branch 'main' set up to track 'origin/main'.
+2026-08-28T05:35:02.0391608Z ##[endgroup]
+2026-08-28T05:35:02.0428383Z [command]/usr/bin/git log -1 --format='%H'
+2026-08-28T05:35:02.0452292Z 'f824b665926a792da872377dfbc295d3cd2cbc37'
+2026-08-28T05:35:02.0688264Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:35:02.0690578Z ##[group]Run pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2
+2026-08-28T05:35:02.0690959Z with:
+2026-08-28T05:35:02.0691148Z   version: 11
+2026-08-28T05:35:02.0691369Z   dest: ~/setup-pnpm
+2026-08-28T05:35:02.0691616Z   run_install: null
+2026-08-28T05:35:02.0691843Z   package_json_file: package.json
+2026-08-28T05:35:02.0692093Z   standalone: false
+2026-08-28T05:35:02.0692295Z ##[endgroup]
+2026-08-28T05:35:02.1628856Z ##[group]Running self-installer...
+2026-08-28T05:35:02.6888690Z (node:1991) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-08-28T05:35:02.6892132Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:35:02.8681512Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-08-28T05:35:02.8813374Z Packages: +1
+2026-08-28T05:35:02.8830262Z +
+2026-08-28T05:35:03.1969184Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-08-28T05:35:03.2271065Z 
+2026-08-28T05:35:03.2272458Z dependencies:
+2026-08-28T05:35:03.2273782Z + pnpm 11.24.0
+2026-08-28T05:35:03.2274923Z 
+2026-08-28T05:35:03.2548876Z Done in 849ms
+2026-08-28T05:35:03.2704074Z ##[endgroup]
+2026-08-28T05:35:03.2706957Z Installation Completed!
+2026-08-28T05:35:03.2940550Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:35:03.2941928Z ##[group]Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+2026-08-28T05:35:03.2942315Z with:
+2026-08-28T05:35:03.2942511Z   node-version: 22
+2026-08-28T05:35:03.2942723Z   cache: pnpm
+2026-08-28T05:35:03.2942971Z   cache-dependency-path: frontend/pnpm-lock.yaml
+2026-08-28T05:35:03.2943287Z   always-auth: false
+2026-08-28T05:35:03.2943507Z   check-latest: false
+2026-08-28T05:35:03.2945806Z   token: ***
+2026-08-28T05:35:03.2946001Z env:
+2026-08-28T05:35:03.2946256Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:03.2946571Z ##[endgroup]
+2026-08-28T05:35:03.4420912Z Found in cache @ /opt/hostedtoolcache/node/22.23.2/x64
+2026-08-28T05:35:03.4423292Z (node:2006) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-08-28T05:35:03.4425075Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:35:03.4427026Z ##[group]Environment details
+2026-08-28T05:35:03.9469831Z node: v22.23.2
+2026-08-28T05:35:03.9596059Z npm: 10.9.8
+2026-08-28T05:35:03.9596844Z yarn: 1.22.22
+2026-08-28T05:35:03.9598587Z ##[endgroup]
+2026-08-28T05:35:03.9599753Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+2026-08-28T05:35:04.5961175Z /home/runner/setup-pnpm/node_modules/.bin/store/v11
+2026-08-28T05:35:04.7324858Z pnpm cache is not found
+2026-08-28T05:35:04.7446388Z ##[group]Run pnpm install --frozen-lockfile
+2026-08-28T05:35:04.7446798Z [36;1mpnpm install --frozen-lockfile[0m
+2026-08-28T05:35:04.7497224Z shell: /usr/bin/bash -e {0}
+2026-08-28T05:35:04.7497821Z env:
+2026-08-28T05:35:04.7498165Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:04.7498486Z ##[endgroup]
+2026-08-28T05:35:06.9430638Z ? Verifying lockfile against supply-chain policies (367 entries)...
+2026-08-28T05:35:10.0006476Z ✓ Lockfile passes supply-chain policies (367 entries in 3s)
+2026-08-28T05:35:10.0051475Z Lockfile is up to date, resolution step is skipped
+2026-08-28T05:35:10.0329055Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-08-28T05:35:10.0908869Z Packages: +337
+2026-08-28T05:35:10.0919114Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-08-28T05:35:11.0326230Z Progress: resolved 337, reused 0, downloaded 55, added 15
+2026-08-28T05:35:12.0321791Z Progress: resolved 337, reused 0, downloaded 231, added 91
+2026-08-28T05:35:12.7548970Z Progress: resolved 337, reused 0, downloaded 337, added 337, done
+2026-08-28T05:35:12.9967828Z 
+2026-08-28T05:35:12.9988868Z dependencies:
+2026-08-28T05:35:12.9991493Z + @supabase/supabase-js 2.106.2
+2026-08-28T05:35:12.9992328Z + date-fns 4.3.0
+2026-08-28T05:35:13.0006656Z + react 19.2.6
+2026-08-28T05:35:13.0007707Z + react-dom 19.2.6
+2026-08-28T05:35:13.0010331Z + react-router-dom 7.15.1
+2026-08-28T05:35:13.0010977Z 
+2026-08-28T05:35:13.0028610Z devDependencies:
+2026-08-28T05:35:13.0030704Z + @babel/core 7.29.0
+2026-08-28T05:35:13.0031380Z + @eslint/js 10.0.1
+2026-08-28T05:35:13.0032120Z + @rolldown/plugin-babel 0.2.3
+2026-08-28T05:35:13.0033037Z + @testing-library/jest-dom 6.9.1
+2026-08-28T05:35:13.0033967Z + @testing-library/react 16.3.2
+2026-08-28T05:35:13.0053582Z + @testing-library/user-event 14.6.1
+2026-08-28T05:35:13.0054389Z + @types/babel__core 7.20.5
+2026-08-28T05:35:13.0055032Z + @types/node 24.12.4
+2026-08-28T05:35:13.0055609Z + @types/react 19.2.15
+2026-08-28T05:35:13.0056223Z + @types/react-dom 19.2.3
+2026-08-28T05:35:13.0056923Z + @vitejs/plugin-react 6.0.2
+2026-08-28T05:35:13.0057862Z + @vitest/coverage-v8 4.1.7
+2026-08-28T05:35:13.0060397Z + @vitest/ui 4.1.9
+2026-08-28T05:35:13.0061104Z + autoprefixer 10.5.0
+2026-08-28T05:35:13.0061922Z + babel-plugin-react-compiler 1.0.0
+2026-08-28T05:35:13.0073338Z + eslint 10.4.0
+2026-08-28T05:35:13.0074082Z + eslint-plugin-react-hooks 7.1.1
+2026-08-28T05:35:13.0074930Z + eslint-plugin-react-refresh 0.5.2
+2026-08-28T05:35:13.0075624Z + globals 17.6.0
+2026-08-28T05:35:13.0076287Z + jsdom 29.1.1
+2026-08-28T05:35:13.0076890Z + postcss 8.5.15
+2026-08-28T05:35:13.0094530Z + tailwindcss 3.4.19
+2026-08-28T05:35:13.0095242Z + typescript 6.0.3
+2026-08-28T05:35:13.0095929Z + typescript-eslint 8.59.4
+2026-08-28T05:35:13.0096553Z + vite 8.0.14
+2026-08-28T05:35:13.0097089Z + vitest 4.1.7
+2026-08-28T05:35:13.0098129Z 
+2026-08-28T05:35:13.0393811Z Done in 6.7s using pnpm v11.2.2
+2026-08-28T05:35:13.4462492Z ##[group]Run pnpm build
+2026-08-28T05:35:13.4462786Z [36;1mpnpm build[0m
+2026-08-28T05:35:13.4499578Z shell: /usr/bin/bash -e {0}
+2026-08-28T05:35:13.4499819Z env:
+2026-08-28T05:35:13.4500066Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:13.4500382Z ##[endgroup]
+2026-08-28T05:35:14.6868734Z $ tsc -b && vite build
+2026-08-28T05:35:23.8894488Z [36mvite v8.0.14 [32mbuilding client environment for production...[36m[39m
+2026-08-28T05:35:23.9148801Z [2K
+2026-08-28T05:35:27.5728466Z transforming...✓ 106 modules transformed.
+2026-08-28T05:35:27.6113283Z rendering chunks...
+2026-08-28T05:35:27.7252887Z computing gzip size...
+2026-08-28T05:35:27.7298556Z dist/index.html                   0.73 kB │ gzip:  0.42 kB
+2026-08-28T05:35:27.7299225Z dist/assets/index-D2aLtypc.css   25.41 kB │ gzip:  5.38 kB
+2026-08-28T05:35:27.7300865Z dist/assets/index-CHthKXS2.js   328.90 kB │ gzip: 96.72 kB
+2026-08-28T05:35:27.7301721Z 
+2026-08-28T05:35:27.7308831Z [33m[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+2026-08-28T05:35:27.7310168Z   - @rolldown/plugin-babel (90%)
+2026-08-28T05:35:27.7310958Z   - vite:css (9%)
+2026-08-28T05:35:27.7314364Z See https://rolldown.rs/options/checks#plugintimings for more details.
+2026-08-28T05:35:27.7315179Z [32m✓ built in 3.84s[39m
+2026-08-28T05:35:27.7315933Z [39m
+2026-08-28T05:35:27.8386140Z ##[group]Run pnpm lint
+2026-08-28T05:35:27.8386415Z [36;1mpnpm lint[0m
+2026-08-28T05:35:27.8423770Z shell: /usr/bin/bash -e {0}
+2026-08-28T05:35:27.8424023Z env:
+2026-08-28T05:35:27.8424284Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:27.8424707Z ##[endgroup]
+2026-08-28T05:35:29.0543614Z $ eslint .
+2026-08-28T05:35:36.0569642Z 
+2026-08-28T05:35:36.0588794Z /home/runner/work/Helios/Helios/frontend/src/hooks/useAuth.test.tsx
+2026-08-28T05:35:36.0625458Z   36:1  warning  Unused eslint-disable directive (no problems were reported from 'react-refresh/only-export-components')
+2026-08-28T05:35:36.0650063Z 
+2026-08-28T05:35:36.0650596Z /home/runner/work/Helios/Helios/frontend/src/hooks/useAuth.tsx
+2026-08-28T05:35:36.0682909Z ##[warning]  404:6  warning  React Hook useCallback has a missing dependency: 'session.user'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+2026-08-28T05:35:36.0693454Z 
+2026-08-28T05:35:36.0694137Z ✖ 2 problems (0 errors, 2 warnings)
+2026-08-28T05:35:36.0694917Z   0 errors and 1 warning potentially fixable with the `--fix` option.
+2026-08-28T05:35:36.0695448Z 
+2026-08-28T05:35:36.2140823Z ##[group]Run pnpm vitest run
+2026-08-28T05:35:36.2141136Z [36;1mpnpm vitest run[0m
+2026-08-28T05:35:36.2177705Z shell: /usr/bin/bash -e {0}
+2026-08-28T05:35:36.2177958Z env:
+2026-08-28T05:35:36.2178216Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:36.2178544Z ##[endgroup]
+2026-08-28T05:35:38.0259797Z 
+2026-08-28T05:35:38.0264184Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.7 [39m[90m/home/runner/work/Helios/Helios/frontend[39m
+2026-08-28T05:35:38.0265330Z 
+2026-08-28T05:35:43.5331393Z [90mstderr[2m | src/pages/Register.test.tsx[2m > [22m[2m<Register />[2m > [22m[2mB-10: manejo de TimeoutError en signUp[2m > [22m[2mmuestra mensaje genérico si signUp lanza error inesperado (no timeout)
+2026-08-28T05:35:43.5345410Z [22m[39m[Register] handleSubmit unexpected: Error: Algo random
+2026-08-28T05:35:43.5346617Z     at [90m/home/runner/work/Helios/Helios/frontend/[39msrc/pages/Register.test.tsx:341:36
+2026-08-28T05:35:43.5348935Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:302:11
+2026-08-28T05:35:43.5351236Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:1903:26
+2026-08-28T05:35:43.5352661Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2326:20
+2026-08-28T05:35:43.5353407Z     at new Promise (<anonymous>)
+2026-08-28T05:35:43.5354464Z     at runWithCancel [90m(file:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2323:10[90m)[39m
+2026-08-28T05:35:43.5356867Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2305:20
+2026-08-28T05:35:43.5358486Z     at new Promise (<anonymous>)
+2026-08-28T05:35:43.5360515Z     at runWithTimeout [90m(file:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2272:10[90m)[39m
+2026-08-28T05:35:43.5363309Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2955:64
+2026-08-28T05:35:43.5364484Z 
+2026-08-28T05:35:43.5436949Z  [32m✓[39m src/pages/Register.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[33m 3343[2mms[22m[39m
+2026-08-28T05:35:43.5439392Z      [33m[2m✓[22m[39m muestra error de cédula inválida al enviar con cédula corta [33m 534[2mms[22m[39m
+2026-08-28T05:35:43.5441800Z      [33m[2m✓[22m[39m B-20: registro nuevo guarda datos en sessionStorage y redirige a /login [33m 379[2mms[22m[39m
+2026-08-28T05:35:43.5450062Z      [33m[2m✓[22m[39m B-22: acepta cédula PE-5-687 (válida corta) y llega a signUp [33m 305[2mms[22m[39m
+2026-08-28T05:35:43.5452001Z      [33m[2m✓[22m[39m B-23: error si la cédula y su confirmación no coinciden [33m 305[2mms[22m[39m
+2026-08-28T05:35:43.5498888Z      [33m[2m✓[22m[39m B-23: error si las contraseñas no coinciden [33m 308[2mms[22m[39m
+2026-08-28T05:35:45.7901389Z [90mstderr[2m | src/pages/Login.test.tsx[2m > [22m[2m<Login />[2m > [22m[2mB-10: manejo de TimeoutError en signIn[2m > [22m[2mmuestra mensaje genérico si signIn lanza un error inesperado (no timeout)
+2026-08-28T05:35:45.7904128Z [22m[39m[Login] handleSubmit unexpected: Error: Network failure
+2026-08-28T05:35:45.7906350Z     at [90m/home/runner/work/Helios/Helios/frontend/[39msrc/pages/Login.test.tsx:174:36
+2026-08-28T05:35:45.7909106Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:302:11
+2026-08-28T05:35:45.7911913Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:1903:26
+2026-08-28T05:35:45.7913914Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2326:20
+2026-08-28T05:35:45.7914911Z     at new Promise (<anonymous>)
+2026-08-28T05:35:45.7919664Z     at runWithCancel [90m(file:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2323:10[90m)[39m
+2026-08-28T05:35:45.7929906Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2305:20
+2026-08-28T05:35:45.7932085Z     at new Promise (<anonymous>)
+2026-08-28T05:35:45.7934311Z     at runWithTimeout [90m(file:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2272:10[90m)[39m
+2026-08-28T05:35:45.7939546Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2955:64
+2026-08-28T05:35:45.7940729Z 
+2026-08-28T05:35:46.0056380Z  [32m✓[39m src/pages/Login.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1079[2mms[22m[39m
+2026-08-28T05:35:47.7346414Z  [32m✓[39m src/hooks/useAuth.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 456[2mms[22m[39m
+2026-08-28T05:35:49.3045535Z  [31m❯[39m src/pages/MisCitas.test.tsx [2m([22m[2m0 test[22m[2m)[22m
+2026-08-28T05:35:50.9669843Z  [32m✓[39m src/components/agendamiento/CalendarioCitasLista.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 266[2mms[22m[39m
+2026-08-28T05:35:52.2331932Z  [31m❯[39m src/hooks/useHorarios.test.ts [2m([22m[2m0 test[22m[2m)[22m
+2026-08-28T05:35:53.7130435Z  [32m✓[39m src/hooks/useNotificaciones.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 239[2mms[22m[39m
+2026-08-28T05:35:54.9471067Z  [32m✓[39m src/hooks/useReprogramarCita.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+2026-08-28T05:35:56.1346331Z  [32m✓[39m src/lib/validaciones.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+2026-08-28T05:35:57.3217432Z  [32m✓[39m src/lib/cedula.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+2026-08-28T05:35:58.9209926Z  [32m✓[39m src/components/citas/BotonCancelarCita.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 269[2mms[22m[39m
+2026-08-28T05:36:00.1171025Z  [32m✓[39m src/lib/withTimeout.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+2026-08-28T05:36:01.3389826Z  [32m✓[39m src/hooks/useCancelarCita.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+2026-08-28T05:36:02.8296867Z  [32m✓[39m src/components/agendamiento/ListaMedicos.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 180[2mms[22m[39m
+2026-08-28T05:36:04.2136745Z  [32m✓[39m src/pages/Home.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+2026-08-28T05:36:05.6502065Z  [32m✓[39m src/components/agendamiento/SelectorEspecialidad.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 180[2mms[22m[39m
+2026-08-28T05:36:07.1600766Z  [32m✓[39m src/components/agendamiento/ResumenCita.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 195[2mms[22m[39m
+2026-08-28T05:36:08.6158724Z  [32m✓[39m src/components/agendamiento/SelectorSede.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 182[2mms[22m[39m
+2026-08-28T05:36:09.8461217Z  [32m✓[39m src/components/shared/LoadingSpinner.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+2026-08-28T05:36:11.2137900Z  [32m✓[39m src/components/shared/ErrorMessage.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 143[2mms[22m[39m
+2026-08-28T05:36:11.2176361Z 
+2026-08-28T05:36:11.2198681Z [31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+2026-08-28T05:36:11.2199596Z 
+2026-08-28T05:36:11.2200555Z [41m[1m FAIL [22m[49m src/hooks/useHorarios.test.ts[2m [ src/hooks/useHorarios.test.ts ][22m
+2026-08-28T05:36:11.2202591Z [31m[1mError[22m: Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend/.env.example a frontend/.env.local y completa los valores.[39m
+2026-08-28T05:36:11.2204074Z [36m [2m❯[22m src/lib/supabase.ts:[2m7:9[22m[39m
+2026-08-28T05:36:11.2222306Z     [90m  5|[39m
+2026-08-28T05:36:11.2223446Z     [90m  6|[39m [35mif[39m ([33m![39murl [33m||[39m [33m![39manon) {
+2026-08-28T05:36:11.2224839Z     [90m  7|[39m   [35mthrow[39m [35mnew[39m [33mError[39m(
+2026-08-28T05:36:11.2225994Z     [90m   |[39m         [31m^[39m
+2026-08-28T05:36:11.2227350Z     [90m  8|[39m     'Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend…
+2026-08-28T05:36:11.2228901Z     [90m  9|[39m   )
+2026-08-28T05:36:11.2230091Z [90m [2m❯[22m src/hooks/useHorarios.ts:[2m2:1[22m[39m
+2026-08-28T05:36:11.2231399Z [90m [2m❯[22m src/hooks/useHorarios.test.ts:[2m2:1[22m[39m
+2026-08-28T05:36:11.2232091Z 
+2026-08-28T05:36:11.2232780Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+2026-08-28T05:36:11.2233340Z 
+2026-08-28T05:36:11.2233539Z 
+2026-08-28T05:36:11.2234601Z [41m[1m FAIL [22m[49m src/pages/MisCitas.test.tsx[2m [ src/pages/MisCitas.test.tsx ][22m
+2026-08-28T05:36:11.2236952Z [31m[1mError[22m: Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend/.env.example a frontend/.env.local y completa los valores.[39m
+2026-08-28T05:36:11.2241195Z [36m [2m❯[22m src/lib/supabase.ts:[2m7:9[22m[39m
+2026-08-28T05:36:11.2242395Z     [90m  5|[39m
+2026-08-28T05:36:11.2245623Z     [90m  6|[39m [35mif[39m ([33m![39murl [33m||[39m [33m![39manon) {
+2026-08-28T05:36:11.2246682Z     [90m  7|[39m   [35mthrow[39m [35mnew[39m [33mError[39m(
+2026-08-28T05:36:11.2247438Z     [90m   |[39m         [31m^[39m
+2026-08-28T05:36:11.2248908Z     [90m  8|[39m     'Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend…
+2026-08-28T05:36:11.2249819Z     [90m  9|[39m   )
+2026-08-28T05:36:11.2250708Z [90m [2m❯[22m src/hooks/useHistorialPaciente.ts:[2m2:1[22m[39m
+2026-08-28T05:36:11.2251716Z [90m [2m❯[22m src/pages/MisCitas.tsx:[2m5:1[22m[39m
+2026-08-28T05:36:11.2252154Z 
+2026-08-28T05:36:11.2252621Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+2026-08-28T05:36:11.2252996Z 
+2026-08-28T05:36:11.2259628Z [2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m18 passed[39m[22m[90m (20)[39m
+2026-08-28T05:36:11.2261431Z [2m      Tests [22m [1m[32m127 passed[39m[22m[90m (127)[39m
+2026-08-28T05:36:11.2263055Z [2m   Start at [22m 05:35:38
+2026-08-28T05:36:11.2264877Z [2m   Duration [22m 33.18s[2m (transform 1.99s, setup 5.22s, import 2.25s, tests 6.72s, environment 15.56s)[22m
+2026-08-28T05:36:11.2266407Z 
+2026-08-28T05:36:11.2266793Z 
+2026-08-28T05:36:11.2289855Z ##[error]Error: Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend/.env.example a frontend/.env.local y completa los valores.
+ ❯ src/lib/supabase.ts:7:9
+ ❯ src/hooks/useHorarios.ts:2:1
+ ❯ src/hooks/useHorarios.test.ts:2:1
+
+
+2026-08-28T05:36:11.2293653Z 
+2026-08-28T05:36:11.2300259Z ##[error]Error: Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend/.env.example a frontend/.env.local y completa los valores.
+ ❯ src/lib/supabase.ts:7:9
+ ❯ src/hooks/useHistorialPaciente.ts:2:1
+ ❯ src/pages/MisCitas.tsx:5:1
+
+
+2026-08-28T05:36:11.2901881Z ##[error]Process completed with exit code 1.
+2026-08-28T05:36:11.2988172Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:36:11.2989423Z Post job cleanup.
+2026-08-28T05:36:11.3910973Z Pruning is unnecessary.
+2026-08-28T05:36:11.4144951Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:36:11.4147117Z Post job cleanup.
+2026-08-28T05:36:11.5506883Z (node:2452) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-08-28T05:36:11.5516400Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:36:11.5544949Z [command]/usr/bin/git version
+2026-08-28T05:36:11.5588024Z git version 2.55.0
+2026-08-28T05:36:11.5635226Z Temporarily overriding HOME='/home/runner/work/_temp/a28fd04b-96ff-4735-99d0-b66c7c469fa5' before making global git config changes
+2026-08-28T05:36:11.5637359Z Adding repository directory to the temporary git global config as a safe directory
+2026-08-28T05:36:11.5642363Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Helios/Helios
+2026-08-28T05:36:11.5681170Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-08-28T05:36:11.5717217Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-08-28T05:36:11.5963293Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-08-28T05:36:11.5990689Z http.https://github.com/.extraheader
+2026-08-28T05:36:11.6003659Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-08-28T05:36:11.6039698Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-08-28T05:36:11.6405001Z Cleaning up orphan processes
+2026-08-28T05:36:11.6671202Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11, actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020, pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
