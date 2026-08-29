@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { HorarioAgendable } from '../lib/types'
 
 /** Cuántos días hacia adelante se muestran en el selector de horario. */
-export const VENTANA_DIAS_AGENDABLES = 14
+export const VENTANA_DIAS_AGENDABLES = 7
 
 /**
  * Bug B-25: la query trae los horarios de HOY en adelante (filtro por fecha),
@@ -113,7 +113,7 @@ export function useHorarios(medicoId: string | null, excluirCitaId?: string | nu
         } else {
           // Bug B-25: descartar slots de hoy cuya hora ya pasó.
           const futuros = filtrarSlotsFuturos((data ?? []) as HorarioAgendable[], new Date())
-          // Recortar a los próximos 14 días para no abrumar al paciente con
+          // Recortar a los próximos 7 días para no abrumar al paciente con
           // meses de opciones (la RPC no tiene tope superior de fecha).
           setData(limitarVentanaDias(futuros, new Date()))
         }

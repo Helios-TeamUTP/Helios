@@ -1,0 +1,482 @@
+﻿2026-08-28T05:34:59.7955972Z Current runner version: '2.336.0'
+2026-08-28T05:34:59.7995665Z ##[group]Runner Image Provisioner
+2026-08-28T05:34:59.7997086Z Hosted Compute Agent
+2026-08-28T05:34:59.7998197Z Version: 20260819.586
+2026-08-28T05:34:59.7999781Z Commit: 3cc4a88dfa507ef76119ad1bb3eccc6378bb2b76
+2026-08-28T05:34:59.8001292Z Build Date: 2026-08-18T23:20:18Z
+2026-08-28T05:34:59.8002755Z Worker ID: {f0fac39f-d221-4ab2-a548-9b522531c384}
+2026-08-28T05:34:59.8004113Z Azure Region: westus
+2026-08-28T05:34:59.8005253Z ##[endgroup]
+2026-08-28T05:34:59.8008110Z ##[group]Operating System
+2026-08-28T05:34:59.8009182Z Ubuntu
+2026-08-28T05:34:59.8010664Z 24.04.4
+2026-08-28T05:34:59.8011534Z LTS
+2026-08-28T05:34:59.8012863Z ##[endgroup]
+2026-08-28T05:34:59.8013955Z ##[group]Runner Image
+2026-08-28T05:34:59.8015056Z Image: ubuntu-24.04
+2026-08-28T05:34:59.8016179Z Version: 20260823.283.1
+2026-08-28T05:34:59.8018461Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260823.283/images/ubuntu/Ubuntu2404-Readme.md
+2026-08-28T05:34:59.8021861Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260823.283
+2026-08-28T05:34:59.8023650Z ##[endgroup]
+2026-08-28T05:34:59.8025828Z ##[group]GITHUB_TOKEN Permissions
+2026-08-28T05:34:59.8028934Z Contents: read
+2026-08-28T05:34:59.8030652Z Metadata: read
+2026-08-28T05:34:59.8031637Z Packages: read
+2026-08-28T05:34:59.8032611Z ##[endgroup]
+2026-08-28T05:34:59.8036108Z Secret source: Actions
+2026-08-28T05:34:59.8038024Z Prepare workflow directory
+2026-08-28T05:34:59.9613402Z Prepare all required actions
+2026-08-28T05:34:59.9885036Z Getting action download info
+2026-08-28T05:35:00.4799811Z Download action repository 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' (SHA:b4ffde65f46336ab88eb53be808477a3936bae11)
+2026-08-28T05:35:00.8235793Z Download action repository 'pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2' (SHA:fe02b34f77f8bc703788d5817da081398fad5dd2)
+2026-08-28T05:35:01.2872384Z Download action repository 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-08-28T05:35:01.3863450Z Download action repository 'SonarSource/sonarqube-scan-action@v5.0.0' (SHA:0303d6b62e310685c0e34d0b9cde218036885c4d)
+2026-08-28T05:35:01.7869483Z Getting action download info
+2026-08-28T05:35:01.9436731Z Download action repository 'actions/cache@v4' (SHA:0057852bfaa89a56745cba8c7296529d2fc39830)
+2026-08-28T05:35:02.0870200Z Complete job name: SonarCloud Scan
+2026-08-28T05:35:02.2070358Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:35:02.2082201Z ##[group]Run actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+2026-08-28T05:35:02.2084051Z with:
+2026-08-28T05:35:02.2084894Z   fetch-depth: 0
+2026-08-28T05:35:02.2085848Z   repository: Helios-TeamUTP/Helios
+2026-08-28T05:35:02.2095049Z   token: ***
+2026-08-28T05:35:02.2095904Z   ssh-strict: true
+2026-08-28T05:35:02.2096828Z   persist-credentials: true
+2026-08-28T05:35:02.2097816Z   clean: true
+2026-08-28T05:35:02.2098695Z   sparse-checkout-cone-mode: true
+2026-08-28T05:35:02.2099897Z   fetch-tags: false
+2026-08-28T05:35:02.2100797Z   show-progress: true
+2026-08-28T05:35:02.2101697Z   lfs: false
+2026-08-28T05:35:02.2102566Z   submodules: false
+2026-08-28T05:35:02.2103450Z   set-safe-directory: true
+2026-08-28T05:35:02.2104727Z ##[endgroup]
+2026-08-28T05:35:02.3015786Z (node:1900) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-08-28T05:35:02.3020282Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:35:02.3166202Z Syncing repository: Helios-TeamUTP/Helios
+2026-08-28T05:35:02.3170015Z ##[group]Getting Git version info
+2026-08-28T05:35:02.3171883Z Working directory is '/home/runner/work/Helios/Helios'
+2026-08-28T05:35:02.3174269Z [command]/usr/bin/git version
+2026-08-28T05:35:02.3230594Z git version 2.55.0
+2026-08-28T05:35:02.3259196Z ##[endgroup]
+2026-08-28T05:35:02.3275908Z Temporarily overriding HOME='/home/runner/work/_temp/728a716c-131e-48a6-9980-1626c946b97e' before making global git config changes
+2026-08-28T05:35:02.3281334Z Adding repository directory to the temporary git global config as a safe directory
+2026-08-28T05:35:02.3285720Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Helios/Helios
+2026-08-28T05:35:02.3344112Z Deleting the contents of '/home/runner/work/Helios/Helios'
+2026-08-28T05:35:02.3351229Z ##[group]Initializing the repository
+2026-08-28T05:35:02.3356834Z [command]/usr/bin/git init /home/runner/work/Helios/Helios
+2026-08-28T05:35:02.3463624Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-08-28T05:35:02.3467554Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-08-28T05:35:02.3474403Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-08-28T05:35:02.3477643Z hint: call:
+2026-08-28T05:35:02.3479936Z hint:
+2026-08-28T05:35:02.3482545Z hint: 	git config --global init.defaultBranch <name>
+2026-08-28T05:35:02.3485361Z hint:
+2026-08-28T05:35:02.3487628Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-08-28T05:35:02.3492045Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-08-28T05:35:02.3495025Z hint:
+2026-08-28T05:35:02.3497272Z hint: 	git branch -m <name>
+2026-08-28T05:35:02.3499739Z hint:
+2026-08-28T05:35:02.3502941Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-08-28T05:35:02.3507817Z Initialized empty Git repository in /home/runner/work/Helios/Helios/.git/
+2026-08-28T05:35:02.3514391Z [command]/usr/bin/git remote add origin https://github.com/Helios-TeamUTP/Helios
+2026-08-28T05:35:02.3536590Z ##[endgroup]
+2026-08-28T05:35:02.3540178Z ##[group]Disabling automatic garbage collection
+2026-08-28T05:35:02.3543282Z [command]/usr/bin/git config --local gc.auto 0
+2026-08-28T05:35:02.3576209Z ##[endgroup]
+2026-08-28T05:35:02.3579563Z ##[group]Setting up auth
+2026-08-28T05:35:02.3583470Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-08-28T05:35:02.3621874Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-08-28T05:35:02.3987102Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-08-28T05:35:02.4018493Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-08-28T05:35:02.4278882Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-08-28T05:35:02.4320961Z ##[endgroup]
+2026-08-28T05:35:02.4324474Z ##[group]Fetching the repository
+2026-08-28T05:35:02.4332542Z [command]/usr/bin/git -c protocol.version=2 fetch --prune --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/* +refs/tags/*:refs/tags/*
+2026-08-28T05:35:03.4570985Z From https://github.com/Helios-TeamUTP/Helios
+2026-08-28T05:35:03.4590614Z  * [new branch]      feature/dashboard-medico -> origin/feature/dashboard-medico
+2026-08-28T05:35:03.4604432Z  * [new branch]      main              -> origin/main
+2026-08-28T05:35:03.4620569Z  * [new branch]      sprint1/bootstrap -> origin/sprint1/bootstrap
+2026-08-28T05:35:03.4670193Z [command]/usr/bin/git branch --list --remote origin/main
+2026-08-28T05:35:03.4690158Z   origin/main
+2026-08-28T05:35:03.4725070Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-08-28T05:35:03.4726642Z f824b665926a792da872377dfbc295d3cd2cbc37
+2026-08-28T05:35:03.4732963Z ##[endgroup]
+2026-08-28T05:35:03.4735471Z ##[group]Determining the checkout info
+2026-08-28T05:35:03.4738035Z ##[endgroup]
+2026-08-28T05:35:03.4740046Z ##[group]Checking out the ref
+2026-08-28T05:35:03.4747068Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-08-28T05:35:03.5463163Z Switched to a new branch 'main'
+2026-08-28T05:35:03.5469941Z branch 'main' set up to track 'origin/main'.
+2026-08-28T05:35:03.5485908Z ##[endgroup]
+2026-08-28T05:35:03.5534349Z [command]/usr/bin/git log -1 --format='%H'
+2026-08-28T05:35:03.5571674Z 'f824b665926a792da872377dfbc295d3cd2cbc37'
+2026-08-28T05:35:03.5815595Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:35:03.5817586Z ##[group]Run pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2
+2026-08-28T05:35:03.5818107Z with:
+2026-08-28T05:35:03.5818401Z   version: 11
+2026-08-28T05:35:03.5818711Z   dest: ~/setup-pnpm
+2026-08-28T05:35:03.5819028Z   run_install: null
+2026-08-28T05:35:03.5819537Z   package_json_file: package.json
+2026-08-28T05:35:03.5819919Z   standalone: false
+2026-08-28T05:35:03.5820223Z ##[endgroup]
+2026-08-28T05:35:03.6799223Z ##[group]Running self-installer...
+2026-08-28T05:35:04.1730595Z (node:1999) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-08-28T05:35:04.1734475Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:35:04.3582206Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-08-28T05:35:04.3860612Z Packages: +1
+2026-08-28T05:35:04.3863838Z +
+2026-08-28T05:35:04.8381026Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-08-28T05:35:04.8750185Z 
+2026-08-28T05:35:04.8770583Z dependencies:
+2026-08-28T05:35:04.8810238Z + pnpm 11.24.0
+2026-08-28T05:35:04.8849667Z 
+2026-08-28T05:35:04.8996833Z Done in 977ms
+2026-08-28T05:35:04.9201194Z ##[endgroup]
+2026-08-28T05:35:04.9202314Z Installation Completed!
+2026-08-28T05:35:04.9379200Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:35:04.9381023Z ##[group]Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+2026-08-28T05:35:04.9381397Z with:
+2026-08-28T05:35:04.9381595Z   node-version: 22
+2026-08-28T05:35:04.9381802Z   cache: pnpm
+2026-08-28T05:35:04.9382050Z   cache-dependency-path: frontend/pnpm-lock.yaml
+2026-08-28T05:35:04.9382370Z   always-auth: false
+2026-08-28T05:35:04.9382587Z   check-latest: false
+2026-08-28T05:35:04.9385064Z   token: ***
+2026-08-28T05:35:04.9385263Z env:
+2026-08-28T05:35:04.9385517Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:04.9385827Z ##[endgroup]
+2026-08-28T05:35:05.0950493Z Found in cache @ /opt/hostedtoolcache/node/22.23.2/x64
+2026-08-28T05:35:05.0953592Z (node:2012) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-08-28T05:35:05.0955158Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:35:05.0957395Z ##[group]Environment details
+2026-08-28T05:35:05.6496087Z node: v22.23.2
+2026-08-28T05:35:05.6500625Z npm: 10.9.8
+2026-08-28T05:35:05.6513085Z yarn: 1.22.22
+2026-08-28T05:35:05.6527778Z ##[endgroup]
+2026-08-28T05:35:05.6590412Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+2026-08-28T05:35:06.3393368Z /home/runner/setup-pnpm/node_modules/.bin/store/v11
+2026-08-28T05:35:06.6243593Z pnpm cache is not found
+2026-08-28T05:35:06.6384917Z ##[group]Run pnpm install --frozen-lockfile
+2026-08-28T05:35:06.6385326Z [36;1mpnpm install --frozen-lockfile[0m
+2026-08-28T05:35:06.6433074Z shell: /usr/bin/bash -e {0}
+2026-08-28T05:35:06.6433363Z env:
+2026-08-28T05:35:06.6433641Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:06.6433995Z ##[endgroup]
+2026-08-28T05:35:08.9810342Z ? Verifying lockfile against supply-chain policies (367 entries)...
+2026-08-28T05:35:12.1012015Z ✓ Lockfile passes supply-chain policies (367 entries in 3.1s)
+2026-08-28T05:35:12.1051722Z Lockfile is up to date, resolution step is skipped
+2026-08-28T05:35:12.1340969Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-08-28T05:35:12.1860983Z Packages: +337
+2026-08-28T05:35:12.1904058Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-08-28T05:35:13.1348858Z Progress: resolved 337, reused 0, downloaded 52, added 15
+2026-08-28T05:35:14.1347739Z Progress: resolved 337, reused 0, downloaded 229, added 97
+2026-08-28T05:35:14.8990966Z Progress: resolved 337, reused 0, downloaded 337, added 337, done
+2026-08-28T05:35:15.1840139Z 
+2026-08-28T05:35:15.1841287Z dependencies:
+2026-08-28T05:35:15.1852418Z + @supabase/supabase-js 2.106.2
+2026-08-28T05:35:15.1853245Z + date-fns 4.3.0
+2026-08-28T05:35:15.1853928Z + react 19.2.6
+2026-08-28T05:35:15.1854523Z + react-dom 19.2.6
+2026-08-28T05:35:15.1855143Z + react-router-dom 7.15.1
+2026-08-28T05:35:15.1855619Z 
+2026-08-28T05:35:15.1855991Z devDependencies:
+2026-08-28T05:35:15.1856600Z + @babel/core 7.29.0
+2026-08-28T05:35:15.1857202Z + @eslint/js 10.0.1
+2026-08-28T05:35:15.1857862Z + @rolldown/plugin-babel 0.2.3
+2026-08-28T05:35:15.1858598Z + @testing-library/jest-dom 6.9.1
+2026-08-28T05:35:15.1859619Z + @testing-library/react 16.3.2
+2026-08-28T05:35:15.1868931Z + @testing-library/user-event 14.6.1
+2026-08-28T05:35:15.1880531Z + @types/babel__core 7.20.5
+2026-08-28T05:35:15.1881209Z + @types/node 24.12.4
+2026-08-28T05:35:15.1881843Z + @types/react 19.2.15
+2026-08-28T05:35:15.1882558Z + @types/react-dom 19.2.3
+2026-08-28T05:35:15.1883294Z + @vitejs/plugin-react 6.0.2
+2026-08-28T05:35:15.1883952Z + @vitest/coverage-v8 4.1.7
+2026-08-28T05:35:15.1884570Z + @vitest/ui 4.1.9
+2026-08-28T05:35:15.1885152Z + autoprefixer 10.5.0
+2026-08-28T05:35:15.1885914Z + babel-plugin-react-compiler 1.0.0
+2026-08-28T05:35:15.1886567Z + eslint 10.4.0
+2026-08-28T05:35:15.1887177Z + eslint-plugin-react-hooks 7.1.1
+2026-08-28T05:35:15.1887889Z + eslint-plugin-react-refresh 0.5.2
+2026-08-28T05:35:15.1888495Z + globals 17.6.0
+2026-08-28T05:35:15.1889004Z + jsdom 29.1.1
+2026-08-28T05:35:15.1889750Z + postcss 8.5.15
+2026-08-28T05:35:15.1890307Z + tailwindcss 3.4.19
+2026-08-28T05:35:15.1890898Z + typescript 6.0.3
+2026-08-28T05:35:15.1891548Z + typescript-eslint 8.59.4
+2026-08-28T05:35:15.1892144Z + vite 8.0.14
+2026-08-28T05:35:15.1892756Z + vitest 4.1.7
+2026-08-28T05:35:15.1893137Z 
+2026-08-28T05:35:15.2241050Z Done in 6.9s using pnpm v11.2.2
+2026-08-28T05:35:15.3240887Z ##[group]Run pnpm vitest run --coverage
+2026-08-28T05:35:15.3241281Z [36;1mpnpm vitest run --coverage[0m
+2026-08-28T05:35:15.3278746Z shell: /usr/bin/bash -e {0}
+2026-08-28T05:35:15.3279000Z env:
+2026-08-28T05:35:15.3279527Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:15.3279891Z ##[endgroup]
+2026-08-28T05:35:17.3872298Z 
+2026-08-28T05:35:17.3876528Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.7 [39m[90m/home/runner/work/Helios/Helios/frontend[39m
+2026-08-28T05:35:17.3878082Z       [2mCoverage enabled with [22m[33mv8[39m
+2026-08-28T05:35:17.3878879Z 
+2026-08-28T05:35:24.2382346Z [90mstderr[2m | src/pages/Register.test.tsx[2m > [22m[2m<Register />[2m > [22m[2mB-10: manejo de TimeoutError en signUp[2m > [22m[2mmuestra mensaje genérico si signUp lanza error inesperado (no timeout)
+2026-08-28T05:35:24.2384740Z [22m[39m[Register] handleSubmit unexpected: Error: Algo random
+2026-08-28T05:35:24.2386436Z     at [90m/home/runner/work/Helios/Helios/frontend/[39msrc/pages/Register.test.tsx:341:36
+2026-08-28T05:35:24.2389641Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:302:11
+2026-08-28T05:35:24.2392315Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:1903:26
+2026-08-28T05:35:24.2394983Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2326:20
+2026-08-28T05:35:24.2396486Z     at new Promise (<anonymous>)
+2026-08-28T05:35:24.2398392Z     at runWithCancel [90m(file:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2323:10[90m)[39m
+2026-08-28T05:35:24.2400922Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2305:20
+2026-08-28T05:35:24.2401712Z     at new Promise (<anonymous>)
+2026-08-28T05:35:24.2402748Z     at runWithTimeout [90m(file:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2272:10[90m)[39m
+2026-08-28T05:35:24.2404188Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2955:64
+2026-08-28T05:35:24.2405095Z 
+2026-08-28T05:35:24.2909884Z  [32m✓[39m src/pages/Register.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[33m 4431[2mms[22m[39m
+2026-08-28T05:35:24.2911634Z      [33m[2m✓[22m[39m muestra error de cédula inválida al enviar con cédula corta [33m 711[2mms[22m[39m
+2026-08-28T05:35:24.2913857Z      [33m[2m✓[22m[39m B-20: registro nuevo guarda datos en sessionStorage y redirige a /login [33m 478[2mms[22m[39m
+2026-08-28T05:35:24.2915965Z      [33m[2m✓[22m[39m B-22: acepta cédula PE-5-687 (válida corta) y llega a signUp [33m 425[2mms[22m[39m
+2026-08-28T05:35:24.2917687Z      [33m[2m✓[22m[39m B-23: error si la cédula y su confirmación no coinciden [33m 409[2mms[22m[39m
+2026-08-28T05:35:24.2919159Z      [33m[2m✓[22m[39m B-23: error si las contraseñas no coinciden [33m 385[2mms[22m[39m
+2026-08-28T05:35:24.2920837Z      [33m[2m✓[22m[39m B-24: error si el teléfono tiene letras [33m 392[2mms[22m[39m
+2026-08-28T05:35:24.2922039Z      [33m[2m✓[22m[39m B-24: error si el nombre tiene números [33m 368[2mms[22m[39m
+2026-08-28T05:35:24.2923328Z      [33m[2m✓[22m[39m muestra error si la cédula ya está registrada para otro paciente [33m 391[2mms[22m[39m
+2026-08-28T05:35:24.2925529Z        [33m[2m✓[22m[39m muestra mensaje específico y rehabilita el botón cuando signUp rechaza con TimeoutError [33m 384[2mms[22m[39m
+2026-08-28T05:35:24.2927401Z        [33m[2m✓[22m[39m muestra mensaje genérico si signUp lanza error inesperado (no timeout) [33m 387[2mms[22m[39m
+2026-08-28T05:35:27.5600127Z [90mstderr[2m | src/pages/Login.test.tsx[2m > [22m[2m<Login />[2m > [22m[2mB-10: manejo de TimeoutError en signIn[2m > [22m[2mmuestra mensaje genérico si signIn lanza un error inesperado (no timeout)
+2026-08-28T05:35:27.5621602Z [22m[39m[Login] handleSubmit unexpected: Error: Network failure
+2026-08-28T05:35:27.5653842Z     at [90m/home/runner/work/Helios/Helios/frontend/[39msrc/pages/Login.test.tsx:174:36
+2026-08-28T05:35:27.5663068Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:302:11
+2026-08-28T05:35:27.5681583Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:1903:26
+2026-08-28T05:35:27.5701230Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2326:20
+2026-08-28T05:35:27.5769819Z     at new Promise (<anonymous>)
+2026-08-28T05:35:27.5772363Z     at runWithCancel [90m(file:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2323:10[90m)[39m
+2026-08-28T05:35:27.5775955Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2305:20
+2026-08-28T05:35:27.5777823Z     at new Promise (<anonymous>)
+2026-08-28T05:35:27.5780810Z     at runWithTimeout [90m(file:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2272:10[90m)[39m
+2026-08-28T05:35:27.5821223Z     at [90mfile:///home/runner/work/Helios/Helios/frontend/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@4.1.7/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2955:64
+2026-08-28T05:35:27.6030600Z 
+2026-08-28T05:35:28.0305783Z  [32m✓[39m src/pages/Login.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1907[2mms[22m[39m
+2026-08-28T05:35:28.0307887Z      [33m[2m✓[22m[39m llama a supabase.auth.signInWithPassword al enviar el formulario [33m 494[2mms[22m[39m
+2026-08-28T05:35:30.5373171Z  [32m✓[39m src/hooks/useAuth.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 479[2mms[22m[39m
+2026-08-28T05:35:32.6801372Z  [31m❯[39m src/pages/MisCitas.test.tsx [2m([22m[2m0 test[22m[2m)[22m
+2026-08-28T05:35:34.6176433Z  [32m✓[39m src/components/agendamiento/CalendarioCitasLista.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 329[2mms[22m[39m
+2026-08-28T05:35:36.0323638Z  [31m❯[39m src/hooks/useHorarios.test.ts [2m([22m[2m0 test[22m[2m)[22m
+2026-08-28T05:35:37.7099877Z  [32m✓[39m src/hooks/useNotificaciones.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 244[2mms[22m[39m
+2026-08-28T05:35:39.1403069Z  [32m✓[39m src/hooks/useReprogramarCita.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+2026-08-28T05:35:40.5309529Z  [32m✓[39m src/lib/validaciones.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+2026-08-28T05:35:41.9755123Z  [32m✓[39m src/lib/cedula.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+2026-08-28T05:35:43.8044574Z  [32m✓[39m src/components/citas/BotonCancelarCita.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 332[2mms[22m[39m
+2026-08-28T05:35:45.1880246Z  [32m✓[39m src/lib/withTimeout.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+2026-08-28T05:35:46.6595698Z  [32m✓[39m src/hooks/useCancelarCita.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+2026-08-28T05:35:48.3383847Z  [32m✓[39m src/components/agendamiento/ListaMedicos.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 219[2mms[22m[39m
+2026-08-28T05:35:49.9225058Z  [32m✓[39m src/pages/Home.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+2026-08-28T05:35:51.5982420Z  [32m✓[39m src/components/agendamiento/SelectorEspecialidad.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 216[2mms[22m[39m
+2026-08-28T05:35:53.3336858Z  [32m✓[39m src/components/agendamiento/ResumenCita.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 226[2mms[22m[39m
+2026-08-28T05:35:55.0449562Z  [32m✓[39m src/components/agendamiento/SelectorSede.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 243[2mms[22m[39m
+2026-08-28T05:35:56.4819714Z  [32m✓[39m src/components/shared/LoadingSpinner.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+2026-08-28T05:35:58.0440470Z  [32m✓[39m src/components/shared/ErrorMessage.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 168[2mms[22m[39m
+2026-08-28T05:35:59.3191284Z 
+2026-08-28T05:35:59.3211708Z [31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+2026-08-28T05:35:59.3229681Z 
+2026-08-28T05:35:59.3271058Z [41m[1m FAIL [22m[49m src/hooks/useHorarios.test.ts[2m [ src/hooks/useHorarios.test.ts ][22m
+2026-08-28T05:35:59.3287236Z [31m[1mError[22m: Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend/.env.example a frontend/.env.local y completa los valores.[39m
+2026-08-28T05:35:59.3310312Z [36m [2m❯[22m src/lib/supabase.ts:[2m7:9[22m[39m
+2026-08-28T05:35:59.3310757Z 
+2026-08-28T05:35:59.3330887Z [2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m18 passed[39m[22m[90m (20)[39m
+2026-08-28T05:35:59.3350200Z     [90m  5|[39m
+2026-08-28T05:35:59.3351048Z [2m      Tests [22m [1m[32m127 passed[39m[22m[90m (127)[39m
+2026-08-28T05:35:59.3362599Z     [90m  6|[39m [35mif[39m ([33m![39murl [33m||[39m [33m![39manon) {
+2026-08-28T05:35:59.3363540Z [2m   Start at [22m 05:35:17
+2026-08-28T05:35:59.3370979Z [2m   Duration [22m 41.92s[2m (transform 2.23s, setup 6.63s, import 2.61s, tests 9.01s, environment 16.78s)[22m
+2026-08-28T05:35:59.3379498Z 
+2026-08-28T05:35:59.3390573Z     [90m  7|[39m   [35mthrow[39m [35mnew[39m [33mError[39m(
+2026-08-28T05:35:59.3404960Z     [90m   |[39m         [31m^[39m
+2026-08-28T05:35:59.3405309Z 
+2026-08-28T05:35:59.3406169Z     [90m  8|[39m     'Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend…
+2026-08-28T05:35:59.3407238Z     [90m  9|[39m   )
+2026-08-28T05:35:59.3408192Z [90m [2m❯[22m src/hooks/useHorarios.ts:[2m2:1[22m[39m
+2026-08-28T05:35:59.3409630Z [90m [2m❯[22m src/hooks/useHorarios.test.ts:[2m2:1[22m[39m
+2026-08-28T05:35:59.3410314Z 
+2026-08-28T05:35:59.3410916Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+2026-08-28T05:35:59.3411430Z 
+2026-08-28T05:35:59.3412367Z [41m[1m FAIL [22m[49m src/pages/MisCitas.test.tsx[2m [ src/pages/MisCitas.test.tsx ][22m
+2026-08-28T05:35:59.3414582Z [31m[1mError[22m: Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend/.env.example a frontend/.env.local y completa los valores.[39m
+2026-08-28T05:35:59.3416250Z [36m [2m❯[22m src/lib/supabase.ts:[2m7:9[22m[39m
+2026-08-28T05:35:59.3417054Z     [90m  5|[39m
+2026-08-28T05:35:59.3417982Z     [90m  6|[39m [35mif[39m ([33m![39murl [33m||[39m [33m![39manon) {
+2026-08-28T05:35:59.3419087Z     [90m  7|[39m   [35mthrow[39m [35mnew[39m [33mError[39m(
+2026-08-28T05:35:59.3449638Z ##[error]Error: Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend/.env.example a frontend/.env.local y completa los valores.
+ ❯ src/lib/supabase.ts:7:9
+ ❯ src/hooks/useHorarios.ts:2:1
+ ❯ src/hooks/useHorarios.test.ts:2:1
+
+
+2026-08-28T05:35:59.3464190Z     [90m   |[39m         [31m^[39m
+2026-08-28T05:35:59.3465195Z     [90m  8|[39m     'Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend…
+2026-08-28T05:35:59.3466056Z     [90m  9|[39m   )
+2026-08-28T05:35:59.3467311Z [90m [2m❯[22m src/hooks/useHistorialPaciente.ts:[2m2:1[22m[39m
+2026-08-28T05:35:59.3468433Z [90m [2m❯[22m src/pages/MisCitas.tsx:[2m5:1[22m[39m
+2026-08-28T05:35:59.3468845Z 
+2026-08-28T05:35:59.3469603Z [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+2026-08-28T05:35:59.3469986Z 
+2026-08-28T05:35:59.3470009Z 
+2026-08-28T05:35:59.3474428Z ##[error]Error: Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copia frontend/.env.example a frontend/.env.local y completa los valores.
+ ❯ src/lib/supabase.ts:7:9
+ ❯ src/hooks/useHistorialPaciente.ts:2:1
+ ❯ src/pages/MisCitas.tsx:5:1
+
+
+2026-08-28T05:35:59.4205185Z ##[error]Process completed with exit code 1.
+2026-08-28T05:35:59.4331703Z ##[group]Run SonarSource/sonarqube-scan-action@v5.0.0
+2026-08-28T05:35:59.4332084Z with:
+2026-08-28T05:35:59.4332298Z   scannerVersion: 7.0.2.4839
+2026-08-28T05:35:59.4332727Z   scannerBinariesUrl: https://binaries.sonarsource.com/Distribution/sonar-scanner-cli
+2026-08-28T05:35:59.4333166Z env:
+2026-08-28T05:35:59.4333419Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:59.4336471Z   GITHUB_TOKEN: ***
+2026-08-28T05:35:59.4336707Z   SONAR_TOKEN: 
+2026-08-28T05:35:59.4336916Z ##[endgroup]
+2026-08-28T05:35:59.4400088Z ##[start-action display=Sanity checks;id=__SonarSource_sonarqube-scan-action.__run]
+2026-08-28T05:35:59.4423926Z ##[group]Run ${GITHUB_ACTION_PATH}/scripts/sanity-checks.sh
+2026-08-28T05:35:59.4424364Z [36;1m${GITHUB_ACTION_PATH}/scripts/sanity-checks.sh[0m
+2026-08-28T05:35:59.4463304Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-08-28T05:35:59.4463658Z env:
+2026-08-28T05:35:59.4463967Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:59.4466609Z   GITHUB_TOKEN: ***
+2026-08-28T05:35:59.4466834Z   SONAR_TOKEN: 
+2026-08-28T05:35:59.4467048Z   INPUT_PROJECTBASEDIR: 
+2026-08-28T05:35:59.4467286Z ##[endgroup]
+2026-08-28T05:35:59.4552638Z ##[warning]Running this GitHub Action without SONAR_TOKEN is not recommended
+2026-08-28T05:35:59.4567587Z ##[end-action id=__SonarSource_sonarqube-scan-action.__run;outcome=success;conclusion=success;duration_ms=16]
+2026-08-28T05:35:59.4571091Z ##[start-action display=Load Sonar Scanner CLI from cache;id=__SonarSource_sonarqube-scan-action.sonar-scanner-cli]
+2026-08-28T05:35:59.4629087Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:35:59.4630747Z ##[group]Run actions/cache@v4
+2026-08-28T05:35:59.4631012Z with:
+2026-08-28T05:35:59.4631318Z   path: /home/runner/work/_temp/sonar-scanner-cli-7.0.2.4839-Linux-X64
+2026-08-28T05:35:59.4631723Z   key: sonar-scanner-cli-7.0.2.4839-Linux-X64
+2026-08-28T05:35:59.4632028Z   enableCrossOsArchive: false
+2026-08-28T05:35:59.4632279Z   fail-on-cache-miss: false
+2026-08-28T05:35:59.4632513Z   lookup-only: false
+2026-08-28T05:35:59.4632733Z   save-always: false
+2026-08-28T05:35:59.4632928Z env:
+2026-08-28T05:35:59.4633166Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:59.4635746Z   GITHUB_TOKEN: ***
+2026-08-28T05:35:59.4635971Z   SONAR_TOKEN: 
+2026-08-28T05:35:59.4636190Z   SEGMENT_DOWNLOAD_TIMEOUT_MINS: 1
+2026-08-28T05:35:59.4636441Z ##[endgroup]
+2026-08-28T05:35:59.5805208Z (node:2328) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-08-28T05:35:59.5806991Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:35:59.8375020Z Cache not found for input keys: sonar-scanner-cli-7.0.2.4839-Linux-X64
+2026-08-28T05:35:59.8440898Z ##[end-action id=__SonarSource_sonarqube-scan-action.sonar-scanner-cli;outcome=success;conclusion=success;duration_ms=386]
+2026-08-28T05:35:59.8448513Z ##[start-action display=Install Sonar Scanner CLI;id=__SonarSource_sonarqube-scan-action.__run_2]
+2026-08-28T05:35:59.8486837Z ##[group]Run ${GITHUB_ACTION_PATH}/scripts/install-sonar-scanner-cli.sh
+2026-08-28T05:35:59.8487380Z [36;1m${GITHUB_ACTION_PATH}/scripts/install-sonar-scanner-cli.sh[0m
+2026-08-28T05:35:59.8528284Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-08-28T05:35:59.8528640Z env:
+2026-08-28T05:35:59.8528898Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:35:59.8534114Z   GITHUB_TOKEN: ***
+2026-08-28T05:35:59.8534491Z   SONAR_TOKEN: 
+2026-08-28T05:35:59.8534854Z   INPUT_SCANNERVERSION: 7.0.2.4839
+2026-08-28T05:35:59.8535617Z   INPUT_SCANNERBINARIESURL: https://binaries.sonarsource.com/Distribution/sonar-scanner-cli
+2026-08-28T05:35:59.8536611Z ##[endgroup]
+2026-08-28T05:35:59.8617771Z + mkdir -p /home/runner/work/_temp/sonarscanner
+2026-08-28T05:35:59.8663111Z + cd /home/runner/work/_temp/sonarscanner
+2026-08-28T05:35:59.8663948Z + SCANNER_FILE_NAME=sonar-scanner-cli-7.0.2.4839-linux-x64.zip
+2026-08-28T05:35:59.8665060Z + SCANNER_URI=https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.0.2.4839-linux-x64.zip
+2026-08-28T05:35:59.8666123Z + command -v wget
+2026-08-28T05:35:59.8667293Z + wget --no-verbose --user-agent=sonarqube-scan-action https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.0.2.4839-linux-x64.zip
+2026-08-28T05:36:00.1552500Z 2026-08-28 05:36:00 URL:https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.0.2.4839-linux-x64.zip [57688416/57688416] -> "sonar-scanner-cli-7.0.2.4839-linux-x64.zip" [1]
+2026-08-28T05:36:00.1564809Z + unzip -q -o sonar-scanner-cli-7.0.2.4839-linux-x64.zip
+2026-08-28T05:36:01.2540992Z + SCANNER_UNZIP_FOLDER=sonar-scanner-7.0.2.4839-linux-x64
+2026-08-28T05:36:01.2542469Z + SCANNER_LOCAL_FOLDER=/home/runner/work/_temp/sonar-scanner-cli-7.0.2.4839-Linux-X64
+2026-08-28T05:36:01.2543615Z + '[' -d /home/runner/work/_temp/sonar-scanner-cli-7.0.2.4839-Linux-X64 ']'
+2026-08-28T05:36:01.2545092Z + mv -f sonar-scanner-7.0.2.4839-linux-x64 /home/runner/work/_temp/sonar-scanner-cli-7.0.2.4839-Linux-X64
+2026-08-28T05:36:01.2571870Z ##[end-action id=__SonarSource_sonarqube-scan-action.__run_2;outcome=success;conclusion=success;duration_ms=1412]
+2026-08-28T05:36:01.2576736Z ##[start-action display=Add SonarScanner CLI to the PATH;id=__SonarSource_sonarqube-scan-action.__run_3]
+2026-08-28T05:36:01.2603425Z ##[group]Run echo "${RUNNER_TEMP}/sonar-scanner-cli-7.0.2.4839-Linux-X64/bin" >> $GITHUB_PATH
+2026-08-28T05:36:01.2604526Z [36;1mecho "${RUNNER_TEMP}/sonar-scanner-cli-7.0.2.4839-Linux-X64/bin" >> $GITHUB_PATH[0m
+2026-08-28T05:36:01.2649983Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-08-28T05:36:01.2650416Z env:
+2026-08-28T05:36:01.2650695Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:36:01.2653668Z   GITHUB_TOKEN: ***
+2026-08-28T05:36:01.2654075Z   SONAR_TOKEN: 
+2026-08-28T05:36:01.2654450Z ##[endgroup]
+2026-08-28T05:36:01.2744576Z ##[end-action id=__SonarSource_sonarqube-scan-action.__run_3;outcome=success;conclusion=success;duration_ms=16]
+2026-08-28T05:36:01.2748741Z ##[start-action display=Run SonarScanner;id=__SonarSource_sonarqube-scan-action.__run_4]
+2026-08-28T05:36:01.2768543Z ##[group]Run ${GITHUB_ACTION_PATH}/scripts/run-sonar-scanner-cli.sh 
+2026-08-28T05:36:01.2769580Z [36;1m${GITHUB_ACTION_PATH}/scripts/run-sonar-scanner-cli.sh [0m
+2026-08-28T05:36:01.2823710Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-08-28T05:36:01.2824316Z env:
+2026-08-28T05:36:01.2824754Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-08-28T05:36:01.2830056Z   GITHUB_TOKEN: ***
+2026-08-28T05:36:01.2830484Z   SONAR_TOKEN: 
+2026-08-28T05:36:01.2830888Z   INPUT_PROJECTBASEDIR: 
+2026-08-28T05:36:01.2831599Z   SONAR_SCANNER_JRE: /home/runner/work/_temp/sonar-scanner-cli-7.0.2.4839-Linux-X64/jre
+2026-08-28T05:36:01.2832379Z ##[endgroup]
+2026-08-28T05:36:01.2948609Z + sonar-scanner
+2026-08-28T05:36:01.7151854Z 05:36:01.710 INFO  Scanner configuration file: /home/runner/work/_temp/sonar-scanner-cli-7.0.2.4839-Linux-X64/conf/sonar-scanner.properties
+2026-08-28T05:36:01.7171464Z 05:36:01.714 INFO  Project root configuration file: /home/runner/work/Helios/Helios/sonar-project.properties
+2026-08-28T05:36:01.7392219Z 05:36:01.738 INFO  SonarScanner CLI 7.0.2.4839
+2026-08-28T05:36:01.7420713Z 05:36:01.740 INFO  Java 17.0.13 Eclipse Adoptium (64-bit)
+2026-08-28T05:36:01.7440285Z 05:36:01.741 INFO  Linux 6.17.0-1022-azure amd64
+2026-08-28T05:36:01.7731075Z 05:36:01.771 INFO  User cache: /home/runner/.sonar/cache
+2026-08-28T05:36:02.6595283Z 05:36:02.657 INFO  JRE provisioning: os[linux], arch[x86_64]
+2026-08-28T05:36:06.5897477Z 05:36:06.589 INFO  Communicating with SonarQube Cloud
+2026-08-28T05:36:06.9642450Z 05:36:06.963 INFO  Starting SonarScanner Engine...
+2026-08-28T05:36:06.9659596Z 05:36:06.965 INFO  Java 21.0.11 Eclipse Adoptium (64-bit)
+2026-08-28T05:36:08.6107917Z 05:36:08.610 INFO  Load global settings
+2026-08-28T05:36:09.6420452Z 05:36:09.641 INFO  Load global settings (done) | time=1027ms
+2026-08-28T05:36:09.7771064Z 05:36:09.775 INFO  Server id: 1BD809FA-AWHW8ct9-T_TB3XqouNu
+2026-08-28T05:36:10.0971414Z 05:36:10.096 INFO  Loading required plugins
+2026-08-28T05:36:10.0980532Z 05:36:10.096 INFO  Load plugins index
+2026-08-28T05:36:10.2851184Z 05:36:10.283 INFO  Load plugins index (done) | time=186ms
+2026-08-28T05:36:10.2860370Z 05:36:10.283 INFO  Load/download plugins
+2026-08-28T05:36:11.5237293Z 05:36:11.523 INFO  Load/download plugins (done) | time=1240ms
+2026-08-28T05:36:11.8290831Z 05:36:11.826 INFO  Loaded core extensions: sca, architecture, a3s
+2026-08-28T05:36:12.2255687Z 05:36:12.225 INFO  Found an active CI vendor: 'Github Actions'
+2026-08-28T05:36:12.7488959Z 05:36:12.748 ERROR Error retrieving feature flags, using default analyzer behavior
+2026-08-28T05:36:12.7492303Z Not authorized or project not found. Please check the 'SONAR_TOKEN' environment variable, the 'sonar.projectKey' and 'sonar.organization' properties, or contact the project administrator to verify the token's permissions.
+2026-08-28T05:36:12.7494095Z 
+2026-08-28T05:36:12.7577275Z 05:36:12.757 INFO  Process project properties
+2026-08-28T05:36:12.7848919Z 05:36:12.783 INFO  Project key: MarianC-programing_Helios
+2026-08-28T05:36:12.7911819Z 05:36:12.789 INFO  Base dir: /home/runner/work/Helios/Helios
+2026-08-28T05:36:12.7920785Z 05:36:12.790 INFO  Working dir: /home/runner/work/Helios/Helios/.scannerwork
+2026-08-28T05:36:12.7962507Z 05:36:12.794 INFO  Load project settings for component key: 'MarianC-programing_Helios'
+2026-08-28T05:36:13.0024401Z 05:36:13.002 INFO  Failed to load settings with NOT_FOUND error, which can happen if the project does not exist yet
+2026-08-28T05:36:13.0321123Z 05:36:13.030 INFO  Check ALM binding of project 'MarianC-programing_Helios'
+2026-08-28T05:36:13.1891325Z 05:36:13.188 WARN  Failed to check if project 'MarianC-programing_Helios' is bound
+2026-08-28T05:36:13.1910534Z 05:36:13.189 INFO  Detected project binding: ERROR
+2026-08-28T05:36:13.1930876Z 05:36:13.192 INFO  Check ALM binding of project 'MarianC-programing_Helios' (done) | time=160ms
+2026-08-28T05:36:13.2010794Z 05:36:13.198 INFO  Load branch configuration
+2026-08-28T05:36:13.2011770Z 05:36:13.199 INFO  Github event: push
+2026-08-28T05:36:13.2055717Z 05:36:13.204 INFO  Auto-configuring branch main
+2026-08-28T05:36:13.2056885Z 05:36:13.205 INFO  Load branch configuration (done) | time=8ms
+2026-08-28T05:36:13.2238171Z 05:36:13.223 INFO  Create analysis
+2026-08-28T05:36:13.9404603Z 05:36:13.938 ERROR Not authorized or project not found. Please check the 'SONAR_TOKEN' environment variable, the 'sonar.projectKey' and 'sonar.organization' properties, or contact the project administrator to verify the token's permissions.
+2026-08-28T05:36:14.2659067Z 05:36:14.265 INFO  EXECUTION FAILURE
+2026-08-28T05:36:14.2670876Z 05:36:14.266 INFO  Total time: 12.560s
+2026-08-28T05:36:14.5909842Z ##[error]Process completed with exit code 3.
+2026-08-28T05:36:14.5921417Z ##[end-action id=__SonarSource_sonarqube-scan-action.__run_4;outcome=failure;conclusion=failure;duration_ms=13317]
+2026-08-28T05:36:14.6035957Z Post job cleanup.
+2026-08-28T05:36:14.6039863Z ##[start-action display=Load Sonar Scanner CLI from cache;id=__e180b215-2a93-41b0-8fda-34f139317449.sonar-scanner-cli]
+2026-08-28T05:36:14.6043440Z ##[end-action id=__e180b215-2a93-41b0-8fda-34f139317449.sonar-scanner-cli;outcome=skipped;conclusion=skipped;duration_ms=0]
+2026-08-28T05:36:14.6084661Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:36:14.6085925Z Post job cleanup.
+2026-08-28T05:36:14.7082957Z Pruning is unnecessary.
+2026-08-28T05:36:14.7301237Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-08-28T05:36:14.7303569Z Post job cleanup.
+2026-08-28T05:36:14.8293261Z (node:2449) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-08-28T05:36:14.8304675Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-08-28T05:36:14.8380232Z [command]/usr/bin/git version
+2026-08-28T05:36:14.8436636Z git version 2.55.0
+2026-08-28T05:36:14.8511032Z Temporarily overriding HOME='/home/runner/work/_temp/082cd77f-6052-4b01-9bac-07f1a26ab4e0' before making global git config changes
+2026-08-28T05:36:14.8522712Z Adding repository directory to the temporary git global config as a safe directory
+2026-08-28T05:36:14.8524168Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Helios/Helios
+2026-08-28T05:36:14.8594174Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-08-28T05:36:14.8651276Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-08-28T05:36:14.9051543Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-08-28T05:36:14.9080750Z http.https://github.com/.extraheader
+2026-08-28T05:36:14.9094677Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-08-28T05:36:14.9132541Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-08-28T05:36:14.9529137Z Cleaning up orphan processes
+2026-08-28T05:36:14.9814414Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache@v4, actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11, actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020, pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

@@ -60,19 +60,19 @@ describe('limitarVentanaDias', () => {
   // "Ahora" fijo: 2 de junio de 2026 (hora local).
   const ahora = new Date(2026, 5, 2, 10, 0, 0)
 
-  it('mantiene un slot dentro de la ventana de 14 días', () => {
-    const r = limitarVentanaDias([h({ id: 'dia-10', fecha: '2026-06-12' })], ahora, 14)
-    expect(r.map((x) => x.id)).toEqual(['dia-10'])
+  it('mantiene un slot dentro de la ventana de 7 días', () => {
+    const r = limitarVentanaDias([h({ id: 'dia-6', fecha: '2026-06-08' })], ahora, 7)
+    expect(r.map((x) => x.id)).toEqual(['dia-6'])
   })
 
   it('mantiene el slot exactamente en el último día de la ventana', () => {
-    // 2 de junio + 14 dias = 16 de junio (limite inclusivo)
-    const r = limitarVentanaDias([h({ id: 'limite', fecha: '2026-06-16' })], ahora, 14)
+    // 2 de junio + 7 dias = 9 de junio (limite inclusivo)
+    const r = limitarVentanaDias([h({ id: 'limite', fecha: '2026-06-09' })], ahora, 7)
     expect(r.map((x) => x.id)).toEqual(['limite'])
   })
 
   it('descarta un slot un día después del límite de la ventana', () => {
-    const r = limitarVentanaDias([h({ id: 'fuera', fecha: '2026-06-17' })], ahora, 14)
+    const r = limitarVentanaDias([h({ id: 'fuera', fecha: '2026-06-10' })], ahora, 7)
     expect(r).toHaveLength(0)
   })
 
@@ -80,19 +80,19 @@ describe('limitarVentanaDias', () => {
     const r = limitarVentanaDias(
       [h({ id: 'agosto', fecha: '2026-08-24' }), h({ id: 'febrero', fecha: '2027-02-20' })],
       ahora,
-      14,
+      7,
     )
     expect(r).toHaveLength(0)
   })
 
-  it('usa VENTANA_DIAS_AGENDABLES (14) como default si no se pasa dias', () => {
-    const dentro = limitarVentanaDias([h({ id: 'dentro', fecha: '2026-06-14' })], ahora)
-    const fuera = limitarVentanaDias([h({ id: 'fuera', fecha: '2026-06-20' })], ahora)
+  it('usa VENTANA_DIAS_AGENDABLES (7) como default si no se pasa dias', () => {
+    const dentro = limitarVentanaDias([h({ id: 'dentro', fecha: '2026-06-09' })], ahora)
+    const fuera = limitarVentanaDias([h({ id: 'fuera', fecha: '2026-06-10' })], ahora)
     expect(dentro).toHaveLength(1)
     expect(fuera).toHaveLength(0)
   })
 
-  it('combinado con filtrarSlotsFuturos: solo quedan los futuros Y dentro de 2 semanas', () => {
+  it('combinado con filtrarSlotsFuturos: solo quedan los futuros Y dentro de una semana', () => {
     const entrada = [
       h({ id: 'pasado', fecha: '2026-05-30' }),
       h({ id: 'hoy-tarde', fecha: '2026-06-02', hora_inicio: '18:00:00' }),
