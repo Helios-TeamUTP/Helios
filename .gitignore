@@ -50,6 +50,7 @@ package-lock.json
 coverage/
 *.lcov
 .scannerwork/
+sonar_log.txt
 # locust_report.html se commitea solo si esta en dailys/ (evidencia academica)
 scripts/locust_report.html
 
