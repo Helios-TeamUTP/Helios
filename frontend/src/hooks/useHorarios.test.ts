@@ -1,6 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
 import { filtrarSlotsFuturos, limitarVentanaDias } from './useHorarios'
-import type { Horario } from '../lib/types'
+import type { Horario, HorarioAgendable } from '../lib/types'
+
+// Mock de supabase — el hook useHorarios llama a supabase.rpc('horarios_agendables', ...).
+vi.mock('../lib/supabase', () => ({
+  supabase: { rpc: vi.fn() },
+}))
+
+import { supabase } from '../lib/supabase'
+import { useHorarios } from './useHorarios'
 
 /**
  * Bug B-25: no se debe poder agendar un slot de HOY cuya hora ya pasó
@@ -102,5 +111,110 @@ describe('limitarVentanaDias', () => {
     const futuros = filtrarSlotsFuturos(entrada, ahora)
     const resultado = limitarVentanaDias(futuros, ahora)
     expect(resultado.map((x) => x.id)).toEqual(['hoy-tarde', 'semana-1'])
+  })
+})
+
+function horarioAgendable(over: Partial<HorarioAgendable> = {}): HorarioAgendable {
+  return {
+    id: over.id ?? 'h1',
+    medico_id: 'm1',
+    fecha: '2026-09-05',
+    hora_inicio: '09:00:00',
+    hora_fin: '09:20:00',
+    disponible: true,
+    dia_completo: false,
+    created_at: '2026-08-01T00:00:00Z',
+    ...over,
+  } as HorarioAgendable
+}
+
+describe('useHorarios (hook)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('con medicoId=null resetea data a [] y no llama a la RPC', () => {
+    const { result } = renderHook(() => useHorarios(null))
+    expect(result.current.data).toEqual([])
+    expect(result.current.loading).toBe(false)
+    expect(supabase.rpc).not.toHaveBeenCalled()
+  })
+
+  it('carga horarios, aplica filtrarSlotsFuturos + limitarVentanaDias, y setea loading correctamente', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: [horarioAgendable({ id: 'cerca', fecha: '2026-09-05' }), horarioAgendable({ id: 'lejos', fecha: '2027-01-01' })],
+      error: null,
+    } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
+
+    const { result } = renderHook(() => useHorarios('med-1'))
+    expect(result.current.loading).toBe(true)
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    // 'lejos' esta fuera de la ventana de VENTANA_DIAS_AGENDABLES y se descarta.
+    expect(result.current.data.map((h) => h.id)).toEqual(['cerca'])
+    expect(result.current.error).toBeNull()
+  })
+
+  it('pasa medicoId y excluirCitaId correctamente a la RPC', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: [], error: null } as unknown as Awaited<
+      ReturnType<typeof supabase.rpc>
+    >)
+
+    renderHook(() => useHorarios('med-1', 'cita-a-reprogramar'))
+
+    await waitFor(() => expect(supabase.rpc).toHaveBeenCalled())
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      'horarios_agendables',
+      expect.objectContaining({ p_medico_id: 'med-1', p_excluir_cita_id: 'cita-a-reprogramar' }),
+    )
+  })
+
+  it('usa null como p_excluir_cita_id cuando no se pasa (agendar cita nueva)', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: [], error: null } as unknown as Awaited<
+      ReturnType<typeof supabase.rpc>
+    >)
+
+    renderHook(() => useHorarios('med-1'))
+
+    await waitFor(() => expect(supabase.rpc).toHaveBeenCalled())
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      'horarios_agendables',
+      expect.objectContaining({ p_excluir_cita_id: null }),
+    )
+  })
+
+  it('setea error cuando la RPC devuelve error', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: null,
+      error: { message: 'RLS denegado' },
+    } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
+
+    const { result } = renderHook(() => useHorarios('med-1'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.error).toBe('RLS denegado')
+    expect(result.current.data).toEqual([])
+  })
+
+  it('setea error genérico cuando la RPC lanza una excepción', async () => {
+    vi.mocked(supabase.rpc).mockRejectedValue(new Error('network down'))
+
+    const { result } = renderHook(() => useHorarios('med-1'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(result.current.error).toBe('network down')
+  })
+
+  it('no actualiza estado tras desmontar (cleanup del useEffect)', async () => {
+    let resolveRpc: (v: { data: unknown; error: unknown }) => void = () => {}
+    vi.mocked(supabase.rpc).mockImplementation(
+      () => new Promise((resolve) => { resolveRpc = resolve }) as unknown as ReturnType<typeof supabase.rpc>,
+    )
+
+    const { unmount } = renderHook(() => useHorarios('med-1'))
+    unmount()
+
+    expect(() => resolveRpc({ data: [], error: null })).not.toThrow()
   })
 })

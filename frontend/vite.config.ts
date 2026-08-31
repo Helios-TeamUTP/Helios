@@ -34,7 +34,20 @@ export default defineConfig({
         'src/test/**',
         'src/lib/types.ts',
         'src/lib/supabase.ts',
-        'src/hooks/**',
+        // Hooks SIN test dedicado (thin data-fetching wrappers). Los que
+        // SI tienen *.test.ts propio (useAuth, useCancelarCita,
+        // useHorarios, useNotificaciones, useReprogramarCita) se quitaron
+        // de esta lista tras B-31/B-32: excluir toda la carpeta escondia
+        // cobertura real y hacia que "New Code" en SonarCloud viera 0%
+        // en hooks que si estaban probados (ej. useHorarios.ts).
+        'src/hooks/useCitas.ts',
+        'src/hooks/useEspecialidades.ts',
+        'src/hooks/useHistorialClinico.ts',
+        'src/hooks/useHistorialPaciente.ts',
+        'src/hooks/useMedicoCitas.ts',
+        'src/hooks/useMedicos.ts',
+        'src/hooks/usePacientesMedico.ts',
+        'src/hooks/useSedes.ts',
         'src/components/layout/**',
         'src/components/auth/ProtectedRoute.tsx',
         'src/pages/AgendarCita.tsx',
