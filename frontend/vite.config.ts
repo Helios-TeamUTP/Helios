@@ -23,7 +23,7 @@ export default defineConfig({
     css: false,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html', 'json-summary'],
+      reporter: ['text', 'html', 'json-summary', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],
       // Excluimos thin wrappers de Supabase y glue de routing,
       // que se cubren con pruebas E2E manuales en el demo del jueves.
