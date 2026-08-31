@@ -51,6 +51,17 @@ jobs:
         # Si los tests fallan, no aborta SonarCloud
         continue-on-error: true
 
+      - name: Fix rutas del lcov.info para que coincidan con sonar.sources
+        run: |
+          # Vitest corre con cwd=frontend/, asi que lcov.info trae rutas
+          # relativas tipo "SF:src/App.tsx". El scanner de SonarCloud corre
+          # desde la raiz del repo (sonar.sources=frontend/src,scripts), asi
+          # que necesita "SF:frontend/src/App.tsx" o no matchea ningun
+          # archivo y reporta 0% de cobertura (bug B-30).
+          if [ -f frontend/coverage/lcov.info ]; then
+            sed -i 's|^SF:src/|SF:frontend/src/|' frontend/coverage/lcov.info
+          fi
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
