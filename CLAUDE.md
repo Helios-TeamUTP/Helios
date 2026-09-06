@@ -192,6 +192,7 @@ Referencia rápida — NO repetir estos patrones:
 | B-30 | SonarCloud Quality Gate seguía fallando con `Coverage on New Code: 0.0%` (requerido ≥80%) AÚN DESPUÉS de B-29, en un push que ni siquiera tocaba `sonar.sources` | `frontend/vite.config.ts` | `sonar-project.properties` esperaba `frontend/coverage/lcov.info` (comentario: "Reportes de coverage (Vitest -> lcov)"), pero el `reporter` de la config de coverage en `vite.config.ts` nunca incluyó `'lcov'` (solo `'text'`, `'html'`, `'json-summary'`) — confirmado con `git log -p` que ese reporter jamás existió en el historial del archivo. Como consecuencia, `frontend/coverage/lcov.info` nunca se generaba y SonarCloud no tenía NINGÚN dato de cobertura que leer, sin importar cuántos tests se agregaran (por eso B-29 no fue suficiente por sí solo). Fix: agregar `'lcov'` al array de `reporter`. Verificado: `pnpm vitest run --coverage` ahora genera `coverage/lcov.info` (2175 líneas, con `DA:`/`FNDA:`/`BRDA:` reales por archivo) |
 | B-31 | Tras B-30, `Coverage on New Code` seguía en 0.0% pese a que `lcov.info` ya se generaba con datos reales | `.github/workflows/sonarcloud.yml` | Mismatch de rutas: Vitest corre con `working-directory: frontend`, así que `lcov.info` trae rutas `SF:src/App.tsx` (relativas a `frontend/`). El scanner de SonarCloud corre desde la raíz del repo con `sonar.sources=frontend/src,scripts`, así que espera `SF:frontend/src/App.tsx` — al no matchear ningún archivo real, atribuye 0% de cobertura a absolutamente todo. Fix: nuevo step en el workflow, entre "Run tests with coverage" y "SonarCloud Scan", que corre `sed -i 's|^SF:src/|SF:frontend/src/|' frontend/coverage/lcov.info` para normalizar las rutas antes del scan. No se tocó `vite.config.ts` ni el flujo local de los devs (`pnpm vitest run --coverage` sigue generando rutas `src/...` como siempre, correcto para uso local) — el fix vive solo en el paso de CI que alimenta a Sonar. Verificado localmente el `sed` sobre una copia del `lcov.info` real: 22/22 líneas `SF:` reescritas correctamente |
 | B-32 | Tras B-31 el Quality Gate SEGUÍA fallando exacto en 0.0%. Causa real (confirmada viendo la pestaña "New Code" de SonarCloud, no visible por API): el proyecto tenía "Automatic Analysis" activado en paralelo al análisis por GitHub Actions — un scan en background que SonarCloud corre por su cuenta en cada push, sin ejecutar tests, y que competía/pisaba el resultado del análisis real de CI (confirmado con timestamps: el check `SonarCloud Code Analysis` terminaba ANTES que nuestro propio job de CI). Al desactivar Automatic Analysis y re-registrar el método como "GitHub Actions" en SonarCloud, la pestaña "New Code" reveló los 2 archivos reales bloqueando el gate | `frontend/vite.config.ts`, `sonar-project.properties`, `frontend/src/hooks/useHorarios.test.ts`, GitHub secret `SONAR_TOKEN` (rotado) | Con Automatic Analysis fuera, "New Code" mostró: (1) `frontend/src/hooks/useHorarios.ts` con 8 líneas nuevas en 0% — el archivo SÍ tenía test dedicado (`useHorarios.test.ts`), pero `vite.config.ts` excluía TODA la carpeta `src/hooks/**` de la instrumentación de coverage (pensado para hooks "delgados", pero le tapaba la cobertura real a hooks con lógica y tests genuinos). Fix: reemplazar el exclude de carpeta completa por una lista explícita de solo los hooks SIN test dedicado (`useCitas`, `useEspecialidades`, `useHistorialClinico`, `useHistorialPaciente`, `useMedicoCitas`, `useMedicos`, `usePacientesMedico`, `useSedes`); los que sí tienen `*.test.ts` (`useAuth`, `useCancelarCita`, `useHorarios`, `useNotificaciones`, `useReprogramarCita`) ahora se miden de verdad. Además, `useHorarios.test.ts` solo probaba las funciones puras exportadas (`filtrarSlotsFuturos`, `limitarVentanaDias`) y nunca montaba el hook real — se agregaron 7 tests con `renderHook` (loading, éxito con filtrado real, paso de `medicoId`/`excluirCitaId` a la RPC, error de RPC, excepción, cleanup post-unmount), subiendo `useHorarios.ts` de 23.68% a 100% statements. (2) `scripts/extender_horarios.py` con 78 líneas nuevas en 0% — es un script de operación que habla directo con Supabase, y el proyecto no tiene NINGUNA infraestructura de tests Python (sin pytest/conftest.py/coverage.py) para ninguno de los ~23 scripts en `scripts/`. Montar esa infraestructura solo para este script sería desproporcionado; se agregó `sonar.coverage.exclusions=scripts/**` en `sonar-project.properties` (se mantiene en `sonar.sources` para que Sonar lo siga revisando por bugs/code smells, solo se excluye del requisito de cobertura). También se rotó `SONAR_TOKEN` en GitHub (secret actualizado vía API con `PyNaCl`/sealed box) tras registrar el análisis como CI-based en SonarCloud |
+| B-33 | UX: en el paso de confirmación de `AgendarCita.tsx`, el textarea de notas decía "Notas opcionales para el médico", pero el médico NUNCA ve ese campo (`cita.notas` solo se lee de vuelta en `MisCitas.tsx`, la vista del propio paciente — ni `MedicoDashboardV2.tsx` ni ningún componente de médico lo muestra) | `frontend/src/pages/AgendarCita.tsx` | Detectado por el PO probando el flujo real en producción (agendar cita en Railway). Se corrigió el label a "Notas sobre esta cita (opcional)" y el placeholder de ejemplo, para no prometerle al paciente que el médico va a leer algo que en realidad solo queda guardado para consulta propia. De paso se detectó y arregló un test frágil en `useHorarios.test.ts` (agregado en B-32) que usaba una fecha hardcodeada igual a "hoy" del sistema — dependiendo de la hora en que corriera el CI, `filtrarSlotsFuturos` podía descartarla como pasada; se cambió a una fecha calculada dinámicamente (mañana) |
 
 ### Sprint 5 — Features y hallazgos (8-jul-2026)
 
@@ -217,6 +218,30 @@ Referencia rápida — NO repetir estos patrones:
 - **Features nuevas del Sprint:** Dashboard de médicos (B-13) + seguridad multicapa RLS por rol (B-14) + vista móvil del calendario (B-18) + flow registro→login con paciente automático (B-20)
 
 ---
+
+## 🗺️ Backlog / Próximos pasos (no empezar sin luz verde explícita)
+
+- **Home/dashboard personalizado para médico**: actualmente el médico entra
+  y ve la misma landing/index que el paciente (`pages/Home.tsx`). Falta un
+  home propio para el rol médico — probablemente redirigir directo a
+  `MedicoDashboardV2` en vez de mostrar la landing genérica, o crear una
+  página de bienvenida distinta si se quiere mantener un paso intermedio.
+  Revisar `App.tsx`/rutas y `hooks/useAuth.tsx` (ya resuelve rol
+  paciente XOR médico) para decidir el approach.
+- **Modo oscuro**: pedido explícitamente para investigarse bien antes de
+  implementar (no lanzarse directo a código). Puntos a investigar antes de
+  proponer un plan: (1) Tailwind 3 ya soporta `dark:` variants nativamente
+  (`darkMode: 'class'` en `tailwind.config.js`) — confirmar que no rompe
+  la paleta HELIOS actual (`helios-primary`, `helios-deep`, etc., ver
+  sección "Tema visual HELIOS" abajo); (2) decidir toggle manual vs
+  `prefers-color-scheme` vs ambos, y dónde persistir la preferencia
+  (¿localStorage? revisar si el proyecto ya usa algo, evitar duplicar
+  patrones); (3) auditar TODOS los componentes que hardcodean colores
+  claros (fondos blancos, texto oscuro fijo) — probablemente varios,
+  dado que el proyecto se construyó sin dark mode en mente desde el
+  inicio; (4) impacto en FullCalendar-replacement (vista de botones,
+  B-21) y en el resto de componentes agendamiento/medico si usan
+  colores fijos vía inline styles en vez de clases Tailwind.
 
 ## 🚀 Cómo deployar (Marian / DevOps)
 

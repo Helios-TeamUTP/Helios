@@ -141,8 +141,16 @@ describe('useHorarios (hook)', () => {
   })
 
   it('carga horarios, aplica filtrarSlotsFuturos + limitarVentanaDias, y setea loading correctamente', async () => {
+    // Fecha relativa (mañana) en vez de una fecha fija: si coincidiera con
+    // "hoy" del sistema, filtrarSlotsFuturos podría descartarla según la
+    // hora exacta en que corra el test (bug de test frágil detectado en
+    // revisión manual, no relacionado con la lógica del hook).
+    const manana = new Date()
+    manana.setDate(manana.getDate() + 1)
+    const fechaCercana = manana.toISOString().slice(0, 10)
+
     vi.mocked(supabase.rpc).mockResolvedValue({
-      data: [horarioAgendable({ id: 'cerca', fecha: '2026-09-05' }), horarioAgendable({ id: 'lejos', fecha: '2027-01-01' })],
+      data: [horarioAgendable({ id: 'cerca', fecha: fechaCercana }), horarioAgendable({ id: 'lejos', fecha: '2027-01-01' })],
       error: null,
     } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
 
