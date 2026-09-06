@@ -219,6 +219,38 @@ Referencia rápida — NO repetir estos patrones:
 
 ---
 
+## 🧹 Limpieza de archivos (31-ago-2026)
+
+Se eliminaron del repo (working tree; el historial de git los sigue
+teniendo, ver nota abajo):
+
+- 3 duplicados exactos (mismo MD5, dos ubicaciones): se conservó SOLO la
+  copia en `dailys/Entrega_Viernes/` por ser la carpeta de entrega
+  oficial — se borró la de `docs/`:
+  - `REPORTE_SEMANAL_SPRINT2.pdf` (quedó en `dailys/Entrega_Viernes/Sprint_2/`)
+  - `REPORTE_SPRINT_1_COMPLETO.pdf` (quedó en `dailys/Entrega_Viernes/Sprint_1/`)
+  - `arquitectura.html` (quedó en `docs/arquitectura.html`, se borró la de `docs/Obsidian/`)
+- `docs/Modulos/Dos/Helios.zip` (59 MB — video demo + PDF) — el contenido
+  ya no vive en el repo; si se necesita de nuevo, restaurar desde el
+  historial de git o desde donde se haya guardado el respaldo.
+- `dailys/Entrega_Viernes/Sprint_1/_versiones_anteriores/` completa (8
+  archivos, iteraciones viejas de slides/guion del Sprint 1).
+
+**No se tocó**: `.claude/agents/*.md` vs `docs/agentes/*.md` (duplicación
+intencional — la primera es la que lee Claude Code funcionalmente, la
+segunda es la copia de referencia en docs); `HELIOS_Sprint1.pptx` y
+`HELIOS_Sprint2_diapositivas.pdf` (mismo nombre en dos carpetas pero
+contenido DISTINTO, no son duplicados).
+
+⚠️ **Nota importante**: `git rm` solo saca los archivos del árbol de
+trabajo actual — el `Helios.zip` de 59MB y el resto siguen ocupando
+espacio en el HISTORIAL de git (commits viejos), así que un
+`git clone` completo del repo sigue siendo pesado. Para reducir eso de
+verdad haría falta reescribir el historial (`git filter-repo` o BFG),
+lo cual cambia todos los hashes de commit y obliga a todo el equipo a
+re-clonar — no se hizo porque es una operación más invasiva que
+requiere coordinación explícita del equipo, no solo del PO.
+
 ## 🗺️ Backlog / Próximos pasos (no empezar sin luz verde explícita)
 
 - **Home/dashboard personalizado para médico**: actualmente el médico entra
