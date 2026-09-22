@@ -6,6 +6,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+# Logs bajados a mano de GitHub Actions / SonarCloud para debug local
+# (nunca deben terminar comiteados - solo son evidencia temporal)
+*_log.txt
+ci_log_raw.txt
+sonar_log.txt
 
 # Node
 node_modules/
