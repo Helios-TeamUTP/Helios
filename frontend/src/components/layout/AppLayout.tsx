@@ -51,6 +51,7 @@ export function AppLayout() {
                       <>
                         <NavItem to="/agendar">Agendar cita</NavItem>
                         <NavItem to="/mis-citas">Mis citas</NavItem>
+                        <NavItem to="/perfil">Mi perfil</NavItem>
                       </>
                     )}
                     {role === null && <NavItem to="/registro">Completa tu perfil</NavItem>}

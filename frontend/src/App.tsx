@@ -7,6 +7,7 @@ import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { AgendarCita } from './pages/AgendarCita'
 import { MisCitas } from './pages/MisCitas'
+import { Perfil } from './pages/Perfil'
 import { MedicoDashboardV2 } from './pages/MedicoDashboardV2'
 import { PacientesMedico } from './pages/PacientesMedico'
 
@@ -23,6 +24,7 @@ export default function App() {
             <Route element={<ProtectedRoute requireRole="paciente" />}>
               <Route path="agendar" element={<AgendarCita />} />
               <Route path="mis-citas" element={<MisCitas />} />
+              <Route path="perfil" element={<Perfil />} />
             </Route>
             {/* Rutas de médico */}
             <Route element={<ProtectedRoute requireRole="medico" />}>
