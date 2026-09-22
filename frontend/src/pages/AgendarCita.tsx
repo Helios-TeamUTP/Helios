@@ -287,7 +287,7 @@ function ResumenPaso4(props: {
       </dl>
       <div>
         <label htmlFor="notas" className="label">
-          Notas opcionales para el médico
+          Notas sobre esta cita (opcional)
         </label>
         <textarea
           id="notas"
@@ -295,7 +295,7 @@ function ResumenPaso4(props: {
           value={props.notas}
           onChange={(e) => props.onNotasChange(e.target.value)}
           className="input"
-          placeholder="Ej.: Es mi primera consulta, traigo exámenes recientes…"
+          placeholder="Ej.: Recordar llevar exámenes recientes, primera consulta…"
         />
       </div>
     </div>
