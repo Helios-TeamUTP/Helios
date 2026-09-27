@@ -46,7 +46,12 @@ export function AppLayout() {
                     logueado y pueda salir si quiere. */}
                 {!loading && (
                   <>
-                    {role === 'medico' && <NavItem to="/medico">Mi agenda</NavItem>}
+                    {role === 'medico' && (
+                      <>
+                        <NavItem to="/medico">Mi agenda</NavItem>
+                        <NavItem to="/medico/perfil">Mi perfil</NavItem>
+                      </>
+                    )}
                     {role === 'paciente' && (
                       <>
                         <NavItem to="/agendar">Agendar cita</NavItem>

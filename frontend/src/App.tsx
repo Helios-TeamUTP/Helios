@@ -10,6 +10,7 @@ import { MisCitas } from './pages/MisCitas'
 import { Perfil } from './pages/Perfil'
 import { MedicoDashboardV2 } from './pages/MedicoDashboardV2'
 import { PacientesMedico } from './pages/PacientesMedico'
+import { PerfilMedico } from './pages/PerfilMedico'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route element={<ProtectedRoute requireRole="medico" />}>
               <Route path="medico" element={<MedicoDashboardV2 />} />
               <Route path="medico/pacientes" element={<PacientesMedico />} />
+              <Route path="medico/perfil" element={<PerfilMedico />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

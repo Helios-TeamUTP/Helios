@@ -81,7 +81,7 @@ No se implementa edición en esta versión. Se muestra de solo lectura.
 | Cédula | Identificador legal del paciente — cambiarla tiene implicaciones serias, no es un campo editable aquí |
 | Teléfono | Fuera de alcance de este módulo por decisión explícita |
 | Correo | Ver Acción 2 — depende del worker de emails, se resuelve en un módulo/iteración aparte |
-| Perfil de médico | Fuera de alcance — este módulo es solo paciente |
+| Perfil de médico | Fuera de alcance — este módulo es solo paciente. **Actualización 2026-09-22: se agregó una extensión mínima para médico — ver sección abajo.** |
 | Perfil de clínica / tenant (admin) | Fuera de alcance — si se necesita, es otro módulo |
 
 ---
@@ -295,7 +295,18 @@ describe('Módulo Perfil — Pruebas Funcionales', () => {
 
 ---
 
-## Reflexiones del Módulo
+## Extensión — Perfil de médico (2026-09-22)
+
+A diferencia de paciente, el alcance para médico es deliberadamente mínimo: **solo el nombre es editable, nada más** (sin correo, sin contraseña). Mismo hueco de RLS que tenía `pacientes`: `medicos` solo tenía `autenticado_lee_medicos` (SELECT), cero UPDATE.
+
+**Agregado:**
+- Migración `sprint6_perfil_medico_nombre.sql` — policy `medico_actualiza_su_perfil` (UPDATE en `medicos`, vía `auth_medico_link`). Aplicada en Supabase real el 2026-09-22.
+- `hooks/useActualizarNombreMedico.ts` (+ test) — mismo patrón que `useActualizarNombre`, apuntando a `medicos` en vez de `pacientes`.
+- `components/perfil/TarjetaNombreMedico.tsx` (+ test) — reutiliza `validarNombre`, sin tarjetas de correo/password.
+- `pages/PerfilMedico.tsx`, ruta `medico/perfil`, nav "Mi perfil" para rol médico.
+- 8 tests nuevos. Suite completa: **249/249 pasan**.
+
+---
 
 _(Llenar después de cada semana de trabajo)_
 

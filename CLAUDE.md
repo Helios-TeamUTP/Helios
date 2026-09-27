@@ -34,7 +34,9 @@ No empezar a trabajar sin haber leído ese archivo primero. Es la "memoria viva"
 
 **Deploy:** Railway (`https://helios-web-production.up.railway.app`)
 **BD:** Supabase (`uobhbikcctausgpnzsph`)
-**Repo:** `MarianC-programing/Helios`
+**Repo:** `Helios-TeamUTP/Helios` (remoto `origin`). Existe también un remoto `marian-legacy` apuntando al repo personal viejo (`MarianC-programing/Helios`) — **no usar ese para push**, es histórico.
+
+**Rama activa para el pivote SaaS:** `demo-vercel` — aislada de `main` a propósito. Todo lo del pivote a SaaS multi-clínica (Módulo 05 en adelante) vive ahí hasta que se decida mergear. Desplegada en Cloudflare Workers (`https://helios.heliosmedic.workers.dev`), no en Railway.
 
 ---
 
@@ -203,6 +205,19 @@ Referencia rápida — NO repetir estos patrones:
 | **H-01** | *(cazado en review adversarial, corregido antes del deploy)* `horarios_agendables` con `GRANT anon` reabría lectura de la agenda a anónimos (regresaba B-14) | `sprint5_limite_citas_dia.sql` | `REVOKE anon`, solo `authenticated`; `SET search_path = public, pg_temp` en las 3 funciones |
 | **H-02** | *(review adversarial)* Reprogramar el mismo día se bloqueaba en la UI en días al tope (el listado no excluía la propia cita) | `sprint5_limite_citas_dia.sql` + frontend | `p_excluir_cita_id` alinea el conteo del listado con el del backend |
 | **H-03** | *(review adversarial)* El tope solo contaba `confirmada` → al marcar `completada` el día se "reabría" y podía superar el tope físico | `sprint5_limite_citas_dia.sql` | Conteo cambiado a `estado <> 'cancelada'` en las 3 funciones |
+
+---
+
+### Sprint 6 — Pivote SaaS, rama `demo-vercel` (22-sep-2026)
+
+| ID | Feature / hallazgo | Archivos | Detalle |
+|---|---|---|---|
+| **DEPLOY** | Deploy alterno gratis en Cloudflare Workers (Railway no es gratis y no todos en el equipo tienen acceso a esa cuenta) | `frontend/wrangler.jsonc` (NUEVO), `frontend/package.json`, `frontend/pnpm-workspace.yaml` | Sin `wrangler.jsonc`, el comando de deploy auto-configuraba el proyecto en cada build (wizard interactivo) y tronaba en CI por `ERR_PNPM_IGNORED_BUILDS` (pnpm bloquea postinstall de `esbuild`/`workerd` sin aprobación explícita). Fix: `wrangler.jsonc` commiteado + `pnpm-workspace.yaml` con `allowBuilds: { esbuild: true, workerd: true }` (sintaxis de pnpm 11.x, reemplazó el viejo `onlyBuiltDependencies`). Protegido con Cloudflare Access configurado en **Scope: Previews only** (no "All traffic") — producción queda pública sin login, necesario porque médicos comparten el link con pacientes reales |
+| **M-05** | Módulo 05 — Perfil (paciente): cambiar nombre, correo solo lectura, cambiar contraseña | `hooks/useActualizarNombre.ts`, `hooks/useCambiarPassword.ts`, `components/perfil/Tarjeta{Nombre,Correo,Password}.tsx`, `pages/Perfil.tsx`, `supabase/migrations/sprint6_modulo05_perfil.sql` | `pacientes` no tenía NINGUNA policy RLS de `UPDATE` (solo SELECT/INSERT desde B-14/B-26) — agregada `paciente_actualiza_su_perfil`. Cambio de password reautentica con `signInWithPassword` antes del `updateUser` (si no, cualquiera con sesión abierta en compu pública podría secuestrar la cuenta) y cierra sesión en otros dispositivos al terminar. Correo queda de solo lectura a propósito: lo consume `email-worker/` (`sprint4b_cola_email.sql`) y cambiarlo sin ese diseño desincroniza notificaciones. Ver `docs/Obsidian/Modulos/Módulo 05 — Perfil.md` para el caso de uso completo. 16 tests nuevos |
+| **M-05-MED** | Extensión de M-05 para médico: alcance intencionalmente mínimo, **solo nombre editable** (sin correo, sin password) | `hooks/useActualizarNombreMedico.ts`, `components/perfil/TarjetaNombreMedico.tsx`, `pages/PerfilMedico.tsx`, `supabase/migrations/sprint6_perfil_medico_nombre.sql` | Mismo hueco que tenía `pacientes`: `medicos` solo tenía `autenticado_lee_medicos` (SELECT), cero UPDATE. Agregada `medico_actualiza_su_perfil`. 8 tests nuevos |
+| **QA** | Reorganización de `qa/` (estaba vacía — nunca se le commité nada) | `qa/planes_prueba/`, `qa/reportes/` (NUEVOS, con README) | Se rescató `HELIOS_PlanDePruebas_v1.2.md` de la Papelera local (alguien lo generó, exportó a PDF, y lo tiró sin comitear) + el PDF oficial entregado a la UTP. README deja explícito que ese plan es una foto del cierre del Sprint 5 (138 tests, BUG-01 a BUG-05) y NO el estado actual — apunta a `pnpm vitest run` y a este mismo archivo (`CLAUDE.md`) para las cifras vigentes |
+
+**Suite completa tras Sprint 6:** 249/249 tests pasando, `tsc -b` y `pnpm build` limpios, lint sin errores (solo 2 warnings preexistentes sin relación).
 
 ---
 
