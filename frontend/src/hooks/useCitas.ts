@@ -43,7 +43,7 @@ export function useCitas(pacienteId: string | null) {
         const { data, error } = await supabase
           .from('citas')
           .select(
-            '*, horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)',
+            '*, nota_paciente:cita_nota_paciente(nota), horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)',
           )
           .eq('paciente_id', pacienteId)
           .order('created_at', { ascending: false })

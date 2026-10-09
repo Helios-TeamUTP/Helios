@@ -188,9 +188,9 @@ export function MisCitas() {
                 </div>
               )}
 
-              {cita.notas && (
+              {cita.nota_paciente?.nota && (
                 <div className="mt-3 rounded-lg bg-helios-mist px-3 py-2 text-sm text-helios-ink/70">
-                  <strong>Notas:</strong> {cita.notas}
+                  <strong>Tu nota:</strong> {cita.nota_paciente.nota}
                 </div>
               )}
 

@@ -71,12 +71,19 @@ export interface Cita {
   horario_id: string | null
   sede_id: string | null
   estado: EstadoCita
+  /**
+   * @deprecated B-34: columna legacy. La nota privada del paciente vive en
+   * `cita_nota_paciente` (ver `CitaConRelaciones.nota_paciente`). Se elimina
+   * de la BD en la fase 2 de B-34 (contract). NO usar en codigo nuevo.
+   */
   notas: string | null
   codigo_confirmacion: string
   created_at: string
 }
 
 export interface CitaConRelaciones extends Cita {
+  /** Nota privada que escribio el paciente al agendar (B-34). Solo la ve el. */
+  nota_paciente?: { nota: string } | null
   horario?: Horario | null
   medico?: (Medico & { especialidad?: Especialidad | null }) | null
   sede?: Sede | null
