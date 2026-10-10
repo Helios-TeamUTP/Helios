@@ -107,7 +107,7 @@ export function useCitas(pacienteId: string | null) {
 
     return () => {
       signal.active = false
-      if (canal) supabase.removeChannel(canal)
+      if (canal) void supabase.removeChannel(canal)
     }
   }, [fetchCitas, pacienteId])
 

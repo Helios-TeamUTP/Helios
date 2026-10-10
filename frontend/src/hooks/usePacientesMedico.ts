@@ -97,7 +97,7 @@ export function usePacientesMedico(medicoId: string | null) {
     // signal.active (cancelado en el cleanup de abajo). Mismo patron ya
     // usado en useCitas.ts y useMedicoCitas.ts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchPacientes(signal)
+    void fetchPacientes(signal)
     return () => {
       signal.active = false
     }
