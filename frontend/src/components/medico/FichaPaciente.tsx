@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { COLUMNAS_CITA, COLUMNAS_HISTORIAL } from '../../lib/columnas'
+import { textoNota } from '../../lib/notas'
 import type { CitaConRelaciones, HistorialClinico, Paciente } from '../../lib/types'
 import { LoadingSpinner } from '../shared/LoadingSpinner'
 
@@ -34,7 +36,7 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
         const { data: citas, error: citasError } = await supabase
           .from('citas')
           .select(
-            '*, horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)',
+            `${COLUMNAS_CITA}, horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)`,
           )
           .eq('paciente_id', paciente.id)
           .order('created_at', { ascending: false })
@@ -46,7 +48,7 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
         // medico logueado puede ver: solo lo que el mismo escribio).
         const { data: hist, error: histError } = await supabase
           .from('historial_clinico')
-          .select('*')
+          .select(`${COLUMNAS_HISTORIAL}, nota_medico:historial_nota_medico(nota)`)
           .eq('paciente_id', paciente.id)
 
         if (histError) throw histError
@@ -55,7 +57,7 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
 
         setHistorial((citas ?? []) as unknown as CitaConRelaciones[])
         setClinico(
-          new Map(((hist ?? []) as HistorialClinico[]).map((h) => [h.cita_id, h])),
+          new Map(((hist ?? []) as unknown as HistorialClinico[]).map((h) => [h.cita_id, h])),
         )
       } catch (err) {
         if (signal.active) {
@@ -195,10 +197,10 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
                           <span className="text-helios-ink/80">{hist.receta}</span>
                         </p>
                       )}
-                      {hist.notas_clinicas && (
+                      {textoNota(hist.nota_medico) && (
                         <p>
                           <span className="font-semibold text-helios-ink/60">Notas: </span>
-                          <span className="text-helios-ink/80">{hist.notas_clinicas}</span>
+                          <span className="text-helios-ink/80">{textoNota(hist.nota_medico)}</span>
                         </p>
                       )}
                     </div>

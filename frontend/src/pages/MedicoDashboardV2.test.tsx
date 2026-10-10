@@ -126,15 +126,15 @@ function baseMedicoCitas(over: Partial<ReturnType<typeof useMedicoCitasMock>> = 
     data: [],
     loading: false,
     error: null,
-    marcarEstado: vi.fn().mockResolvedValue(undefined),
-    refetch: vi.fn(),
+    marcarNoAsistio: vi.fn().mockResolvedValue(undefined),
+    refetch: vi.fn().mockResolvedValue(undefined),
     ...over,
   }
 }
 
 function baseHistorial(over: Record<string, unknown> = {}) {
   return {
-    crearHistorial: vi.fn().mockResolvedValue(undefined),
+    completarCita: vi.fn().mockResolvedValue(undefined),
     guardando: false,
     error: null,
     setError: vi.fn(),
@@ -311,24 +311,24 @@ describe('<MedicoDashboardV2 />', () => {
   })
 
   it('marca "no asistió" al hacer click en el botón correspondiente', async () => {
-    const marcarEstado = vi.fn().mockResolvedValue(undefined)
+    const marcarNoAsistio = vi.fn().mockResolvedValue(undefined)
     useAuthMock.mockReturnValue({ medico: medicoMock() })
     useMedicoCitasMock.mockReturnValue(
-      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], marcarEstado }),
+      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], marcarNoAsistio }),
     )
     useHistorialClinicoMock.mockReturnValue(baseHistorial())
     const user = userEvent.setup()
     renderPage()
 
     await user.click(screen.getByRole('button', { name: /No asistió/ }))
-    expect(marcarEstado).toHaveBeenCalledWith('cita-1', 'no_asistio')
+    expect(marcarNoAsistio).toHaveBeenCalledWith('cita-1')
   })
 
-  it('muestra un error inline si marcarEstado ("no asistió") falla', async () => {
-    const marcarEstado = vi.fn().mockRejectedValue(new Error('conexión perdida'))
+  it('muestra un error inline si marcarNoAsistio falla', async () => {
+    const marcarNoAsistio = vi.fn().mockRejectedValue(new Error('conexión perdida'))
     useAuthMock.mockReturnValue({ medico: medicoMock() })
     useMedicoCitasMock.mockReturnValue(
-      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], marcarEstado }),
+      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], marcarNoAsistio }),
     )
     useHistorialClinicoMock.mockReturnValue(baseHistorial())
     const user = userEvent.setup()
@@ -338,14 +338,15 @@ describe('<MedicoDashboardV2 />', () => {
     await waitFor(() => expect(screen.getByText('conexión perdida')).toBeInTheDocument())
   })
 
-  it('abre el modal de completar cita, guarda historial y luego marca completada', async () => {
-    const crearHistorial = vi.fn().mockResolvedValue(undefined)
-    const marcarEstado = vi.fn().mockResolvedValue(undefined)
+  it('completa la cita en UNA operación atómica y refresca la agenda', async () => {
+    const completarCita = vi.fn().mockResolvedValue(undefined)
+    const refetch = vi.fn().mockResolvedValue(undefined)
+    const marcarNoAsistio = vi.fn().mockResolvedValue(undefined)
     useAuthMock.mockReturnValue({ medico: medicoMock() })
     useMedicoCitasMock.mockReturnValue(
-      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], marcarEstado }),
+      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], refetch, marcarNoAsistio }),
     )
-    useHistorialClinicoMock.mockReturnValue(baseHistorial({ crearHistorial }))
+    useHistorialClinicoMock.mockReturnValue(baseHistorial({ completarCita }))
     const user = userEvent.setup()
     renderPage()
 
@@ -355,37 +356,41 @@ describe('<MedicoDashboardV2 />', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     await waitFor(() =>
-      expect(crearHistorial).toHaveBeenCalledWith({
+      expect(completarCita).toHaveBeenCalledWith({
         citaId: 'cita-1',
-        pacienteId: 'pac-1',
-        medicoId: 'med-1',
         dolenciaPrincipal: 'Gripe',
         receta: 'Paracetamol',
         notasClinicas: null,
       }),
     )
-    expect(marcarEstado).toHaveBeenCalledWith('cita-1', 'completada')
+    // Una sola llamada atómica: ya no se hace un "marcar completada" aparte.
+    expect(completarCita).toHaveBeenCalledTimes(1)
+    expect(marcarNoAsistio).not.toHaveBeenCalled()
+    await waitFor(() => expect(refetch).toHaveBeenCalled())
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'completar' })).not.toBeInTheDocument(),
     )
   })
 
-  it('NO marca la cita como completada si crearHistorial falla', async () => {
-    const crearHistorial = vi.fn().mockRejectedValue(new Error('insert falló'))
-    const marcarEstado = vi.fn().mockResolvedValue(undefined)
+  it('si completarCita falla no refresca la agenda y el modal sigue abierto', async () => {
+    const completarCita = vi
+      .fn()
+      .mockRejectedValue(new Error('La dolencia principal es obligatoria para completar la cita'))
+    const refetch = vi.fn().mockResolvedValue(undefined)
     useAuthMock.mockReturnValue({ medico: medicoMock() })
     useMedicoCitasMock.mockReturnValue(
-      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], marcarEstado }),
+      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], refetch }),
     )
-    useHistorialClinicoMock.mockReturnValue(baseHistorial({ crearHistorial }))
+    useHistorialClinicoMock.mockReturnValue(baseHistorial({ completarCita }))
     const user = userEvent.setup()
     renderPage()
 
     await user.click(screen.getByRole('button', { name: /Completada/ }))
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
-    await waitFor(() => expect(crearHistorial).toHaveBeenCalled())
-    expect(marcarEstado).not.toHaveBeenCalled()
+    await waitFor(() => expect(completarCita).toHaveBeenCalled())
+    expect(refetch).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'completar' })).toBeInTheDocument()
   })
 
   it('cierra el modal de completar cita sin guardar', async () => {

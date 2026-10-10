@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { COLUMNAS_CITA } from '../lib/columnas'
 import type { CitaConRelaciones } from '../lib/types'
 
 /**
@@ -43,7 +44,7 @@ export function useCitas(pacienteId: string | null) {
         const { data, error } = await supabase
           .from('citas')
           .select(
-            '*, nota_paciente:cita_nota_paciente(nota), horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)',
+            `${COLUMNAS_CITA}, nota_paciente:cita_nota_paciente(nota), horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)`,
           )
           .eq('paciente_id', pacienteId)
           .order('created_at', { ascending: false })

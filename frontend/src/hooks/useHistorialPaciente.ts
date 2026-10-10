@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { COLUMNAS_HISTORIAL } from '../lib/columnas'
 import type { HistorialClinico, Medico } from '../lib/types'
 
 export interface HistorialConMedico extends HistorialClinico {
@@ -37,7 +38,7 @@ export function useHistorialPaciente(pacienteId: string | null) {
       try {
         const { data, error } = await supabase
           .from('historial_clinico')
-          .select('*, medico:medicos(*)')
+          .select(`${COLUMNAS_HISTORIAL}, medico:medicos(*)`)
           .eq('paciente_id', pacienteId)
           .order('created_at', { ascending: false })
           .limit(10)

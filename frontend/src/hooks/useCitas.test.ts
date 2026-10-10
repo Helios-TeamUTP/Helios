@@ -18,6 +18,8 @@ vi.mock('../lib/supabase', () => ({
 }))
 
 import { useCitas } from './useCitas'
+import { COLUMNAS_CITA } from '../lib/columnas'
+import { textoNota } from '../lib/notas'
 
 describe('useCitas (B-34: nota privada del paciente)', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -35,7 +37,10 @@ describe('useCitas (B-34: nota privada del paciente)', () => {
     const select = (query.select as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
     expect(select).toContain('nota_paciente:cita_nota_paciente(nota)')
     expect(query.eq).toHaveBeenCalledWith('paciente_id', 'p1')
-    expect(result.current.data[0].nota_paciente?.nota).toBe('Llevar exámenes')
+    expect(textoNota(result.current.data[0].nota_paciente)).toBe('Llevar exámenes')
+    // privacidad: usa la lista permitida (sin la columna legacy `notas`) y nunca select('*')
+    expect(select).toContain(COLUMNAS_CITA)
+    expect(select.trimStart().startsWith('*')).toBe(false)
   })
 
   it('no consulta nada y termina de cargar cuando no hay pacienteId', async () => {

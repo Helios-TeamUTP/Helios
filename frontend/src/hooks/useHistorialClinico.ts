@@ -1,49 +1,50 @@
 import { useCallback, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export interface NuevoHistorialClinico {
+export interface CompletarCitaInput {
   citaId: string
-  pacienteId: string
-  medicoId: string
   dolenciaPrincipal: string
   receta: string | null
   notasClinicas: string | null
 }
 
 /**
- * Hook para que el medico registre dolencia_principal + receta al
- * completar una cita.
+ * Completa una cita y registra su informacion clinica en UNA sola operacion
+ * atomica (RPC `completar_cita_con_historial`, B-35).
  *
- * Ver database/migrations/001_historial_clinico.sql para el esquema
- * y las politicas RLS: el medico solo puede insertar en citas donde
- * el ES el medico_id (verificado via auth_medico_link), garantizado
- * a nivel de base de datos, no solo en el frontend.
+ * Antes eran dos llamadas (insert historial + update de la cita): si la
+ * segunda fallaba quedaba un historial huerfano y el reintento chocaba con
+ * el indice unico por cita. Ahora la BD valida y guarda todo o nada:
+ *  - la cita debe ser del medico autenticado y estar "confirmada"
+ *  - la dolencia principal es obligatoria (receta y notas son opcionales)
+ *  - la nota del medico se guarda en su propia tabla privada
  */
 export function useHistorialClinico() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const crearHistorial = useCallback(async (input: NuevoHistorialClinico) => {
+  const completarCita = useCallback(async (input: CompletarCitaInput) => {
     setGuardando(true)
     setError(null)
     try {
-      const { error: insertError } = await supabase.from('historial_clinico').insert({
-        cita_id: input.citaId,
-        paciente_id: input.pacienteId,
-        medico_id: input.medicoId,
-        dolencia_principal: input.dolenciaPrincipal,
-        receta: input.receta,
-        notas_clinicas: input.notasClinicas,
+      const { error: rpcError } = await supabase.rpc('completar_cita_con_historial', {
+        p_cita_id: input.citaId,
+        p_dolencia: input.dolenciaPrincipal,
+        p_receta: input.receta,
+        p_notas: input.notasClinicas,
       })
-      if (insertError) throw insertError
+      if (rpcError) throw rpcError
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error desconocido'
+      const msg =
+        err instanceof Error
+          ? err.message
+          : ((err as { message?: string } | null)?.message ?? 'Error desconocido')
       setError(msg)
-      throw err
+      throw new Error(msg, { cause: err })
     } finally {
       setGuardando(false)
     }
   }, [])
 
-  return { crearHistorial, guardando, error, setError }
+  return { completarCita, guardando, error, setError }
 }
