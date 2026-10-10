@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { COLUMNAS_CITA } from '../lib/columnas'
-import type { CitaConPaciente } from '../lib/types'
+import type { CitaConPaciente, EstadoCita } from '../lib/types'
 
 /**
  * Modo de filtrado de citas:
@@ -24,7 +24,7 @@ export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial'
  * @param medicoId - ID del medico autenticado (de useAuth.medico.id)
  * @param modo - 'hoy' filtra fecha=hoy; 'historial' filtra fecha<hoy
  * @returns data (citas con paciente y horario), loading, error,
- *          refetch, marcarNoAsistio
+ *          refetch, marcarNoAsistio, reflejarEstado
  */
 export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 'hoy') {
   const [data, setData] = useState<CitaConPaciente[]>([])
@@ -109,22 +109,30 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
   }, [fetchCitas])
 
   /**
+   * Refleja en la lista local un estado que la BD YA confirmo (sin re-fetch ni
+   * spinner: un refetch pondria `loading` en true y reemplazaria la tabla).
+   */
+  const reflejarEstado = useCallback((citaId: string, estado: EstadoCita) => {
+    setData((prev) => prev.map((c) => (c.id === citaId ? { ...c, estado } : c)))
+  }, [])
+
+  /**
    * Marca UNA cita como "no asistio" via RPC `marcar_cita_no_asistio` (B-35).
    * La BD valida que la cita sea del medico autenticado y siga "confirmada".
    * Completar una cita NO pasa por aqui: requiere la dolencia principal y se
    * hace con `useHistorialClinico().completarCita` (misma operacion atomica).
    */
-  const marcarNoAsistio = useCallback(async (citaId: string) => {
-    const { error } = await supabase.rpc('marcar_cita_no_asistio', { p_cita_id: citaId })
-    if (error) {
-      console.error('[useMedicoCitas] marcarNoAsistio error:', error.message)
-      throw new Error(error.message)
-    }
-    // Refresco optimista: actualizamos el estado en el array local sin re-fetch
-    setData((prev) =>
-      prev.map((c) => (c.id === citaId ? { ...c, estado: 'no_asistio' as const } : c)),
-    )
-  }, [])
+  const marcarNoAsistio = useCallback(
+    async (citaId: string) => {
+      const { error } = await supabase.rpc('marcar_cita_no_asistio', { p_cita_id: citaId })
+      if (error) {
+        console.error('[useMedicoCitas] marcarNoAsistio error:', error.message)
+        throw new Error(error.message)
+      }
+      reflejarEstado(citaId, 'no_asistio')
+    },
+    [reflejarEstado],
+  )
 
-  return { data, loading, error, refetch: () => fetchCitas(), marcarNoAsistio }
+  return { data, loading, error, refetch: () => fetchCitas(), marcarNoAsistio, reflejarEstado }
 }

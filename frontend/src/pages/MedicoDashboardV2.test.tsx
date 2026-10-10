@@ -127,6 +127,7 @@ function baseMedicoCitas(over: Partial<ReturnType<typeof useMedicoCitasMock>> = 
     loading: false,
     error: null,
     marcarNoAsistio: vi.fn().mockResolvedValue(undefined),
+    reflejarEstado: vi.fn(),
     refetch: vi.fn().mockResolvedValue(undefined),
     ...over,
   }
@@ -338,13 +339,14 @@ describe('<MedicoDashboardV2 />', () => {
     await waitFor(() => expect(screen.getByText('conexión perdida')).toBeInTheDocument())
   })
 
-  it('completa la cita en UNA operación atómica y refresca la agenda', async () => {
+  it('completa la cita en UNA operación atómica y refleja el estado sin recargar', async () => {
     const completarCita = vi.fn().mockResolvedValue(undefined)
+    const reflejarEstado = vi.fn()
     const refetch = vi.fn().mockResolvedValue(undefined)
     const marcarNoAsistio = vi.fn().mockResolvedValue(undefined)
     useAuthMock.mockReturnValue({ medico: medicoMock() })
     useMedicoCitasMock.mockReturnValue(
-      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], refetch, marcarNoAsistio }),
+      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], refetch, reflejarEstado, marcarNoAsistio }),
     )
     useHistorialClinicoMock.mockReturnValue(baseHistorial({ completarCita }))
     const user = userEvent.setup()
@@ -366,20 +368,22 @@ describe('<MedicoDashboardV2 />', () => {
     // Una sola llamada atómica: ya no se hace un "marcar completada" aparte.
     expect(completarCita).toHaveBeenCalledTimes(1)
     expect(marcarNoAsistio).not.toHaveBeenCalled()
-    await waitFor(() => expect(refetch).toHaveBeenCalled())
+    await waitFor(() => expect(reflejarEstado).toHaveBeenCalledWith('cita-1', 'completada'))
+    // sin refetch: evitaría el spinner que reemplaza la tabla
+    expect(refetch).not.toHaveBeenCalled()
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: 'completar' })).not.toBeInTheDocument(),
     )
   })
 
-  it('si completarCita falla no refresca la agenda y el modal sigue abierto', async () => {
+  it('si completarCita falla no cambia el estado en la agenda y el modal sigue abierto', async () => {
     const completarCita = vi
       .fn()
       .mockRejectedValue(new Error('La dolencia principal es obligatoria para completar la cita'))
-    const refetch = vi.fn().mockResolvedValue(undefined)
+    const reflejarEstado = vi.fn()
     useAuthMock.mockReturnValue({ medico: medicoMock() })
     useMedicoCitasMock.mockReturnValue(
-      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], refetch }),
+      baseMedicoCitas({ data: [citaMock({ estado: 'confirmada' })], reflejarEstado }),
     )
     useHistorialClinicoMock.mockReturnValue(baseHistorial({ completarCita }))
     const user = userEvent.setup()
@@ -389,7 +393,7 @@ describe('<MedicoDashboardV2 />', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
 
     await waitFor(() => expect(completarCita).toHaveBeenCalled())
-    expect(refetch).not.toHaveBeenCalled()
+    expect(reflejarEstado).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'completar' })).toBeInTheDocument()
   })
 

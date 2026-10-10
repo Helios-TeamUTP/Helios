@@ -270,8 +270,8 @@ export function MedicoDashboardV2() {
     data: citas,
     loading,
     error,
-    refetch,
     marcarNoAsistio,
+    reflejarEstado,
   } = useMedicoCitas(medico?.id ?? null, tab)
 
   const { completarCita } = useHistorialClinico()
@@ -319,7 +319,8 @@ export function MedicoDashboardV2() {
       receta: input.receta,
       notasClinicas: input.notasClinicas,
     })
-    await refetch()
+    // La BD ya confirmo (historial + estado en una transaccion): reflejarlo sin spinner.
+    reflejarEstado(citaParaCompletar.id, 'completada')
     setCitaParaCompletar(null)
   }
 
