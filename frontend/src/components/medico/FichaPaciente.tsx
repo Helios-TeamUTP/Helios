@@ -31,7 +31,7 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
 
   useEffect(() => {
     const signal = { active: true }
-    ;(async () => {
+    void (async () => {
       try {
         const { data: citas, error: citasError } = await supabase
           .from('citas')

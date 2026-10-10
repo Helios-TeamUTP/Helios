@@ -77,7 +77,7 @@ export function useCitas(pacienteId: string | null) {
     // react-hooks/set-state-in-effect no puede verificar estaticamente que
     // el guard ya lo hace seguro.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchCitas(signal)
+    void fetchCitas(signal)
 
     /**
      * Bug B-05: suscripción Realtime para que "Mis Citas" se actualice sola
@@ -99,7 +99,7 @@ export function useCitas(pacienteId: string | null) {
             filter: `paciente_id=eq.${pacienteId}`,
           },
           () => {
-            if (signal.active) fetchCitas()
+            if (signal.active) void fetchCitas()
           },
         )
         .subscribe()

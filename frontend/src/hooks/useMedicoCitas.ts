@@ -102,7 +102,7 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
     // evitar race conditions en efectos con fetch async; la regla no puede
     // verificar estaticamente que el guard ya lo hace seguro.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchCitas(signal)
+    void fetchCitas(signal)
     return () => {
       signal.active = false
     }

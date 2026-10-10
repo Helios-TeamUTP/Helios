@@ -11,5 +11,5 @@ import type { NotaEmbed } from './types'
 export function textoNota(embed: NotaEmbed | NotaEmbed[] | null | undefined): string | null {
   const nota = Array.isArray(embed) ? embed[0] : embed
   const texto = nota?.nota?.trim()
-  return texto ? texto : null
+  return texto || null
 }
