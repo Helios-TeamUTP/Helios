@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { COLUMNAS_CITA } from '../lib/columnas'
 import type { CitaConRelaciones } from '../lib/types'
 
 /**
@@ -43,7 +44,7 @@ export function useCitas(pacienteId: string | null) {
         const { data, error } = await supabase
           .from('citas')
           .select(
-            '*, horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)',
+            `${COLUMNAS_CITA}, nota_paciente:cita_nota_paciente(nota), horario:horarios(*), medico:medicos(*, especialidad:especialidades(*)), sede:sedes(*)`,
           )
           .eq('paciente_id', pacienteId)
           .order('created_at', { ascending: false })
@@ -76,7 +77,7 @@ export function useCitas(pacienteId: string | null) {
     // react-hooks/set-state-in-effect no puede verificar estaticamente que
     // el guard ya lo hace seguro.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchCitas(signal)
+    void fetchCitas(signal)
 
     /**
      * Bug B-05: suscripción Realtime para que "Mis Citas" se actualice sola
@@ -98,7 +99,7 @@ export function useCitas(pacienteId: string | null) {
             filter: `paciente_id=eq.${pacienteId}`,
           },
           () => {
-            if (signal.active) fetchCitas()
+            if (signal.active) void fetchCitas()
           },
         )
         .subscribe()
@@ -106,7 +107,7 @@ export function useCitas(pacienteId: string | null) {
 
     return () => {
       signal.active = false
-      if (canal) supabase.removeChannel(canal)
+      if (canal) void supabase.removeChannel(canal)
     }
   }, [fetchCitas, pacienteId])
 
