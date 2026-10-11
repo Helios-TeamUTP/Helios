@@ -224,7 +224,6 @@ def insert_citas_iniciales(pacientes: list[dict], medicos: list[dict], horarios:
                 "horario_id": slot["id"],
                 "sede_id": medico["sede_id"],
                 "estado": "confirmada",
-                "notas": "Cita de prueba creada por seed_data.py",
             }
         ).execute()
         creadas += 1
