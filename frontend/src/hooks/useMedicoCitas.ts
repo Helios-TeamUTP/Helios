@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { COLUMNAS_CITA } from '../lib/columnas'
 import type { CitaConPaciente, EstadoCita } from '../lib/types'
 
 /**
@@ -23,7 +24,7 @@ export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial'
  * @param medicoId - ID del medico autenticado (de useAuth.medico.id)
  * @param modo - 'hoy' filtra fecha=hoy; 'historial' filtra fecha<hoy
  * @returns data (citas con paciente y horario), loading, error,
- *          refetch, marcarEstado
+ *          refetch, marcarNoAsistio, reflejarEstado
  */
 export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 'hoy') {
   const [data, setData] = useState<CitaConPaciente[]>([])
@@ -51,7 +52,7 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
       try {
         let query = supabase
           .from('citas')
-          .select('*, paciente:pacientes!inner(*), horario:horarios!inner(*)')
+          .select(`${COLUMNAS_CITA}, paciente:pacientes!inner(*), horario:horarios!inner(*)`)
           .eq('medico_id', medicoId)
 
         if (modo === 'hoy') {
@@ -101,34 +102,37 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
     // evitar race conditions en efectos con fetch async; la regla no puede
     // verificar estaticamente que el guard ya lo hace seguro.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchCitas(signal)
+    void fetchCitas(signal)
     return () => {
       signal.active = false
     }
   }, [fetchCitas])
 
   /**
-   * Actualiza el estado de UNA cita (completada / no_asistio).
-   * RLS de B-14 garantiza que solo el medico dueño de la cita puede ejecutarlo.
-   * Refresca la lista tras el UPDATE para reflejar el nuevo estado.
+   * Refleja en la lista local un estado que la BD YA confirmo (sin re-fetch ni
+   * spinner: un refetch pondria `loading` en true y reemplazaria la tabla).
    */
-  const marcarEstado = useCallback(
-    async (citaId: string, nuevoEstado: EstadoCita) => {
-      const { error } = await supabase
-        .from('citas')
-        .update({ estado: nuevoEstado })
-        .eq('id', citaId)
+  const reflejarEstado = useCallback((citaId: string, estado: EstadoCita) => {
+    setData((prev) => prev.map((c) => (c.id === citaId ? { ...c, estado } : c)))
+  }, [])
+
+  /**
+   * Marca UNA cita como "no asistio" via RPC `marcar_cita_no_asistio` (B-35).
+   * La BD valida que la cita sea del medico autenticado y siga "confirmada".
+   * Completar una cita NO pasa por aqui: requiere la dolencia principal y se
+   * hace con `useHistorialClinico().completarCita` (misma operacion atomica).
+   */
+  const marcarNoAsistio = useCallback(
+    async (citaId: string) => {
+      const { error } = await supabase.rpc('marcar_cita_no_asistio', { p_cita_id: citaId })
       if (error) {
-        console.error('[useMedicoCitas] marcarEstado error:', error.message)
+        console.error('[useMedicoCitas] marcarNoAsistio error:', error.message)
         throw new Error(error.message)
       }
-      // Refresco optimista: actualizamos el estado en el array local sin re-fetch
-      setData((prev) =>
-        prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c)),
-      )
+      reflejarEstado(citaId, 'no_asistio')
     },
-    [],
+    [reflejarEstado],
   )
 
-  return { data, loading, error, refetch: () => fetchCitas(), marcarEstado }
+  return { data, loading, error, refetch: () => fetchCitas(), marcarNoAsistio, reflejarEstado }
 }

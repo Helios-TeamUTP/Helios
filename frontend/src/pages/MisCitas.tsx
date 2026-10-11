@@ -8,6 +8,7 @@ import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { BotonCancelarCita } from '../components/citas/BotonCancelarCita'
 import { ReprogramarCitaModal } from '../components/citas/ReprogramarCitaModal'
 import type { CitaConRelaciones, EstadoCita } from '../lib/types'
+import { textoNota } from '../lib/notas'
 
 /** Estilos del badge de estado de la cita. */
 const ESTADO_STYLE: Record<EstadoCita, string> = {
@@ -188,9 +189,9 @@ export function MisCitas() {
                 </div>
               )}
 
-              {cita.notas && (
+              {textoNota(cita.nota_paciente) && (
                 <div className="mt-3 rounded-lg bg-helios-mist px-3 py-2 text-sm text-helios-ink/70">
-                  <strong>Notas:</strong> {cita.notas}
+                  <strong>Tu nota:</strong> {textoNota(cita.nota_paciente)}
                 </div>
               )}
 

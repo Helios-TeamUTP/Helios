@@ -101,7 +101,8 @@ describe('<MisCitas />', () => {
           horario_id: 'h1',
           sede_id: 's1',
           estado: 'confirmada',
-          notas: 'Primera consulta',
+          notas: null,
+          nota_paciente: { nota: 'Primera consulta' },
           codigo_confirmacion: 'ABC12345',
           created_at: '',
           horario: { id: 'h1', medico_id: 'm1', fecha: '2026-06-05', hora_inicio: '09:00:00', hora_fin: '09:20:00', disponible: false, created_at: '' },
@@ -122,6 +123,38 @@ describe('<MisCitas />', () => {
     expect(screen.getByText(/Policlínica Central/)).toBeInTheDocument()
     expect(screen.getByText(/2026-06-05/)).toBeInTheDocument()
     expect(screen.getByText(/Primera consulta/)).toBeInTheDocument()
+  })
+
+  it('B-34: muestra la nota privada del paciente desde nota_paciente', () => {
+    useAuthMock.mockReturnValue({ paciente: { id: 'p1', nombre: 'Ana', cedula: '8-123-4567' } })
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ nota_paciente: { nota: 'Traer exámenes de sangre' } })],
+      loading: false,
+      error: null,
+    })
+    render(
+      <MemoryRouter>
+        <MisCitas />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText(/Tu nota:/)).toBeInTheDocument()
+    expect(screen.getByText(/Traer exámenes de sangre/)).toBeInTheDocument()
+  })
+
+  it('B-34: no renderiza la columna legacy citas.notas ni un bloque vacío', () => {
+    useAuthMock.mockReturnValue({ paciente: { id: 'p1', nombre: 'Ana', cedula: '8-123-4567' } })
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ notas: 'texto legacy', nota_paciente: null })],
+      loading: false,
+      error: null,
+    })
+    render(
+      <MemoryRouter>
+        <MisCitas />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByText(/texto legacy/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Tu nota:/)).not.toBeInTheDocument()
   })
 
   it('muestra el indicador de carga cuando loading=true', () => {

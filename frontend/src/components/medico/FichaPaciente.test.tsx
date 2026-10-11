@@ -79,7 +79,7 @@ function historialMock(over: Partial<HistorialClinico> = {}): HistorialClinico {
     medico_id: 'med-1',
     dolencia_principal: 'Dolor de cabeza',
     receta: 'Ibuprofeno 400mg',
-    notas_clinicas: null,
+    nota_medico: null,
     created_at: '2026-08-24T00:00:00Z',
     ...over,
   }
@@ -170,7 +170,7 @@ describe('<FichaPaciente />', () => {
   it('muestra dolencia, receta y notas clínicas cuando existe historial_clinico para la cita', async () => {
     setupFrom({
       citas: [citaMock()],
-      historial: [historialMock({ notas_clinicas: 'Paciente responde bien al tratamiento' })],
+      historial: [historialMock({ nota_medico: { nota: 'Paciente responde bien al tratamiento' } })],
     })
     render(<FichaPaciente paciente={pacienteMock()} onClose={vi.fn()} />)
 

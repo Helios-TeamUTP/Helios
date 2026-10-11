@@ -64,6 +64,11 @@ export interface Paciente {
   created_at: string
 }
 
+/** Nota privada embebida por PostgREST (objeto 1-a-1, o arreglo si no detecta la unicidad). */
+export interface NotaEmbed {
+  nota: string
+}
+
 export interface Cita {
   id: string
   paciente_id: string | null
@@ -71,12 +76,20 @@ export interface Cita {
   horario_id: string | null
   sede_id: string | null
   estado: EstadoCita
-  notas: string | null
+  /**
+   * @deprecated B-34: columna legacy. La nota privada del paciente vive en
+   * `cita_nota_paciente` (ver `CitaConRelaciones.nota_paciente`). Se elimina
+   * de la BD en la fase 2 de B-34 (contract). NO usar en codigo nuevo.
+   * Opcional: el cliente ya no la pide (ver `lib/columnas.ts`).
+   */
+  notas?: string | null
   codigo_confirmacion: string
   created_at: string
 }
 
 export interface CitaConRelaciones extends Cita {
+  /** Nota privada que escribio el paciente al agendar (B-34). Solo la ve el. */
+  nota_paciente?: NotaEmbed | NotaEmbed[] | null
   horario?: Horario | null
   medico?: (Medico & { especialidad?: Especialidad | null }) | null
   sede?: Sede | null
@@ -130,7 +143,13 @@ export interface HistorialClinico {
   medico_id: string
   dolencia_principal: string
   receta: string | null
-  notas_clinicas: string | null
+  /**
+   * @deprecated B-35: columna legacy, NO se pide desde el cliente. La nota
+   * privada del medico vive en `historial_nota_medico` (ver `nota_medico`).
+   */
+  notas_clinicas?: string | null
+  /** Nota privada del medico autor (B-35). Solo la ve el; el paciente no. */
+  nota_medico?: NotaEmbed | NotaEmbed[] | null
   created_at: string
 }
 

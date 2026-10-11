@@ -40,13 +40,11 @@ export default defineConfig({
         // de esta lista tras B-31/B-32: excluir toda la carpeta escondia
         // cobertura real y hacia que "New Code" en SonarCloud viera 0%
         // en hooks que si estaban probados (ej. useHorarios.ts).
-        'src/hooks/useCitas.ts',
+        // B-34/B-35: useCitas, useHistorialClinico, useHistorialPaciente,
+        // useMedicoCitas y usePacientesMedico ya tienen test propio -> se
+        // quitan de esta lista por la misma razon.
         'src/hooks/useEspecialidades.ts',
-        'src/hooks/useHistorialClinico.ts',
-        'src/hooks/useHistorialPaciente.ts',
-        'src/hooks/useMedicoCitas.ts',
         'src/hooks/useMedicos.ts',
-        'src/hooks/usePacientesMedico.ts',
         'src/hooks/useSedes.ts',
         'src/components/layout/**',
         'src/components/auth/ProtectedRoute.tsx',
