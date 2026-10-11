@@ -31,7 +31,6 @@ function buildCita(over: Record<string, unknown> = {}) {
     horario_id: 'h1',
     sede_id: 's1',
     estado: 'confirmada',
-    notas: null,
     codigo_confirmacion: 'ABC12345',
     created_at: '',
     horario: {
@@ -101,7 +100,6 @@ describe('<MisCitas />', () => {
           horario_id: 'h1',
           sede_id: 's1',
           estado: 'confirmada',
-          notas: null,
           nota_paciente: { nota: 'Primera consulta' },
           codigo_confirmacion: 'ABC12345',
           created_at: '',
@@ -141,10 +139,10 @@ describe('<MisCitas />', () => {
     expect(screen.getByText(/Traer exámenes de sangre/)).toBeInTheDocument()
   })
 
-  it('B-34: no renderiza la columna legacy citas.notas ni un bloque vacío', () => {
+  it('B-34: no renderiza el bloque "Tu nota" cuando el paciente no escribió ninguna', () => {
     useAuthMock.mockReturnValue({ paciente: { id: 'p1', nombre: 'Ana', cedula: '8-123-4567' } })
     useCitasMock.mockReturnValue({
-      data: [buildCita({ notas: 'texto legacy', nota_paciente: null })],
+      data: [buildCita({ nota_paciente: null })],
       loading: false,
       error: null,
     })
@@ -153,7 +151,6 @@ describe('<MisCitas />', () => {
         <MisCitas />
       </MemoryRouter>,
     )
-    expect(screen.queryByText(/texto legacy/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Tu nota:/)).not.toBeInTheDocument()
   })
 
