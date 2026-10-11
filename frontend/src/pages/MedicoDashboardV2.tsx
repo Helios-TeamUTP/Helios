@@ -270,10 +270,11 @@ export function MedicoDashboardV2() {
     data: citas,
     loading,
     error,
-    marcarEstado,
+    marcarNoAsistio,
+    reflejarEstado,
   } = useMedicoCitas(medico?.id ?? null, tab)
 
-  const { crearHistorial } = useHistorialClinico()
+  const { completarCita } = useHistorialClinico()
 
   if (!medico) {
     return (
@@ -301,25 +302,25 @@ export function MedicoDashboardV2() {
     hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
 
   /**
-   * Guarda el historial clinico (dolencia + receta) y RECIEN DESPUES
-   * marca la cita como completada. Si el insert de historial falla,
-   * la cita NO se marca completada (evita perder el registro clinico).
+   * Completa la cita y guarda su informacion clinica en UNA operacion atomica
+   * (RPC `completar_cita_con_historial`): o se guarda todo (historial + nota +
+   * estado "completada") o no se guarda nada. Si falla, la excepcion llega al
+   * modal, que muestra el mensaje y deja la cita sin cambios.
    */
   const handleGuardarCompletar = async (input: {
     dolenciaPrincipal: string
     receta: string | null
     notasClinicas: string | null
   }) => {
-    if (!citaParaCompletar || !medico) return
-    await crearHistorial({
+    if (!citaParaCompletar) return
+    await completarCita({
       citaId: citaParaCompletar.id,
-      pacienteId: citaParaCompletar.paciente_id!,
-      medicoId: medico.id,
       dolenciaPrincipal: input.dolenciaPrincipal,
       receta: input.receta,
       notasClinicas: input.notasClinicas,
     })
-    await marcarEstado(citaParaCompletar.id, 'completada')
+    // La BD ya confirmo (historial + estado en una transaccion): reflejarlo sin spinner.
+    reflejarEstado(citaParaCompletar.id, 'completada')
     setCitaParaCompletar(null)
   }
 
@@ -334,7 +335,7 @@ export function MedicoDashboardV2() {
               cita={cita}
               soloLectura={false}
               onIniciarCompletar={() => setCitaParaCompletar(cita)}
-              onMarcarNoAsistio={() => marcarEstado(cita.id, 'no_asistio')}
+              onMarcarNoAsistio={() => marcarNoAsistio(cita.id)}
               onVerFicha={() => {
                 if (cita.paciente) setPacienteFicha(cita.paciente)
               }}
@@ -347,7 +348,7 @@ export function MedicoDashboardV2() {
             cita={cita}
             soloLectura={tab === 'historial'}
             onIniciarCompletar={() => setCitaParaCompletar(cita)}
-            onMarcarNoAsistio={() => marcarEstado(cita.id, 'no_asistio')}
+            onMarcarNoAsistio={() => marcarNoAsistio(cita.id)}
             onVerFicha={() => {
               if (cita.paciente) setPacienteFicha(cita.paciente)
             }}

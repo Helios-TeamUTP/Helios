@@ -289,6 +289,9 @@ function ResumenPaso4(props: {
         <label htmlFor="notas" className="label">
           Notas sobre esta cita (opcional)
         </label>
+        <p className="mb-1 text-xs text-helios-ink/60">
+          Es una nota personal: solo tú la verás, el médico no tiene acceso a ella.
+        </p>
         <textarea
           id="notas"
           rows={3}

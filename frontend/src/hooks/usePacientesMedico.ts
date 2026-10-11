@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { COLUMNAS_CITA, COLUMNAS_HISTORIAL } from '../lib/columnas'
 import type { CitaConPaciente, HistorialClinico, PacienteConHistorial } from '../lib/types'
 
 /**
@@ -35,7 +36,7 @@ export function usePacientesMedico(medicoId: string | null) {
         //    ordenadas de mas reciente a mas antigua.
         const { data: citas, error: citasError } = await supabase
           .from('citas')
-          .select('*, paciente:pacientes!inner(*), horario:horarios!inner(*)')
+          .select(`${COLUMNAS_CITA}, paciente:pacientes!inner(*), horario:horarios!inner(*)`)
           .eq('medico_id', medicoId)
           .eq('estado', 'completada')
           .order('horario(fecha)', { ascending: false })
@@ -46,7 +47,7 @@ export function usePacientesMedico(medicoId: string | null) {
         //    para evitar ambiguedad de embed con 3 FKs en historial_clinico).
         const { data: historial, error: historialError } = await supabase
           .from('historial_clinico')
-          .select('*')
+          .select(COLUMNAS_HISTORIAL)
           .eq('medico_id', medicoId)
 
         if (historialError) throw historialError
@@ -96,7 +97,7 @@ export function usePacientesMedico(medicoId: string | null) {
     // signal.active (cancelado en el cleanup de abajo). Mismo patron ya
     // usado en useCitas.ts y useMedicoCitas.ts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchPacientes(signal)
+    void fetchPacientes(signal)
     return () => {
       signal.active = false
     }
