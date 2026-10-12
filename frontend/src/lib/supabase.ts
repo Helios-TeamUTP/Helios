@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
+import { marcarSiLlegaPorRecuperacion } from './recuperacion'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// RF-04: debe ejecutarse ANTES de createClient, que consume y borra el hash de la URL.
+marcarSiLlegaPorRecuperacion()
 
 if (!url || !anon) {
   throw new Error(

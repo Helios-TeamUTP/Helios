@@ -5,6 +5,8 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { Home } from './pages/Home'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { RecuperarContrasena } from './pages/RecuperarContrasena'
+import { RestablecerContrasena } from './pages/RestablecerContrasena'
 import { AgendarCita } from './pages/AgendarCita'
 import { MisCitas } from './pages/MisCitas'
 import { MedicoDashboardV2 } from './pages/MedicoDashboardV2'
@@ -19,6 +21,8 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="login" element={<Login />} />
             <Route path="registro" element={<Register />} />
+            <Route path="recuperar" element={<RecuperarContrasena />} />
+            <Route path="restablecer" element={<RestablecerContrasena />} />
             {/* Rutas de paciente */}
             <Route element={<ProtectedRoute requireRole="paciente" />}>
               <Route path="agendar" element={<AgendarCita />} />

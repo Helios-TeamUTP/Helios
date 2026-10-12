@@ -29,6 +29,9 @@ export function Login() {
     ?.registroExitoso === true
   const emailPrellenado =
     (location.state as { email?: string } | null)?.email ?? ''
+  // RF-04: viene de /restablecer tras fijar la contrasena nueva.
+  const passwordRestablecida =
+    (location.state as { passwordRestablecida?: boolean } | null)?.passwordRestablecida === true
 
   const [email, setEmail] = useState(emailPrellenado)
   const [password, setPassword] = useState('')
@@ -116,6 +119,15 @@ export function Login() {
           </div>
         )}
 
+        {passwordRestablecida && (
+          <div
+            role="status"
+            className="mt-4 rounded-lg border border-helios-primary/30 bg-helios-primary/10 px-4 py-3 text-sm text-helios-deep"
+          >
+            <strong>Contraseña actualizada.</strong> Inicia sesión con tu contraseña nueva.
+          </div>
+        )}
+
         {/*
           Bug B-20.3: banner rojo si completarRegistroPendiente fallo en
           useAuth.onAuthStateChange. Muestra el error real (RLS rejected,
@@ -164,6 +176,11 @@ export function Login() {
               onChange={(e) => setPassword(e.target.value)}
               className="input"
             />
+            <p className="mt-1 text-right text-sm">
+              <Link to="/recuperar" className="font-semibold text-helios-primary hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
           </div>
           {error && <ErrorMessage message={error} />}
           <button type="submit" disabled={submitting} className="btn-primary w-full">

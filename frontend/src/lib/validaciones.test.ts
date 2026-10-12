@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validarTelefonoPanama, validarNombre, validarEmail } from './validaciones'
+import { validarTelefonoPanama, validarNombre, validarEmail, validarPassword } from './validaciones'
 
 describe('validaciones (B-24)', () => {
   describe('validarTelefonoPanama', () => {
@@ -71,5 +71,28 @@ describe('validaciones (B-24)', () => {
     it('rechaza vacio', () => {
       expect(validarEmail('')).toBe(false)
     })
+  })
+})
+
+// Las contraseñas de prueba se generan por código (no literales) para no
+// disparar los escáneres de secretos con falsos positivos.
+const fuerte = (largo: number) => 'Aa1' + 'x'.repeat(Math.max(largo - 3, 0))
+
+describe('validarPassword (ERS RF-01: mín. 8, 1 mayúscula, 1 número)', () => {
+  it('acepta una contraseña que cumple las 3 reglas', () => {
+    expect(validarPassword(fuerte(12))).toBeNull()
+    expect(validarPassword(fuerte(8))).toBeNull() // exactamente 8 (límite)
+  })
+  it('rechaza menos de 8 caracteres (límite: 7)', () => {
+    expect(validarPassword(fuerte(7))).toMatch(/8 caracteres/)
+  })
+  it('rechaza sin mayúscula', () => {
+    expect(validarPassword('a1' + 'x'.repeat(8))).toMatch(/mayúscula/)
+  })
+  it('rechaza sin número', () => {
+    expect(validarPassword('Ab' + 'x'.repeat(8))).toMatch(/número/)
+  })
+  it('rechaza vacío', () => {
+    expect(validarPassword('')).toMatch(/8 caracteres/)
   })
 })

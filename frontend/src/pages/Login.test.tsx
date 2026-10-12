@@ -125,6 +125,38 @@ describe('<Login />', () => {
     expect(screen.getByText('Regístrate')).toHaveAttribute('href', '/registro')
   })
 
+  it('RF-04: incluye el enlace "¿Olvidaste tu contraseña?" hacia /recuperar', () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('link', { name: /olvidaste tu contraseña/i })).toHaveAttribute(
+      'href',
+      '/recuperar',
+    )
+  })
+
+  it('RF-04: muestra el aviso de contraseña actualizada al venir de /restablecer', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[{ pathname: '/login', state: { passwordRestablecida: true } }]}
+      >
+        <Login />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText(/contraseña actualizada/i)).toBeInTheDocument()
+  })
+
+  it('RF-04: NO muestra el aviso de contraseña actualizada en un login normal', () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByText(/contraseña actualizada/i)).not.toBeInTheDocument()
+  })
+
   /**
    * Regresión B-10: cuando Supabase no responde, withTimeout rechaza con
    * TimeoutError tras AUTH_TIMEOUT_MS. El handleSubmit de Login debe

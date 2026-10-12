@@ -61,3 +61,14 @@ export function validarEmail(correo: string): boolean {
   if (c.length > 254) return false
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)
 }
+
+/**
+ * Regla de contrasena del ERS (RF-01): minimo 8 caracteres, al menos una
+ * mayuscula y un numero. Devuelve el mensaje de error o `null` si es valida.
+ */
+export function validarPassword(password: string): string | null {
+  if (password.length < 8) return 'La contraseña debe tener al menos 8 caracteres.'
+  if (!/[A-Z]/.test(password)) return 'La contraseña debe incluir al menos una letra mayúscula.'
+  if (!/\d/.test(password)) return 'La contraseña debe incluir al menos un número.'
+  return null
+}
