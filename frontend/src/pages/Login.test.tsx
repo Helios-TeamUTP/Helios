@@ -267,6 +267,40 @@ describe('<Login />', () => {
     })
   })
 
+  describe('Recuperar contraseña: enlace y banner en Login', () => {
+    it('incluye el enlace "¿Olvidaste tu contraseña?" hacia /recuperar-password', () => {
+      render(
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>,
+      )
+      expect(screen.getByText('¿Olvidaste tu contraseña?')).toHaveAttribute(
+        'href',
+        '/recuperar-password',
+      )
+    })
+
+    it('muestra el banner "Contraseña actualizada" cuando viene de restablecer', () => {
+      render(
+        <MemoryRouter
+          initialEntries={[{ pathname: '/login', state: { passwordRestablecida: true } }]}
+        >
+          <Login />
+        </MemoryRouter>,
+      )
+      expect(screen.getByText(/Contraseña actualizada/)).toBeInTheDocument()
+    })
+
+    it('NO muestra el banner en un login normal', () => {
+      render(
+        <MemoryRouter>
+          <Login />
+        </MemoryRouter>,
+      )
+      expect(screen.queryByText(/Contraseña actualizada/)).not.toBeInTheDocument()
+    })
+  })
+
   /**
    * Bug B-20: el banner verde "Cuenta creada" debe aparecer si el usuario
    * viene desde Register.tsx con state {registroExitoso: true}.
