@@ -12,7 +12,6 @@ function citaMock(over: Partial<CitaConPaciente> = {}): CitaConPaciente {
     horario_id: 'hor-1',
     sede_id: 'sede-1',
     estado: 'confirmada',
-    notas: null,
     codigo_confirmacion: 'ABC123',
     created_at: '2026-08-24T00:00:00Z',
     paciente: {

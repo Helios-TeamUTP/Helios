@@ -152,7 +152,6 @@ def crear_cita_demo(medico_id: str, paciente_id: str, horario_id: str, sede_id: 
                 "horario_id": horario_id,
                 "sede_id": sede_id,
                 "estado": "confirmada",
-                "notas": "Cita demo seed_medicos",
             }
         ).execute()
         return True

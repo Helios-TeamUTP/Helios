@@ -76,13 +76,6 @@ export interface Cita {
   horario_id: string | null
   sede_id: string | null
   estado: EstadoCita
-  /**
-   * @deprecated B-34: columna legacy. La nota privada del paciente vive en
-   * `cita_nota_paciente` (ver `CitaConRelaciones.nota_paciente`). Se elimina
-   * de la BD en la fase 2 de B-34 (contract). NO usar en codigo nuevo.
-   * Opcional: el cliente ya no la pide (ver `lib/columnas.ts`).
-   */
-  notas?: string | null
   codigo_confirmacion: string
   created_at: string
 }
@@ -143,11 +136,6 @@ export interface HistorialClinico {
   medico_id: string
   dolencia_principal: string
   receta: string | null
-  /**
-   * @deprecated B-35: columna legacy, NO se pide desde el cliente. La nota
-   * privada del medico vive en `historial_nota_medico` (ver `nota_medico`).
-   */
-  notas_clinicas?: string | null
   /** Nota privada del medico autor (B-35). Solo la ve el; el paciente no. */
   nota_medico?: NotaEmbed | NotaEmbed[] | null
   created_at: string

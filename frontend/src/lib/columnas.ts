@@ -1,17 +1,22 @@
 /**
- * Columnas que el cliente puede pedir de las tablas con notas privadas.
+ * Columnas que el cliente puede pedir de `citas` e `historial_clinico`.
  *
- * La RLS de Postgres filtra FILAS, no columnas: un `select('*')` entrega al
- * navegador TODAS las columnas de las filas visibles. Por eso las columnas
- * legacy con notas privadas (`citas.notas`, `historial_clinico.notas_clinicas`)
- * NUNCA se piden desde el cliente (B-34 / B-35). Cada nota vive en su propia
- * tabla con RLS de su autor: `cita_nota_paciente` y `historial_nota_medico`.
+ * Historia (B-34 / B-35): la RLS de Postgres filtra FILAS, no columnas, asi
+ * que un `select('*')` entregaba al navegador las notas privadas
+ * (`citas.notas` al medico, `historial_clinico.notas_clinicas` al paciente).
+ * Esas columnas ya fueron ELIMINADAS (B-34b/B-35b): cada nota vive en su
+ * propia tabla con RLS de su autor (`cita_nota_paciente`,
+ * `historial_nota_medico`).
+ *
+ * La regla se conserva como defensa contra regresiones: nada de `select('*')`
+ * sobre estas tablas; si manana se agrega una columna sensible, no llega al
+ * cliente por accidente. Hay un test que lo vigila (`columnas.test.ts`).
  */
 
-/** `citas` sin `notas` (nota privada del paciente, legacy). */
+/** Columnas de `citas` permitidas al cliente (la nota privada vive en `cita_nota_paciente`). */
 export const COLUMNAS_CITA =
   'id, paciente_id, medico_id, horario_id, sede_id, estado, codigo_confirmacion, created_at'
 
-/** `historial_clinico` sin `notas_clinicas` (nota privada del medico, legacy). */
+/** Columnas de `historial_clinico` permitidas al cliente (la nota privada vive en `historial_nota_medico`). */
 export const COLUMNAS_HISTORIAL =
   'id, cita_id, paciente_id, medico_id, dolencia_principal, receta, created_at'
