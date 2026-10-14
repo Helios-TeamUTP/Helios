@@ -13,6 +13,9 @@ import type { CitaConPaciente, EstadoCita } from '../lib/types'
  */
 export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial' | 'fecha'
 
+/** La carga sigue vigente: sin señal (llamada manual) o con la señal aún activa. */
+const vigente = (signal?: { active: boolean }) => !signal || signal.active
+
 /** YYYY-MM-DD con la fecha LOCAL del navegador (B-21: nunca toISOString/UTC). */
 function fechaLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -92,7 +95,7 @@ export function useMedicoCitas(
   const fetchCitas = useCallback(
     async (signal?: { active: boolean }, silencioso = false) => {
       if (!medicoId || (modo === 'fecha' && !fecha)) {
-        if (!signal || signal.active) {
+        if (vigente(signal)) {
           setData([])
           setLoading(false)
         }
@@ -112,7 +115,7 @@ export function useMedicoCitas(
           .order('horario(fecha)', { ascending: true })
           .order('horario(hora_inicio)', { ascending: true })
 
-        if (signal && !signal.active) return
+        if (!vigente(signal)) return
 
         if (error) {
           setError(error.message)
@@ -120,12 +123,12 @@ export function useMedicoCitas(
           setData((data ?? []) as unknown as CitaConPaciente[])
         }
       } catch (err) {
-        if (!signal || signal.active) {
+        if (vigente(signal)) {
           console.error('[useMedicoCitas] unexpected:', err)
           setError(err instanceof Error ? err.message : 'Error desconocido')
         }
       } finally {
-        if (!signal || signal.active) setLoading(false)
+        if (vigente(signal)) setLoading(false)
       }
     },
     [medicoId, modo, fecha],
