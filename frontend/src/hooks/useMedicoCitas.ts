@@ -13,6 +13,53 @@ import type { CitaConPaciente, EstadoCita } from '../lib/types'
  */
 export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial' | 'fecha'
 
+/** YYYY-MM-DD con la fecha LOCAL del navegador (B-21: nunca toISOString/UTC). */
+function fechaLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Arma la consulta de citas del medico segun el modo. Extraida del hook para
+ * que `fetchCitas` quede con una complejidad razonable (S3776).
+ *
+ * Bug B-21: fecha LOCAL (no toISOString/UTC) para que "hoy" sea correcto en
+ * Panama (UTC-5) incluso de noche. Sin esto, la agenda del dia podia mostrar
+ * la del dia siguiente tras las 7 PM.
+ */
+function construirConsulta(
+  medicoId: string,
+  modo: ModoMedicoCitas,
+  fecha: string | null,
+  ahora: Date,
+) {
+  const hoy = fechaLocal(ahora)
+  const query = supabase
+    .from('citas')
+    .select(`${COLUMNAS_CITA}, paciente:pacientes!inner(*), horario:horarios!inner(*)`)
+    .eq('medico_id', medicoId)
+
+  if (modo === 'hoy') {
+    // Sprint 2 (ST-8): la agenda de hoy NO muestra las canceladas
+    // (quedan registradas en el historial, pero no estorban la vista).
+    return query.eq('horario.fecha', hoy).neq('estado', 'cancelada')
+  }
+  if (modo === 'semana') {
+    // Agenda de los proximos 7 dias (hoy incluido), sin canceladas.
+    const finDate = new Date(ahora)
+    finDate.setDate(finDate.getDate() + 6)
+    return query
+      .gte('horario.fecha', hoy)
+      .lte('horario.fecha', fechaLocal(finDate))
+      .neq('estado', 'cancelada')
+  }
+  if (modo === 'fecha') {
+    // Fecha elegida por el medico (YYYY-MM-DD; el caller ya valido que existe).
+    // Igual que 'hoy', no muestra las canceladas.
+    return query.eq('horario.fecha', fecha as string).neq('estado', 'cancelada')
+  }
+  return query.lt('horario.fecha', hoy)
+}
+
 /**
  * Hook que carga las citas asignadas a un medico con join al paciente
  * y al horario. Usado en MedicoDashboard.
@@ -56,36 +103,8 @@ export function useMedicoCitas(
       if (!silencioso) setLoading(true)
       setError(null)
 
-      // Bug B-21: fecha LOCAL (no toISOString/UTC) para que "hoy" sea correcto
-      // en Panamá (UTC-5) incluso de noche. Sin esto, la agenda del día podía
-      // mostrar la del día siguiente tras las 7 PM.
-      const ahora = new Date()
-      const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}` // YYYY-MM-DD
-
       try {
-        let query = supabase
-          .from('citas')
-          .select(`${COLUMNAS_CITA}, paciente:pacientes!inner(*), horario:horarios!inner(*)`)
-          .eq('medico_id', medicoId)
-
-        if (modo === 'hoy') {
-          // Sprint 2 (ST-8): la agenda de hoy NO muestra las canceladas
-          // (quedan registradas en el historial, pero no estorban la vista).
-          query = query.eq('horario.fecha', hoy).neq('estado', 'cancelada')
-        } else if (modo === 'semana') {
-          // Agenda de los proximos 7 dias (hoy incluido), sin canceladas.
-          // Fecha LOCAL (no UTC) por la misma razon que `hoy` (B-21).
-          const finDate = new Date(ahora)
-          finDate.setDate(finDate.getDate() + 6)
-          const fin = `${finDate.getFullYear()}-${String(finDate.getMonth() + 1).padStart(2, '0')}-${String(finDate.getDate()).padStart(2, '0')}`
-          query = query.gte('horario.fecha', hoy).lte('horario.fecha', fin).neq('estado', 'cancelada')
-        } else if (modo === 'fecha') {
-          // Fecha elegida por el medico (YYYY-MM-DD, ya validada arriba). Igual
-          // que 'hoy', no muestra las canceladas.
-          query = query.eq('horario.fecha', fecha as string).neq('estado', 'cancelada')
-        } else {
-          query = query.lt('horario.fecha', hoy)
-        }
+        const query = construirConsulta(medicoId, modo, fecha, new Date())
 
         // Orden por fecha y luego por hora: clave para la vista de semana, que
         // abarca varios dias. Para 'hoy' es un solo dia, asi que no cambia nada.

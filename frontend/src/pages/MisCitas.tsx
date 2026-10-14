@@ -226,7 +226,7 @@ export function MisCitas() {
                     resumen={resumen}
                     onCancelada={() => {
                       setAviso('Cita cancelada exitosamente.')
-                      refetch()
+                      void refetch()
                     }}
                   />
                 </div>
@@ -242,7 +242,7 @@ export function MisCitas() {
           onClose={() => setCitaAReprogramar(null)}
           onReprogramada={() => {
             setAviso('Cita reprogramada exitosamente.')
-            refetch()
+            void refetch()
           }}
         />
       )}

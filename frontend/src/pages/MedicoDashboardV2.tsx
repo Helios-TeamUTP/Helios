@@ -144,7 +144,7 @@ function AccionesCita({
   onIniciarCompletar,
   onMarcarNoAsistio,
   soloLectura,
-}: AccionesCitaProps) {
+}: Readonly<AccionesCitaProps>) {
   const [working, setWorking] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -194,7 +194,7 @@ interface FilaCitaProps extends AccionesCitaProps {
   /** Sede donde atiende el médico (CU-05 2.1.2: la agenda muestra la sede de cada cita). */
   sede: string
 }
-function FilaCita({ sede, ...acciones }: FilaCitaProps) {
+function FilaCita({ sede, ...acciones }: Readonly<FilaCitaProps>) {
   const { cita } = acciones
   const meta = ESTADO_META[cita.estado]
   const hora = cita.horario?.hora_inicio?.slice(0, 5) ?? '—:—'
@@ -262,7 +262,7 @@ function FilaCita({ sede, ...acciones }: FilaCitaProps) {
 }
 
 /** Tarjeta de una cita para pantallas < 768 px (lista agrupada por día). */
-function TarjetaCita({ sede, ...acciones }: FilaCitaProps) {
+function TarjetaCita({ sede, ...acciones }: Readonly<FilaCitaProps>) {
   const { cita } = acciones
   const meta = ESTADO_META[cita.estado]
   const hora = cita.horario?.hora_inicio?.slice(0, 5) ?? '—:—'
@@ -308,6 +308,18 @@ const TAB_VACIO: Record<Tab, string> = {
   semana: 'No tienes citas en los próximos 7 días.',
   historial: 'No hay citas anteriores registradas.',
   fecha: SIN_CITAS_DIA,
+}
+
+const ETIQUETA_TOTAL: Record<Tab, string> = {
+  hoy: 'Citas de hoy',
+  semana: 'Citas esta semana',
+  historial: 'Citas de hoy',
+  fecha: 'Citas del día',
+}
+
+/** Título de la tarjeta de agenda: con fecha elegida muestra "Agenda del Sábado 4 de julio". */
+function tituloAgenda(tab: Tab, fechaSel: string): string {
+  return tab === 'fecha' && fechaSel ? `Agenda del ${formatFechaLarga(fechaSel)}` : TAB_LABELS[tab]
 }
 
 export function MedicoDashboardV2() {
@@ -453,7 +465,7 @@ export function MedicoDashboardV2() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard
           icon={<CalendarIcon />}
-          label={tab === 'semana' ? 'Citas esta semana' : tab === 'fecha' ? 'Citas del día' : 'Citas de hoy'}
+          label={ETIQUETA_TOTAL[tab]}
           value={statsAplican ? total : '—'}
           sub={!statsAplican ? 'Ver pestaña Hoy' : undefined}
           color="bg-helios-primary/10 text-helios-primary"
@@ -483,14 +495,12 @@ export function MedicoDashboardV2() {
 
         {/* cabecera de la card */}
         <div className="flex flex-col gap-3 border-b border-helios-ink/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="font-semibold text-helios-ink">
-            {tab === 'fecha' && fechaSel ? `Agenda del ${formatFechaLarga(fechaSel)}` : TAB_LABELS[tab]}
-          </h2>
+          <h2 className="font-semibold text-helios-ink">{tituloAgenda(tab, fechaSel)}</h2>
 
           <div className="flex flex-wrap items-center gap-2">
             {/* filtro de agenda por fecha (CU-05 2.1.3) */}
             <label className="flex items-center gap-2 text-xs text-helios-ink/60">
-              Fecha
+              <span>Fecha</span>
               <input
                 type="date"
                 value={fechaSel}
