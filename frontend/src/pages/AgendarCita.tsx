@@ -1,5 +1,5 @@
 import { useReducer, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { SelectorEspecialidad } from '../components/agendamiento/SelectorEspecialidad'
 import { SelectorSede } from '../components/agendamiento/SelectorSede'
 import { ListaMedicos } from '../components/agendamiento/ListaMedicos'
@@ -8,6 +8,8 @@ import { ResumenCita } from '../components/agendamiento/ResumenCita'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
+import { traducirErrorCita } from '../lib/erroresCita'
+import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 import type { Horario } from '../lib/types'
 
 interface WizardState {
@@ -88,25 +90,40 @@ export function AgendarCita() {
     setSubmitting(true)
     setError(null)
 
-    const { data, error } = await supabase.rpc('crear_cita_atomica', {
-      p_paciente_id: paciente.id,
-      p_medico_id: state.medicoId,
-      p_horario_id: state.horario.id,
-      p_sede_id: state.sedeId,
-      p_notas: state.notas || null,
-    })
-    setSubmitting(false)
+    // CU-03 2.3.5: si la operación no responde (timeout o fallo de red) se informa
+    // el error y el botón se rehabilita; nunca queda en "Confirmando…" para siempre.
+    try {
+      const { data, error } = await withTimeout(
+        supabase.rpc('crear_cita_atomica', {
+          p_paciente_id: paciente.id,
+          p_medico_id: state.medicoId,
+          p_horario_id: state.horario.id,
+          p_sede_id: state.sedeId,
+          p_notas: state.notas || null,
+        }),
+        AUTH_TIMEOUT_MS,
+      )
 
-    if (error) {
-      setError(error.message)
-      return
+      if (error) {
+        setError(traducirErrorCita(error.message))
+        return
+      }
+      const fila = Array.isArray(data) ? data[0] : data
+      if (!fila?.codigo) {
+        setError('No se obtuvo el código de confirmación.')
+        return
+      }
+      setExito({ codigo: fila.codigo })
+    } catch (err) {
+      if (err instanceof TimeoutError) {
+        setError('El servidor tardó demasiado en responder. Intenta de nuevo.')
+      } else {
+        console.error('[AgendarCita] confirmar:', err)
+        setError('Ocurrió un error inesperado. Intenta de nuevo.')
+      }
+    } finally {
+      setSubmitting(false)
     }
-    const fila = Array.isArray(data) ? data[0] : data
-    if (!fila?.codigo) {
-      setError('No se obtuvo el código de confirmación.')
-      return
-    }
-    setExito({ codigo: fila.codigo })
   }
 
   if (exito && state.horario) {
@@ -133,6 +150,10 @@ export function AgendarCita() {
           Wizard de agendamiento
         </span>
         <h1 className="text-3xl font-bold text-helios-ink">Agendar una nueva cita</h1>
+        {/* CU-03 flujo alterno 2.2.1: salir sin guardar nada. */}
+        <Link to="/" className="inline-block text-sm font-semibold text-helios-primary hover:underline">
+          ← Regresar al menú principal
+        </Link>
       </header>
 
       <Stepper paso={state.paso} />

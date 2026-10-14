@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { CitaConPaciente, MedicoConRelaciones } from '../lib/types'
@@ -7,10 +7,12 @@ import type { CitaConPaciente, MedicoConRelaciones } from '../lib/types'
 const useAuthMock = vi.fn()
 const useMedicoCitasMock = vi.fn()
 const useHistorialClinicoMock = vi.fn()
+const useIsMobileMock = vi.fn()
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => useAuthMock() }))
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => useIsMobileMock() }))
 vi.mock('../hooks/useMedicoCitas', () => ({
-  useMedicoCitas: (medicoId: string | null, modo: string) =>
-    useMedicoCitasMock(medicoId, modo),
+  useMedicoCitas: (medicoId: string | null, modo: string, fecha: string | null) =>
+    useMedicoCitasMock(medicoId, modo, fecha),
 }))
 vi.mock('../hooks/useHistorialClinico', () => ({
   useHistorialClinico: () => useHistorialClinicoMock(),
@@ -145,6 +147,7 @@ function baseHistorial(over: Record<string, unknown> = {}) {
 describe('<MedicoDashboardV2 />', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useIsMobileMock.mockReturnValue(false)
   })
 
   it('muestra error de perfil si no hay médico logueado', () => {
@@ -194,7 +197,7 @@ describe('<MedicoDashboardV2 />', () => {
     useMedicoCitasMock.mockReturnValue(baseMedicoCitas({ data: [] }))
     useHistorialClinicoMock.mockReturnValue(baseHistorial())
     renderPage()
-    expect(screen.getByText('No tienes citas asignadas para hoy.')).toBeInTheDocument()
+    expect(screen.getByText('No tienes citas programadas para este día.')).toBeInTheDocument()
   })
 
   it('calcula correctamente las stat cards (total/completadas/en espera/no asistió)', () => {
@@ -236,13 +239,92 @@ describe('<MedicoDashboardV2 />', () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(useMedicoCitasMock).toHaveBeenCalledWith('med-1', 'hoy')
+    expect(useMedicoCitasMock).toHaveBeenCalledWith('med-1', 'hoy', null)
 
     await user.click(screen.getByRole('button', { name: 'Esta semana' }))
-    expect(useMedicoCitasMock).toHaveBeenCalledWith('med-1', 'semana')
+    expect(useMedicoCitasMock).toHaveBeenCalledWith('med-1', 'semana', null)
 
     await user.click(screen.getByRole('button', { name: 'Historial' }))
-    expect(useMedicoCitasMock).toHaveBeenCalledWith('med-1', 'historial')
+    expect(useMedicoCitasMock).toHaveBeenCalledWith('med-1', 'historial', null)
+  })
+
+  /** CU-05 2.1.3: el médico elige otra fecha en el filtro de agenda. */
+  it('el filtro de fecha pide las citas de esa fecha y volver a "Hoy" lo limpia', async () => {
+    useAuthMock.mockReturnValue({ medico: medicoMock() })
+    useMedicoCitasMock.mockReturnValue(baseMedicoCitas())
+    useHistorialClinicoMock.mockReturnValue(baseHistorial())
+    const user = userEvent.setup()
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-07-04' } })
+    expect(useMedicoCitasMock).toHaveBeenLastCalledWith('med-1', 'fecha', '2026-07-04')
+    expect(screen.getByText('Agenda del Sábado 4 de julio')).toBeInTheDocument()
+    expect(screen.getByText('Citas del día')).toBeInTheDocument()
+    // Sin citas ese día: texto exacto del documento (CU-05 2.3.1).
+    expect(screen.getByText('No tienes citas programadas para este día.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Hoy' }))
+    expect(useMedicoCitasMock).toHaveBeenLastCalledWith('med-1', 'hoy', null)
+    expect((screen.getByLabelText('Fecha') as HTMLInputElement).value).toBe('')
+  })
+
+  /** CU-05 2.1.2: la agenda muestra paciente, hora y SEDE de cada cita. */
+  it('la tabla muestra la sede de cada cita', () => {
+    useAuthMock.mockReturnValue({ medico: medicoMock() })
+    useMedicoCitasMock.mockReturnValue(baseMedicoCitas({ data: [citaMock()] }))
+    useHistorialClinicoMock.mockReturnValue(baseHistorial())
+    renderPage()
+
+    expect(screen.getByRole('columnheader', { name: 'Sede' })).toBeInTheDocument()
+    const fila = screen.getByText('Juan Pérez').closest('tr') as HTMLElement
+    expect(within(fila).getByText('Policlínica Central')).toBeInTheDocument()
+    expect(within(fila).getByText('09:00')).toBeInTheDocument()
+  })
+
+  /** CU-05 2.3.2: el paciente cancela mientras el médico tiene abierta la cita. */
+  it('avisa y cierra el formulario si la cita desaparece de la agenda (cancelada por el paciente)', async () => {
+    useAuthMock.mockReturnValue({ medico: medicoMock() })
+    useMedicoCitasMock.mockReturnValue(baseMedicoCitas({ data: [citaMock()] }))
+    useHistorialClinicoMock.mockReturnValue(baseHistorial())
+    const user = userEvent.setup()
+    const { rerender } = renderPage()
+
+    await user.click(screen.getByRole('button', { name: /Completada/ }))
+    expect(screen.getByRole('dialog', { name: 'completar' })).toBeInTheDocument()
+
+    // Realtime: la agenda se recarga y la cita ya no está (fue cancelada).
+    useMedicoCitasMock.mockReturnValue(baseMedicoCitas({ data: [] }))
+    rerender(
+      <MemoryRouter>
+        <MedicoDashboardV2 />
+      </MemoryRouter>,
+    )
+
+    expect(
+      screen.getByText('Esta cita fue cancelada por el paciente. Actualiza la agenda.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'completar' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Entendido' }))
+    expect(
+      screen.queryByText('Esta cita fue cancelada por el paciente. Actualiza la agenda.'),
+    ).not.toBeInTheDocument()
+  })
+
+  /** CU-05 requisito especial: lista agrupada por día en pantallas < 768 px. */
+  it('en móvil muestra una lista agrupada por día en vez de la tabla', () => {
+    useIsMobileMock.mockReturnValue(true)
+    useAuthMock.mockReturnValue({ medico: medicoMock() })
+    useMedicoCitasMock.mockReturnValue(baseMedicoCitas({ data: [citaMock()] }))
+    useHistorialClinicoMock.mockReturnValue(baseHistorial())
+    renderPage()
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sábado 4 de julio' })).toBeInTheDocument()
+    const tarjeta = screen.getByText('Juan Pérez').closest('li') as HTMLElement
+    expect(within(tarjeta).getByText('09:00')).toBeInTheDocument()
+    expect(within(tarjeta).getByText(/Policlínica Central/)).toBeInTheDocument()
+    expect(within(tarjeta).getByRole('button', { name: /Completada/ })).toBeInTheDocument()
   })
 
   it('en la pestaña "semana" agrupa las citas por día con un encabezado de fecha', async () => {

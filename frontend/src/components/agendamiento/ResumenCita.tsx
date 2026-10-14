@@ -26,7 +26,7 @@ export function ResumenCita({
           <polyline points="20 6 9 17 4 12" />
         </svg>
       </div>
-      <h2 className="mt-4 text-2xl font-bold text-helios-ink">¡Cita confirmada!</h2>
+      <h2 className="mt-4 text-2xl font-bold text-helios-ink">Cita agendada exitosamente</h2>
       <p className="mt-1 text-sm text-helios-ink/60">
         Guarda tu código de confirmación. Lo necesitarás el día de la cita.
       </p>

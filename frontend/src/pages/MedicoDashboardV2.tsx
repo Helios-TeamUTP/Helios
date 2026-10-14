@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useMedicoCitas } from '../hooks/useMedicoCitas'
 import { useHistorialClinico } from '../hooks/useHistorialClinico'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { FichaPaciente } from '../components/medico/FichaPaciente'
 import { ModalCompletarCita } from '../components/medico/ModalCompletarCita'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
@@ -119,7 +120,7 @@ function StatCard({ icon, label, value, sub, color }: StatCardProps) {
 function FilaDia({ fecha }: { fecha: string }) {
   return (
     <tr>
-      <td colSpan={5} className="bg-helios-mist px-5 py-2">
+      <td colSpan={6} className="bg-helios-mist px-5 py-2">
         <span className="text-xs font-bold uppercase tracking-wide text-helios-primary">
           {formatFechaLarga(fecha)}
         </span>
@@ -128,20 +129,22 @@ function FilaDia({ fecha }: { fecha: string }) {
   )
 }
 
-interface FilaCitaProps {
+interface AccionesCitaProps {
   cita: CitaConPaciente
   onVerFicha: () => void
   onIniciarCompletar: () => void
   onMarcarNoAsistio: () => Promise<void>
   soloLectura: boolean
 }
-function FilaCita({
+
+/** Botones de una cita (ficha / completada / no asistió). Compartido por tabla y tarjetas. */
+function AccionesCita({
   cita,
   onVerFicha,
   onIniciarCompletar,
   onMarcarNoAsistio,
   soloLectura,
-}: FilaCitaProps) {
+}: Readonly<AccionesCitaProps>) {
   const [working, setWorking] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -157,6 +160,42 @@ function FilaCita({
     }
   }
 
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {err && <span className="text-xs text-rose-500">{err}</span>}
+      <button type="button" onClick={onVerFicha} className="btn-ghost py-1.5 text-xs">
+        Ver ficha
+      </button>
+      {!soloLectura && cita.estado === 'confirmada' && (
+        <>
+          <button
+            type="button"
+            disabled={working}
+            onClick={onIniciarCompletar}
+            className="btn-primary py-1.5 text-xs"
+          >
+            ✓ Completada
+          </button>
+          <button
+            type="button"
+            disabled={working}
+            onClick={handleNoAsistio}
+            className="btn-secondary py-1.5 text-xs"
+          >
+            {working ? '…' : '✗ No asistió'}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
+interface FilaCitaProps extends AccionesCitaProps {
+  /** Sede donde atiende el médico (CU-05 2.1.2: la agenda muestra la sede de cada cita). */
+  sede: string
+}
+function FilaCita({ sede, ...acciones }: Readonly<FilaCitaProps>) {
+  const { cita } = acciones
   const meta = ESTADO_META[cita.estado]
   const hora = cita.horario?.hora_inicio?.slice(0, 5) ?? '—:—'
   const pac = cita.paciente
@@ -187,6 +226,9 @@ function FilaCita({
         </div>
       </td>
 
+      {/* Sede */}
+      <td className="px-3 py-3.5 text-sm text-helios-ink/70">{sede}</td>
+
       {/* Estado */}
       <td className="px-3 py-3.5">
         <span
@@ -213,56 +255,79 @@ function FilaCita({
 
       {/* Acciones */}
       <td className="py-3.5 pl-3 pr-5">
-        <div className="flex items-center justify-end gap-2">
-          {err && <span className="text-xs text-rose-500">{err}</span>}
-          <button type="button" onClick={onVerFicha} className="btn-ghost py-1.5 text-xs">
-            Ver ficha
-          </button>
-          {!soloLectura && cita.estado === 'confirmada' && (
-            <>
-              <button
-                type="button"
-                disabled={working}
-                onClick={onIniciarCompletar}
-                className="btn-primary py-1.5 text-xs"
-              >
-                ✓ Completada
-              </button>
-              <button
-                type="button"
-                disabled={working}
-                onClick={handleNoAsistio}
-                className="btn-secondary py-1.5 text-xs"
-              >
-                {working ? '…' : '✗ No asistió'}
-              </button>
-            </>
-          )}
-        </div>
+        <AccionesCita {...acciones} />
       </td>
     </tr>
   )
 }
 
+/** Tarjeta de una cita para pantallas < 768 px (lista agrupada por día). */
+function TarjetaCita({ sede, ...acciones }: Readonly<FilaCitaProps>) {
+  const { cita } = acciones
+  const meta = ESTADO_META[cita.estado]
+  const hora = cita.horario?.hora_inicio?.slice(0, 5) ?? '—:—'
+  const pac = cita.paciente
+  return (
+    <li className="space-y-2 border-b border-helios-ink/5 px-4 py-3">
+      <div className="flex items-center justify-between">
+        <span className="text-base font-semibold tabular-nums text-helios-ink">{hora}</span>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${meta.badge}`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+          {meta.label}
+        </span>
+      </div>
+      <p className="text-sm font-semibold text-helios-ink">
+        {pac?.nombre ?? 'Paciente sin datos'}
+      </p>
+      <p className="text-xs text-helios-ink/50">
+        {sede}
+        {pac?.cedula ? ` · Cédula ${pac.cedula}` : ''}
+      </p>
+      <AccionesCita {...acciones} />
+    </li>
+  )
+}
+
 // ─── página principal ─────────────────────────────────────────────────────────
 
-type Tab = 'hoy' | 'semana' | 'historial'
+type Tab = 'hoy' | 'semana' | 'historial' | 'fecha'
 
 const TAB_LABELS: Record<Tab, string> = {
   hoy: 'Agenda de hoy',
   semana: 'Esta semana',
   historial: 'Historial de citas',
+  fecha: 'Agenda por fecha',
 }
 
+// CU-05 flujo 2.3.1: texto exacto del documento de casos de uso.
+const SIN_CITAS_DIA = 'No tienes citas programadas para este día.'
 const TAB_VACIO: Record<Tab, string> = {
-  hoy: 'No tienes citas asignadas para hoy.',
+  hoy: SIN_CITAS_DIA,
   semana: 'No tienes citas en los próximos 7 días.',
   historial: 'No hay citas anteriores registradas.',
+  fecha: SIN_CITAS_DIA,
+}
+
+const ETIQUETA_TOTAL: Record<Tab, string> = {
+  hoy: 'Citas de hoy',
+  semana: 'Citas esta semana',
+  historial: 'Citas de hoy',
+  fecha: 'Citas del día',
+}
+
+/** Título de la tarjeta de agenda: con fecha elegida muestra "Agenda del Sábado 4 de julio". */
+function tituloAgenda(tab: Tab, fechaSel: string): string {
+  return tab === 'fecha' && fechaSel ? `Agenda del ${formatFechaLarga(fechaSel)}` : TAB_LABELS[tab]
 }
 
 export function MedicoDashboardV2() {
   const { medico } = useAuth()
   const [tab, setTab] = useState<Tab>('hoy')
+  // Fecha elegida en el filtro de agenda (CU-05 2.1.3), YYYY-MM-DD.
+  const [fechaSel, setFechaSel] = useState('')
+  const esMovil = useIsMobile()
   const [pacienteFicha, setPacienteFicha] = useState<Paciente | null>(null)
   const [citaParaCompletar, setCitaParaCompletar] = useState<CitaConPaciente | null>(null)
 
@@ -272,7 +337,7 @@ export function MedicoDashboardV2() {
     error,
     marcarNoAsistio,
     reflejarEstado,
-  } = useMedicoCitas(medico?.id ?? null, tab)
+  } = useMedicoCitas(medico?.id ?? null, tab, fechaSel || null)
 
   const { completarCita } = useHistorialClinico()
 
@@ -324,36 +389,47 @@ export function MedicoDashboardV2() {
     setCitaParaCompletar(null)
   }
 
-  // ── filas de la tabla: planas (hoy/historial) o agrupadas por día (semana) ──
+  // ── filas de la tabla (desktop) o tarjetas (< 768 px), agrupadas por día ──
+  const sedeNombre = medico.sede?.nombre ?? '—'
+  const propsCita = (cita: CitaConPaciente) => ({
+    cita,
+    sede: sedeNombre,
+    soloLectura: tab === 'historial',
+    onIniciarCompletar: () => setCitaParaCompletar(cita),
+    onMarcarNoAsistio: () => marcarNoAsistio(cita.id),
+    onVerFicha: () => {
+      if (cita.paciente) setPacienteFicha(cita.paciente)
+    },
+  })
+
   const filas =
     tab === 'semana'
       ? agruparPorFecha(citas).flatMap((grupo) => [
           <FilaDia key={`dia-${grupo.fecha}`} fecha={grupo.fecha} />,
-          ...grupo.citas.map((cita) => (
-            <FilaCita
-              key={cita.id}
-              cita={cita}
-              soloLectura={false}
-              onIniciarCompletar={() => setCitaParaCompletar(cita)}
-              onMarcarNoAsistio={() => marcarNoAsistio(cita.id)}
-              onVerFicha={() => {
-                if (cita.paciente) setPacienteFicha(cita.paciente)
-              }}
-            />
-          )),
+          ...grupo.citas.map((cita) => <FilaCita key={cita.id} {...propsCita(cita)} />),
         ])
-      : citas.map((cita) => (
-          <FilaCita
-            key={cita.id}
-            cita={cita}
-            soloLectura={tab === 'historial'}
-            onIniciarCompletar={() => setCitaParaCompletar(cita)}
-            onMarcarNoAsistio={() => marcarNoAsistio(cita.id)}
-            onVerFicha={() => {
-              if (cita.paciente) setPacienteFicha(cita.paciente)
-            }}
-          />
-        ))
+      : citas.map((cita) => <FilaCita key={cita.id} {...propsCita(cita)} />)
+
+  const tarjetas = agruparPorFecha(citas).map((grupo) => (
+    <section key={`dia-${grupo.fecha}`}>
+      <h3 className="bg-helios-mist px-4 py-2 text-xs font-bold uppercase tracking-wide text-helios-primary">
+        {formatFechaLarga(grupo.fecha)}
+      </h3>
+      <ul>
+        {grupo.citas.map((cita) => (
+          <TarjetaCita key={cita.id} {...propsCita(cita)} />
+        ))}
+      </ul>
+    </section>
+  ))
+
+  // CU-05 flujo 2.3.2: si el paciente cancela la cita mientras el médico la tiene
+  // abierta para completarla, la agenda (Realtime) la quita de la lista. Se avisa
+  // en vez de dejar abierto un formulario que la BD va a rechazar.
+  const citaCancelada =
+    citaParaCompletar !== null &&
+    !loading &&
+    !citas.some((c) => c.id === citaParaCompletar.id)
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -389,7 +465,7 @@ export function MedicoDashboardV2() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard
           icon={<CalendarIcon />}
-          label={tab === 'semana' ? 'Citas esta semana' : 'Citas de hoy'}
+          label={ETIQUETA_TOTAL[tab]}
           value={statsAplican ? total : '—'}
           sub={!statsAplican ? 'Ver pestaña Hoy' : undefined}
           color="bg-helios-primary/10 text-helios-primary"
@@ -418,25 +494,45 @@ export function MedicoDashboardV2() {
       <div className="card overflow-hidden p-0">
 
         {/* cabecera de la card */}
-        <div className="flex items-center justify-between border-b border-helios-ink/5 px-5 py-4">
-          <h2 className="font-semibold text-helios-ink">{TAB_LABELS[tab]}</h2>
+        <div className="flex flex-col gap-3 border-b border-helios-ink/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="font-semibold text-helios-ink">{tituloAgenda(tab, fechaSel)}</h2>
 
-          {/* tabs */}
-          <div className="flex rounded-lg border border-helios-ink/10 bg-helios-mist p-0.5 text-sm">
-            {(['hoy', 'semana', 'historial'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={`rounded-md px-3 py-1.5 font-medium transition ${
-                  tab === t
-                    ? 'bg-white text-helios-ink shadow-sm'
-                    : 'text-helios-ink/50 hover:text-helios-ink'
-                }`}
-              >
-                {t === 'hoy' ? 'Hoy' : t === 'semana' ? 'Esta semana' : 'Historial'}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* filtro de agenda por fecha (CU-05 2.1.3) */}
+            <label className="flex items-center gap-2 text-xs text-helios-ink/60">
+              <span>Fecha</span>
+              <input
+                type="date"
+                value={fechaSel}
+                onChange={(e) => {
+                  setFechaSel(e.target.value)
+                  // Al borrar la fecha se vuelve a la agenda de hoy.
+                  setTab(e.target.value ? 'fecha' : 'hoy')
+                }}
+                className="input py-1 text-sm"
+              />
+            </label>
+
+            {/* tabs */}
+            <div className="flex rounded-lg border border-helios-ink/10 bg-helios-mist p-0.5 text-sm">
+              {(['hoy', 'semana', 'historial'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setFechaSel('')
+                    setTab(t)
+                  }}
+                  className={`rounded-md px-3 py-1.5 font-medium transition ${
+                    tab === t
+                      ? 'bg-white text-helios-ink shadow-sm'
+                      : 'text-helios-ink/50 hover:text-helios-ink'
+                  }`}
+                >
+                  {t === 'hoy' ? 'Hoy' : t === 'semana' ? 'Esta semana' : 'Historial'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -458,13 +554,28 @@ export function MedicoDashboardV2() {
           </div>
         )}
 
-        {/* tabla */}
-        {!loading && !error && citas.length > 0 && (
+        {/* aviso: el paciente canceló la cita que el médico iba a completar (CU-05 2.3.2) */}
+        {citaCancelada && (
+          <div className="p-5">
+            <ErrorMessage message="Esta cita fue cancelada por el paciente. Actualiza la agenda." />
+            <button
+              type="button"
+              onClick={() => setCitaParaCompletar(null)}
+              className="btn-secondary mt-3 py-1.5 text-xs"
+            >
+              Entendido
+            </button>
+          </div>
+        )}
+
+        {/* tabla (desktop) / lista agrupada por día (< 768 px) */}
+        {!loading && !error && citas.length > 0 && !esMovil && (
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-helios-ink/5 text-xs font-medium text-helios-ink/40">
                 <th className="py-3 pl-5 pr-3">Hora</th>
                 <th className="px-3 py-3">Paciente</th>
+                <th className="px-3 py-3">Sede</th>
                 <th className="px-3 py-3">Estado</th>
                 <th className="hidden px-3 py-3 sm:table-cell">Teléfono</th>
                 <th className="py-3 pl-3 pr-5 text-right">Acciones</th>
@@ -473,6 +584,7 @@ export function MedicoDashboardV2() {
             <tbody>{filas}</tbody>
           </table>
         )}
+        {!loading && !error && citas.length > 0 && esMovil && <div>{tarjetas}</div>}
       </div>
 
       {/* ── Modal ficha paciente ────────────────────────────────────────── */}
@@ -484,7 +596,7 @@ export function MedicoDashboardV2() {
       )}
 
       {/* ── Modal completar cita (dolencia + receta) ───────────────────── */}
-      {citaParaCompletar && (
+      {citaParaCompletar && !citaCancelada && (
         <ModalCompletarCita
           cita={citaParaCompletar}
           onClose={() => setCitaParaCompletar(null)}

@@ -8,8 +8,60 @@ import type { CitaConPaciente, EstadoCita } from '../lib/types'
  * - 'hoy': solo las citas confirmadas con fecha = hoy (agenda del dia)
  * - 'semana': citas de los proximos 7 dias (hoy incluido), sin canceladas
  * - 'historial': todas las citas con fecha < hoy (vista historica)
+ * - 'fecha': las citas (sin canceladas) de UNA fecha elegida por el medico
+ *   (CU-05 paso 2.1.3, filtro de agenda por fecha)
  */
-export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial'
+export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial' | 'fecha'
+
+/** La carga sigue vigente: sin señal (llamada manual) o con la señal aún activa. */
+const vigente = (signal?: { active: boolean }) => !signal || signal.active
+
+/** YYYY-MM-DD con la fecha LOCAL del navegador (B-21: nunca toISOString/UTC). */
+function fechaLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Arma la consulta de citas del medico segun el modo. Extraida del hook para
+ * que `fetchCitas` quede con una complejidad razonable (S3776).
+ *
+ * Bug B-21: fecha LOCAL (no toISOString/UTC) para que "hoy" sea correcto en
+ * Panama (UTC-5) incluso de noche. Sin esto, la agenda del dia podia mostrar
+ * la del dia siguiente tras las 7 PM.
+ */
+function construirConsulta(
+  medicoId: string,
+  modo: ModoMedicoCitas,
+  fecha: string | null,
+  ahora: Date,
+) {
+  const hoy = fechaLocal(ahora)
+  const query = supabase
+    .from('citas')
+    .select(`${COLUMNAS_CITA}, paciente:pacientes!inner(*), horario:horarios!inner(*)`)
+    .eq('medico_id', medicoId)
+
+  if (modo === 'hoy') {
+    // Sprint 2 (ST-8): la agenda de hoy NO muestra las canceladas
+    // (quedan registradas en el historial, pero no estorban la vista).
+    return query.eq('horario.fecha', hoy).neq('estado', 'cancelada')
+  }
+  if (modo === 'semana') {
+    // Agenda de los proximos 7 dias (hoy incluido), sin canceladas.
+    const finDate = new Date(ahora)
+    finDate.setDate(finDate.getDate() + 6)
+    return query
+      .gte('horario.fecha', hoy)
+      .lte('horario.fecha', fechaLocal(finDate))
+      .neq('estado', 'cancelada')
+  }
+  if (modo === 'fecha') {
+    // Fecha elegida por el medico (YYYY-MM-DD; el caller ya valido que existe).
+    // Igual que 'hoy', no muestra las canceladas.
+    return query.eq('horario.fecha', fecha as string).neq('estado', 'cancelada')
+  }
+  return query.lt('horario.fecha', hoy)
+}
 
 /**
  * Hook que carga las citas asignadas a un medico con join al paciente
@@ -23,52 +75,39 @@ export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial'
  *
  * @param medicoId - ID del medico autenticado (de useAuth.medico.id)
  * @param modo - 'hoy' filtra fecha=hoy; 'historial' filtra fecha<hoy
+ * @param fecha - YYYY-MM-DD, solo se usa con modo 'fecha'
  * @returns data (citas con paciente y horario), loading, error,
  *          refetch, marcarNoAsistio, reflejarEstado
+ *
+ * CU-05 (flujo 2.2.1) / CU-03 (2.1.12): ademas se suscribe por Realtime a los
+ * cambios de `citas` de este medico (paciente agenda, cancela o reprograma) y
+ * recarga la agenda en silencio, sin que el medico recargue la pagina.
  */
-export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 'hoy') {
+export function useMedicoCitas(
+  medicoId: string | null,
+  modo: ModoMedicoCitas = 'hoy',
+  fecha: string | null = null,
+) {
   const [data, setData] = useState<CitaConPaciente[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchCitas = useCallback(
-    async (signal?: { active: boolean }) => {
-      if (!medicoId) {
-        if (!signal || signal.active) {
+    async (signal?: { active: boolean }, silencioso = false) => {
+      if (!medicoId || (modo === 'fecha' && !fecha)) {
+        if (vigente(signal)) {
           setData([])
           setLoading(false)
         }
         return
       }
-      setLoading(true)
+      // Recarga silenciosa (Realtime): sin spinner, para que la tabla no
+      // parpadee ni se reemplace mientras el medico la esta usando.
+      if (!silencioso) setLoading(true)
       setError(null)
 
-      // Bug B-21: fecha LOCAL (no toISOString/UTC) para que "hoy" sea correcto
-      // en Panamá (UTC-5) incluso de noche. Sin esto, la agenda del día podía
-      // mostrar la del día siguiente tras las 7 PM.
-      const ahora = new Date()
-      const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}` // YYYY-MM-DD
-
       try {
-        let query = supabase
-          .from('citas')
-          .select(`${COLUMNAS_CITA}, paciente:pacientes!inner(*), horario:horarios!inner(*)`)
-          .eq('medico_id', medicoId)
-
-        if (modo === 'hoy') {
-          // Sprint 2 (ST-8): la agenda de hoy NO muestra las canceladas
-          // (quedan registradas en el historial, pero no estorban la vista).
-          query = query.eq('horario.fecha', hoy).neq('estado', 'cancelada')
-        } else if (modo === 'semana') {
-          // Agenda de los proximos 7 dias (hoy incluido), sin canceladas.
-          // Fecha LOCAL (no UTC) por la misma razon que `hoy` (B-21).
-          const finDate = new Date(ahora)
-          finDate.setDate(finDate.getDate() + 6)
-          const fin = `${finDate.getFullYear()}-${String(finDate.getMonth() + 1).padStart(2, '0')}-${String(finDate.getDate()).padStart(2, '0')}`
-          query = query.gte('horario.fecha', hoy).lte('horario.fecha', fin).neq('estado', 'cancelada')
-        } else {
-          query = query.lt('horario.fecha', hoy)
-        }
+        const query = construirConsulta(medicoId, modo, fecha, new Date())
 
         // Orden por fecha y luego por hora: clave para la vista de semana, que
         // abarca varios dias. Para 'hoy' es un solo dia, asi que no cambia nada.
@@ -76,7 +115,7 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
           .order('horario(fecha)', { ascending: true })
           .order('horario(hora_inicio)', { ascending: true })
 
-        if (signal && !signal.active) return
+        if (!vigente(signal)) return
 
         if (error) {
           setError(error.message)
@@ -84,15 +123,15 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
           setData((data ?? []) as unknown as CitaConPaciente[])
         }
       } catch (err) {
-        if (!signal || signal.active) {
+        if (vigente(signal)) {
           console.error('[useMedicoCitas] unexpected:', err)
           setError(err instanceof Error ? err.message : 'Error desconocido')
         }
       } finally {
-        if (!signal || signal.active) setLoading(false)
+        if (vigente(signal)) setLoading(false)
       }
     },
-    [medicoId, modo],
+    [medicoId, modo, fecha],
   )
 
   useEffect(() => {
@@ -107,6 +146,27 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
       signal.active = false
     }
   }, [fetchCitas])
+
+  // Realtime: la RLS ya limita los eventos a las citas de este medico; el
+  // filtro ademas evita recargas por citas ajenas.
+  useEffect(() => {
+    if (!medicoId) return
+    const signal = { active: true }
+    const canal = supabase
+      .channel(`citas-medico-${medicoId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'citas', filter: `medico_id=eq.${medicoId}` },
+        () => {
+          if (signal.active) void fetchCitas(signal, true)
+        },
+      )
+      .subscribe()
+    return () => {
+      signal.active = false
+      void supabase.removeChannel(canal)
+    }
+  }, [fetchCitas, medicoId])
 
   /**
    * Refleja en la lista local un estado que la BD YA confirmo (sin re-fetch ni

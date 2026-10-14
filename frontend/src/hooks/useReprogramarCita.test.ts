@@ -63,6 +63,29 @@ describe('useReprogramarCita', () => {
     expect(result.current.error).toBe('Horario no disponible')
   })
 
+  it.each([
+    ['El nuevo horario ya está reservado', 'Ese horario ya no está disponible. Elige otro.'],
+    [
+      'El medico ya alcanzo el maximo de 15 citas para ese dia. Elige otro dia.',
+      'Ese día ya no tiene cupos disponibles con este médico.',
+    ],
+    [
+      'Solo se pueden reprogramar citas confirmadas (estado actual: completada)',
+      'Esta cita ya no está disponible. Actualiza la información e intenta nuevamente.',
+    ],
+  ])('CU-03: traduce "%s" al mensaje del documento', async (crudo, esperado) => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      error: { message: crudo },
+    } as unknown as Awaited<ReturnType<typeof supabase.rpc>>)
+
+    const { result } = renderHook(() => useReprogramarCita())
+    await act(async () => {
+      await result.current.reprogramar('cita-123', 'horario-456')
+    })
+
+    expect(result.current.error).toBe(esperado)
+  })
+
   it('maneja TimeoutError correctamente', async () => {
     vi.mocked(withTimeout).mockRejectedValue(new TimeoutError(15000))
 

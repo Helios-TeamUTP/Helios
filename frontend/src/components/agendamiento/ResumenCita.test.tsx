@@ -22,7 +22,7 @@ describe('<ResumenCita />', () => {
       </MemoryRouter>,
     )
     expect(screen.getByText('ABC12345')).toBeInTheDocument()
-    expect(screen.getByText(/¡Cita confirmada!/)).toBeInTheDocument()
+    expect(screen.getByText(/Cita agendada exitosamente/)).toBeInTheDocument()
   })
 
   it('formatea la hora a HH:MM eliminando los segundos', () => {

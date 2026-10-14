@@ -4,19 +4,24 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { TimeoutError } from '../lib/withTimeout'
 
-const { fromMock, signUpMock, signOutMock, refreshPerfilMock, navigateMock } = vi.hoisted(() => ({
-  fromMock: vi.fn(),
-  signUpMock: vi.fn(),
-  // Bug B-20.1: signOut tras signUp para forzar re-login manual.
-  signOutMock: vi.fn().mockResolvedValue({ error: null }),
-  refreshPerfilMock: vi.fn().mockResolvedValue(undefined),
-  // Bug B-20: verificamos que Register navega a /login con el state correcto.
-  navigateMock: vi.fn(),
-}))
+const { fromMock, rpcMock, signUpMock, signOutMock, refreshPerfilMock, navigateMock } = vi.hoisted(
+  () => ({
+    fromMock: vi.fn(),
+    // CU-01: los pre-chequeos de cédula/correo son RPC anónimos (boolean).
+    rpcMock: vi.fn(),
+    signUpMock: vi.fn(),
+    // Bug B-20.1: signOut tras signUp para forzar re-login manual.
+    signOutMock: vi.fn().mockResolvedValue({ error: null }),
+    refreshPerfilMock: vi.fn().mockResolvedValue(undefined),
+    // Bug B-20: verificamos que Register navega a /login con el state correcto.
+    navigateMock: vi.fn(),
+  }),
+)
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
     from: fromMock,
+    rpc: rpcMock,
     auth: { signUp: signUpMock, signOut: signOutMock },
   },
 }))
@@ -77,10 +82,14 @@ async function llenarRegistro(user: ReturnType<typeof userEvent.setup>, o: Campo
   if (v.telefono) await user.type(screen.getByLabelText(/Teléfono/), v.telefono)
   await user.type(screen.getByLabelText('Correo electrónico'), v.correo)
   await user.type(screen.getByLabelText('Contraseña'), v.password)
-  await user.type(screen.getByLabelText('Confirmar contraseña'), v.passwordConfirm)
+  if (v.passwordConfirm) {
+    await user.type(screen.getByLabelText('Confirmar contraseña'), v.passwordConfirm)
+  }
 }
 
 function mockCedulaLibre() {
+  // Cédula y correo libres: ambos RPC de pre-chequeo responden false.
+  rpcMock.mockResolvedValue({ data: false, error: null })
   fromMock.mockReturnValue({
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
@@ -135,7 +144,7 @@ describe('<Register />', () => {
     )
     await llenarRegistro(user, { cedula: '123', cedulaConfirm: '123' })
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Cédula panameña inválida/)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/El formato de la cédula no es válido/)
   })
 
   it('tiene enlace para ir a la página de login', () => {
@@ -144,7 +153,7 @@ describe('<Register />', () => {
         <Register />
       </MemoryRouter>,
     )
-    expect(screen.getByText('Inicia sesión')).toHaveAttribute('href', '/login')
+    expect(screen.getByText('Ya tengo cuenta')).toHaveAttribute('href', '/login')
   })
 
   /**
@@ -228,7 +237,7 @@ describe('<Register />', () => {
     )
     await llenarRegistro(user, { cedula: '8-123-4567', cedulaConfirm: '8-123-9999' })
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Las cédulas no coinciden/)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/La cédula no coincide con la confirmación/)
     expect(signUpMock).not.toHaveBeenCalled()
   })
 
@@ -245,7 +254,7 @@ describe('<Register />', () => {
     )
     await llenarRegistro(user, { password: 'segura123', passwordConfirm: 'otra12345' })
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Las contraseñas no coinciden/)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/La contraseña no coincide con la confirmación/)
     expect(signUpMock).not.toHaveBeenCalled()
   })
 
@@ -262,7 +271,7 @@ describe('<Register />', () => {
     )
     await llenarRegistro(user, { telefono: '6000-ABCD' })
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Teléfono inválido/)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Ingresa un número de teléfono válido/)
     expect(signUpMock).not.toHaveBeenCalled()
   })
 
@@ -284,15 +293,9 @@ describe('<Register />', () => {
   })
 
   it('muestra error si la cédula ya está registrada para otro paciente', async () => {
-    const maybeSingleExisting = vi.fn().mockResolvedValue({
-      data: { id: 'pac-existente' },
-      error: null,
-    })
-    fromMock.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleExisting }),
-      }),
-    })
+    rpcMock.mockImplementation((nombre: string) =>
+      Promise.resolve({ data: nombre === 'cedula_ya_registrada', error: null }),
+    )
 
     const user = userEvent.setup()
     render(
@@ -306,8 +309,103 @@ describe('<Register />', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /Ya existe un paciente con esa cédula/,
     )
+    expect(rpcMock).toHaveBeenCalledWith('cedula_ya_registrada', { p_cedula: '8-123-4567' })
     expect(signUpMock).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: /Crear cuenta/ })).not.toBeDisabled()
+    expect(sessionStorage.getItem('helios_pending_paciente')).toBeNull()
+  })
+
+  /** CA-01-01 / CU-01 2.3.1: campos obligatorios vacíos → mensaje del documento. */
+  it('CA-01-01: rechaza el envío con un campo obligatorio vacío y nombra el campo', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    // Todo vacío: el primero que falta es el nombre.
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Debe completar nombre completo para continuar.',
+    )
+    expect(signUpMock).not.toHaveBeenCalled()
+    expect(rpcMock).not.toHaveBeenCalled()
+  })
+
+  it('CA-01-01: con todo lleno salvo la confirmación de contraseña, pide completarla', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { passwordConfirm: '' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Debe completar confirmar contraseña para continuar.',
+    )
+    expect(signUpMock).not.toHaveBeenCalled()
+  })
+
+  it('el teléfono es opcional: dejarlo vacío NO dispara "Debe completar"', async () => {
+    mockCedulaLibre()
+    signUpMock.mockResolvedValue({
+      data: { user: { id: 'u1' }, session: null },
+      error: null,
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { telefono: '' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+    await vi.waitFor(() => expect(signUpMock).toHaveBeenCalled())
+  })
+
+  /** CA-01-04 (red de seguridad): si el pre-chequeo no lo detecta, signUp lo rechaza en inglés. */
+  it('CA-01-04: traduce "User already registered" de signUp al mensaje del documento', async () => {
+    mockCedulaLibre()
+    signUpMock.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'User already registered', code: 'user_already_exists' },
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user)
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta).toHaveTextContent('Ya existe una cuenta con este correo. Inicia sesión.')
+    expect(alerta).not.toHaveTextContent(/User already registered/)
+  })
+
+  /** CA-01-04: no se puede registrar un correo que ya tiene cuenta. */
+  it('CA-01-04: rechaza un correo ya registrado antes de crear la cuenta', async () => {
+    rpcMock.mockImplementation((nombre: string) =>
+      Promise.resolve({ data: nombre === 'correo_ya_registrado', error: null }),
+    )
+
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { correo: 'Ana@Test.com' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Ya existe una cuenta con este correo. Inicia sesión.',
+    )
+    // El correo se normaliza (trim + minúsculas) antes de consultar.
+    expect(rpcMock).toHaveBeenCalledWith('correo_ya_registrado', { p_correo: 'ana@test.com' })
+    expect(signUpMock).not.toHaveBeenCalled()
     expect(sessionStorage.getItem('helios_pending_paciente')).toBeNull()
   })
 
@@ -348,7 +446,7 @@ describe('<Register />', () => {
       await llenarRegistro(user)
       await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(/Ocurrió un error inesperado/)
+      expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo completar el registro\. Intenta nuevamente\./)
     })
   })
 })

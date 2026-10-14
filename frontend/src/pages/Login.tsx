@@ -5,6 +5,7 @@ import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
+import { traducirErrorAuth } from '../lib/erroresAuth'
 
 /**
  * Bug B-20.3: completarRegistroPendiente fue MOVIDA a useAuth.tsx para
@@ -82,7 +83,9 @@ export function Login() {
         AUTH_TIMEOUT_MS,
       )
       if (signInError) {
-        setError(signInError.message)
+        // CU-02 (CA-02-01): "Correo o contraseña incorrectos." sin decir cuál falló.
+        // Antes se mostraba el texto crudo de Supabase, en inglés.
+        setError(traducirErrorAuth(signInError, 'No se pudo iniciar sesión. Intenta nuevamente.'))
         return
       }
       // useAuth.onAuthStateChange (SIGNED_IN) se dispara aqui:

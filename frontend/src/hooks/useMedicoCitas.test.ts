@@ -2,8 +2,31 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { createTableQuery } from '../test/supabase-mock'
 
-const { fromMock, rpcMock } = vi.hoisted(() => ({ fromMock: vi.fn(), rpcMock: vi.fn() }))
-vi.mock('../lib/supabase', () => ({ supabase: { from: fromMock, rpc: rpcMock } }))
+const { fromMock, rpcMock, channelMock, removeChannelMock, realtime } = vi.hoisted(() => {
+  // Realtime (CU-05 2.2.1): el canal captura el callback para poder disparar eventos.
+  const realtime: { handler: (() => void) | null } = { handler: null }
+  const canal: Record<string, ReturnType<typeof vi.fn>> = {}
+  canal.on = vi.fn((_evento: string, _filtro: unknown, cb: () => void) => {
+    realtime.handler = cb
+    return canal
+  })
+  canal.subscribe = vi.fn(() => canal)
+  return {
+    fromMock: vi.fn(),
+    rpcMock: vi.fn(),
+    channelMock: vi.fn(() => canal),
+    removeChannelMock: vi.fn(),
+    realtime,
+  }
+})
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    from: fromMock,
+    rpc: rpcMock,
+    channel: channelMock,
+    removeChannel: removeChannelMock,
+  },
+}))
 
 import { useMedicoCitas } from './useMedicoCitas'
 import { COLUMNAS_CITA } from '../lib/columnas'
@@ -17,7 +40,10 @@ function selectDe(query: ReturnType<typeof createTableQuery>) {
 }
 
 describe('useMedicoCitas', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    realtime.handler = null
+  })
 
   it('hoy: pide solo columnas permitidas (sin la nota privada del paciente) y filtra por fecha y estado', async () => {
     const query = createTableQuery({ data: [cita('c1')] })
@@ -114,5 +140,66 @@ describe('useMedicoCitas', () => {
 
     expect(result.current.data.find((c) => c.id === 'c2')?.estado).toBe('completada')
     expect(result.current.data.find((c) => c.id === 'c1')?.estado).toBe('confirmada')
+  })
+
+  // ── CU-05: filtro por fecha (2.1.3) ──────────────────────────────────────
+  it('fecha: filtra por la fecha elegida y excluye las canceladas', async () => {
+    const query = createTableQuery({ data: [cita('c1')] })
+    fromMock.mockReturnValue(query)
+    const { result } = renderHook(() => useMedicoCitas('m1', 'fecha', '2026-07-04'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(query.eq).toHaveBeenCalledWith('medico_id', 'm1')
+    expect(query.eq).toHaveBeenCalledWith('horario.fecha', '2026-07-04')
+    expect(query.neq).toHaveBeenCalledWith('estado', 'cancelada')
+    expect(selectDe(query)).toContain(COLUMNAS_CITA)
+    expect(result.current.data).toHaveLength(1)
+  })
+
+  it('fecha sin fecha elegida: no consulta y deja la lista vacía', async () => {
+    const { result } = renderHook(() => useMedicoCitas('m1', 'fecha', null))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(fromMock).not.toHaveBeenCalled()
+    expect(result.current.data).toEqual([])
+  })
+
+  // ── CU-05 / CU-03: Realtime (2.2.1 y 2.1.12, < 5 s sin recargar) ─────────
+  it('realtime: se suscribe a las citas de ESTE médico y limpia el canal al desmontar', async () => {
+    fromMock.mockReturnValue(createTableQuery({ data: [] }))
+    const { result, unmount } = renderHook(() => useMedicoCitas('m1', 'hoy'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(channelMock).toHaveBeenCalledWith('citas-medico-m1')
+    const canal = channelMock.mock.results[0].value as { on: ReturnType<typeof vi.fn> }
+    expect(canal.on).toHaveBeenCalledWith(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'citas', filter: 'medico_id=eq.m1' },
+      expect.any(Function),
+    )
+
+    unmount()
+    expect(removeChannelMock).toHaveBeenCalled()
+  })
+
+  it('realtime: sin medicoId no se suscribe', async () => {
+    const { result } = renderHook(() => useMedicoCitas(null))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(channelMock).not.toHaveBeenCalled()
+  })
+
+  it('realtime: un evento recarga la agenda EN SILENCIO (sin spinner) con los datos nuevos', async () => {
+    fromMock.mockReturnValue(createTableQuery({ data: [cita('c1')] }))
+    const { result } = renderHook(() => useMedicoCitas('m1', 'hoy'))
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    expect(realtime.handler).not.toBeNull()
+
+    // Un paciente agenda otra cita: llega el evento y la BD ya tiene 2.
+    fromMock.mockReturnValue(createTableQuery({ data: [cita('c1'), cita('c2')] }))
+    act(() => realtime.handler?.())
+
+    // Recarga silenciosa: la tabla no pasa por el estado de carga.
+    expect(result.current.loading).toBe(false)
+    await waitFor(() => expect(result.current.data).toHaveLength(2))
+    expect(fromMock).toHaveBeenCalledTimes(2)
   })
 })

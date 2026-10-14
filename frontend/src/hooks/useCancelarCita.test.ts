@@ -40,6 +40,22 @@ describe('useCancelarCita (ST-37)', () => {
     expect(result.current.error).toMatch(/No autorizado/)
   })
 
+  it('CU-03 2.3.6: si la cita ya no está confirmada muestra el mensaje del documento', async () => {
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'Solo se pueden cancelar citas confirmadas (estado actual: completada)' },
+    })
+    const { result } = renderHook(() => useCancelarCita())
+
+    await act(async () => {
+      await result.current.cancelar('c1')
+    })
+
+    expect(result.current.error).toBe(
+      'Esta cita ya no está disponible. Actualiza la información e intenta nuevamente.',
+    )
+  })
+
   it('maneja TimeoutError con mensaje claro', async () => {
     rpcMock.mockRejectedValue(new TimeoutError(15_000))
     const { result } = renderHook(() => useCancelarCita())
