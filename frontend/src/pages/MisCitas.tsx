@@ -5,6 +5,7 @@ import { useCitas } from '../hooks/useCitas'
 import { useHistorialPaciente, type HistorialConMedico } from '../hooks/useHistorialPaciente'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
+import { SuccessMessage } from '../components/shared/SuccessMessage'
 import { BotonCancelarCita } from '../components/citas/BotonCancelarCita'
 import { ReprogramarCitaModal } from '../components/citas/ReprogramarCitaModal'
 import type { CitaConRelaciones, EstadoCita } from '../lib/types'
@@ -69,7 +70,10 @@ function BloqueHistorial({ hist }: { hist: HistorialConMedico }) {
 export function MisCitas() {
   const { paciente } = useAuth()
   const { data, loading, error, refetch } = useCitas(paciente?.id ?? null)
-  const { data: historial } = useHistorialPaciente(paciente?.id ?? null)
+  const { data: historial, loading: cargandoHistorial, error: errorHistorial } =
+    useHistorialPaciente(paciente?.id ?? null)
+  // CU-03: confirmación tras cancelar/reprogramar ("Cita cancelada exitosamente.").
+  const [aviso, setAviso] = useState<string | null>(null)
   // Sprint 2 (ST-38): cita que se está reprogramando (abre el modal con calendario).
   const [citaAReprogramar, setCitaAReprogramar] = useState<CitaConRelaciones | null>(null)
 
@@ -128,6 +132,11 @@ export function MisCitas() {
 
       {loading && <LoadingSpinner label="Cargando tus citas…" />}
       {error && <ErrorMessage message={error} />}
+      {aviso && <SuccessMessage message={aviso} />}
+      {/* CU-04 flujo 2.3.2: fallo al consultar el historial clínico. */}
+      {errorHistorial && (
+        <ErrorMessage message="No se pudo cargar la información. Intenta nuevamente." />
+      )}
 
       {!loading && !error && data.length === 0 && (
         <div className="card text-center text-sm text-helios-ink/60">
@@ -189,6 +198,13 @@ export function MisCitas() {
                 </div>
               )}
 
+              {/* CU-04 flujo 2.3.1: cita atendida sin información clínica registrada. */}
+              {estado === 'completada' && !histDeEstaCita && !cargandoHistorial && !errorHistorial && (
+                <p className="mt-3 border-t border-helios-ink/5 pt-3 text-sm italic text-helios-ink/50">
+                  El médico aún no ha registrado información clínica para esta cita.
+                </p>
+              )}
+
               {textoNota(cita.nota_paciente) && (
                 <div className="mt-3 rounded-lg bg-helios-mist px-3 py-2 text-sm text-helios-ink/70">
                   <strong>Tu nota:</strong> {textoNota(cita.nota_paciente)}
@@ -205,7 +221,14 @@ export function MisCitas() {
                   >
                     Reprogramar
                   </button>
-                  <BotonCancelarCita citaId={cita.id} resumen={resumen} onCancelada={refetch} />
+                  <BotonCancelarCita
+                    citaId={cita.id}
+                    resumen={resumen}
+                    onCancelada={() => {
+                      setAviso('Cita cancelada exitosamente.')
+                      refetch()
+                    }}
+                  />
                 </div>
               )}
             </li>
@@ -217,7 +240,10 @@ export function MisCitas() {
         <ReprogramarCitaModal
           cita={citaAReprogramar}
           onClose={() => setCitaAReprogramar(null)}
-          onReprogramada={refetch}
+          onReprogramada={() => {
+            setAviso('Cita reprogramada exitosamente.')
+            refetch()
+          }}
         />
       )}
     </div>

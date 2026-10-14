@@ -40,18 +40,23 @@ async function completarRegistroPendienteHelper(
   authUid: string,
 ): Promise<string | null> {
   try {
-    // Verificar si la cédula ya está en uso (caso edge: usuario reintenta
-    // tras un fallo previo y la cédula quedó en BD).
-    const { data: existing, error: checkError } = await withTimeout(
-      supabase.from('pacientes').select('id').eq('cedula', pendiente.cedula).maybeSingle(),
+    // Caso edge: el usuario reintenta tras un fallo previo y su paciente quedo
+    // en BD sin vincular. La RLS ya no deja leer `pacientes` directo (devolvia
+    // vacio y el insert siguiente chocaba con la unicidad de cedula, dejando al
+    // usuario atascado). El RPC `paciente_huerfano_id` (ver PR_B36.md) devuelve
+    // el id del paciente con esa cedula que aun no tiene cuenta vinculada.
+    // OJO: su SQL no esta versionado en el repo; B-37 debe confirmar que no
+    // permite reclamar un paciente que ya tiene dueno.
+    const { data: huerfanoId, error: checkError } = await withTimeout(
+      supabase.rpc('paciente_huerfano_id', { p_cedula: pendiente.cedula }),
       AUTH_TIMEOUT_MS,
     )
     if (checkError) return `chequeo cédula: ${checkError.message}`
 
     let pacienteId: string
-    if (existing) {
-      // Paciente con esa cédula ya existe — linkear sin re-insertar.
-      pacienteId = (existing as { id: string }).id
+    if (huerfanoId) {
+      // Paciente huerfano con esa cedula ya existe — linkear sin re-insertar.
+      pacienteId = huerfanoId as string
     } else {
       // Insertar paciente nuevo
       const { data: pac, error: insertError } = await withTimeout(

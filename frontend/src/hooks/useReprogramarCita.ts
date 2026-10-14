@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { traducirErrorCita } from '../lib/erroresCita'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 
 /**
@@ -32,7 +33,7 @@ export function useReprogramarCita() {
           AUTH_TIMEOUT_MS,
         )
         if (rpcError) {
-          setError(rpcError.message) // mensaje de RAISE EXCEPTION (ya en español)
+          setError(traducirErrorCita(rpcError.message)) // RAISE EXCEPTION → texto del documento de CU
           return false
         }
         return true

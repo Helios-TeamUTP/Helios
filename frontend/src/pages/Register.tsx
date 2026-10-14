@@ -12,6 +12,10 @@ import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
+import { traducirErrorAuth } from '../lib/erroresAuth'
+
+// CU-01 flujo 2.3.6: mensaje genérico cuando el registro falla o no responde.
+const MSG_REGISTRO_FALLIDO = 'No se pudo completar el registro. Intenta nuevamente.'
 
 /** Texto de ejemplos de cédula para la ayuda visual (B-22). */
 const EJEMPLOS_TEXTO = EJEMPLOS_CEDULA.map((e) => e.ejemplo).join('  ·  ')
@@ -104,6 +108,27 @@ export function Register() {
     event.preventDefault()
     setError(null)
 
+    // CU-01 flujo 2.3.1 / CA-01-01: ningún campo obligatorio puede ir vacío. El
+    // teléfono es opcional. Se valida aquí (el form usa noValidate) para mostrar
+    // el mensaje del documento en vez del globo nativo del navegador.
+    const obligatorios: Array<[string, string]> = [
+      ['nombre completo', form.nombre],
+      ['cédula', form.cedula],
+      ['confirmar cédula', form.cedulaConfirm],
+      ...(isCompletingProfile
+        ? []
+        : ([
+            ['correo electrónico', form.correo],
+            ['contraseña', form.password],
+            ['confirmar contraseña', form.passwordConfirm],
+          ] as Array<[string, string]>)),
+    ]
+    const faltante = obligatorios.find(([, valor]) => !valor.trim())
+    if (faltante) {
+      setError(`Debe completar ${faltante[0]} para continuar.`)
+      return
+    }
+
     // B-24: validación de nombre (solo letras, espacios y signos de nombre).
     if (!validarNombre(form.nombre)) {
       setError('Nombre inválido. Usa solo letras, espacios, apóstrofo o guion (2-80 caracteres).')
@@ -113,19 +138,23 @@ export function Register() {
     // B-22: validación de cédula (acepta los 5 tipos panameños).
     const cedulaNorm = normalizeCedula(form.cedula)
     if (!isValidCedulaPanama(cedulaNorm)) {
-      setError(`Cédula panameña inválida. Ejemplos válidos: ${EJEMPLOS_TEXTO}.`)
+      setError(
+        `El formato de la cédula no es válido. Ejemplos válidos: ${EJEMPLOS_TEXTO}.`,
+      )
       return
     }
 
     // B-23: la cédula y su confirmación deben coincidir (evita errores de tipeo).
     if (normalizeCedula(form.cedulaConfirm) !== cedulaNorm) {
-      setError('Las cédulas no coinciden. Verifica que las escribiste igual en ambos campos.')
+      setError('La cédula no coincide con la confirmación. Verifica que las escribiste igual.')
       return
     }
 
     // B-24: teléfono es opcional, pero si se ingresa debe ser válido.
     if (form.telefono.trim() && !validarTelefonoPanama(form.telefono)) {
-      setError('Teléfono inválido. Usa solo números (ej: 6000-0000 o +507 6000 0000).')
+      setError(
+        'Ingresa un número de teléfono válido. Usa solo números (ej: 6000-0000 o +507 6000 0000).',
+      )
       return
     }
 
@@ -142,19 +171,23 @@ export function Register() {
       }
       // B-23: doble confirmación de contraseña.
       if (form.password !== form.passwordConfirm) {
-        setError('Las contraseñas no coinciden. Verifica que las escribiste igual.')
+        setError('La contraseña no coincide con la confirmación. Verifica que las escribiste igual.')
         return
       }
     }
 
     setSubmitting(true)
     try {
-      // Verificar si la cédula ya está en uso por otro paciente
-      const { data: existing } = await withTimeout(
-        supabase.from('pacientes').select('id').eq('cedula', cedulaNorm).maybeSingle(),
+      // Verificar si la cédula ya está en uso por otro paciente.
+      // CU-01 (CA-01-04): este chequeo corre SIN sesión, y la lectura pública de
+      // `pacientes` está cerrada por RLS (un SELECT directo siempre devolvía
+      // vacío y el chequeo nunca detectaba nada). Se usa el RPC anónimo
+      // `cedula_ya_registrada`, que solo devuelve true/false, nunca datos.
+      const { data: yaRegistrada } = await withTimeout(
+        supabase.rpc('cedula_ya_registrada', { p_cedula: cedulaNorm }),
         AUTH_TIMEOUT_MS,
       )
-      if (existing) {
+      if (yaRegistrada) {
         setError('Ya existe un paciente con esa cédula. Inicia sesión.')
         return
       }
@@ -179,16 +212,15 @@ export function Register() {
         // Bug B-02: verificar el CORREO antes de crear la cuenta auth (igual que
         // ya se verifica la cédula). Evita dejar una cuenta auth.users huérfana
         // cuando el correo ya pertenece a otro paciente: cortamos antes del signUp.
-        const { data: existingCorreo } = await withTimeout(
-          supabase
-            .from('pacientes')
-            .select('id')
-            .eq('correo', form.correo.trim().toLowerCase())
-            .maybeSingle(),
+        // Mismo motivo que la cédula: RPC anónimo `correo_ya_registrado` (boolean).
+        const { data: correoYaRegistrado } = await withTimeout(
+          supabase.rpc('correo_ya_registrado', {
+            p_correo: form.correo.trim().toLowerCase(),
+          }),
           AUTH_TIMEOUT_MS,
         )
-        if (existingCorreo) {
-          setError('Ese correo ya está registrado. Inicia sesión.')
+        if (correoYaRegistrado) {
+          setError('Ya existe una cuenta con este correo. Inicia sesión.')
           return
         }
 
@@ -201,7 +233,7 @@ export function Register() {
           AUTH_TIMEOUT_MS,
         )
         if (authError || !authData.user) {
-          setError(authError?.message ?? 'No se pudo crear la cuenta.')
+          setError(traducirErrorAuth(authError ?? {}, MSG_REGISTRO_FALLIDO))
           return
         }
 
@@ -296,10 +328,10 @@ export function Register() {
       navigate('/agendar', { replace: true })
     } catch (err) {
       if (err instanceof TimeoutError) {
-        setError('El servidor tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.')
+        setError(`${MSG_REGISTRO_FALLIDO} El servidor tardó demasiado en responder.`)
       } else {
         console.error('[Register] handleSubmit unexpected:', err)
-        setError('Ocurrió un error inesperado. Intenta de nuevo.')
+        setError(MSG_REGISTRO_FALLIDO)
       }
     } finally {
       setSubmitting(false)
@@ -325,7 +357,11 @@ export function Register() {
             </p>
           </>
         )}
-        <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"
+        >
           <div className="sm:col-span-2">
             <label htmlFor="nombre" className="label">
               Nombre completo
@@ -475,9 +511,8 @@ export function Register() {
         </form>
         {!isCompletingProfile && (
           <p className="mt-4 text-center text-sm text-helios-ink/60">
-            ¿Ya tienes cuenta?{' '}
             <Link to="/login" className="font-semibold text-helios-primary hover:underline">
-              Inicia sesión
+              Ya tengo cuenta
             </Link>
           </p>
         )}

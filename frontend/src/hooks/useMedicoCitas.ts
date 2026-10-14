@@ -8,8 +8,10 @@ import type { CitaConPaciente, EstadoCita } from '../lib/types'
  * - 'hoy': solo las citas confirmadas con fecha = hoy (agenda del dia)
  * - 'semana': citas de los proximos 7 dias (hoy incluido), sin canceladas
  * - 'historial': todas las citas con fecha < hoy (vista historica)
+ * - 'fecha': las citas (sin canceladas) de UNA fecha elegida por el medico
+ *   (CU-05 paso 2.1.3, filtro de agenda por fecha)
  */
-export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial'
+export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial' | 'fecha'
 
 /**
  * Hook que carga las citas asignadas a un medico con join al paciente
@@ -23,24 +25,35 @@ export type ModoMedicoCitas = 'hoy' | 'semana' | 'historial'
  *
  * @param medicoId - ID del medico autenticado (de useAuth.medico.id)
  * @param modo - 'hoy' filtra fecha=hoy; 'historial' filtra fecha<hoy
+ * @param fecha - YYYY-MM-DD, solo se usa con modo 'fecha'
  * @returns data (citas con paciente y horario), loading, error,
  *          refetch, marcarNoAsistio, reflejarEstado
+ *
+ * CU-05 (flujo 2.2.1) / CU-03 (2.1.12): ademas se suscribe por Realtime a los
+ * cambios de `citas` de este medico (paciente agenda, cancela o reprograma) y
+ * recarga la agenda en silencio, sin que el medico recargue la pagina.
  */
-export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 'hoy') {
+export function useMedicoCitas(
+  medicoId: string | null,
+  modo: ModoMedicoCitas = 'hoy',
+  fecha: string | null = null,
+) {
   const [data, setData] = useState<CitaConPaciente[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchCitas = useCallback(
-    async (signal?: { active: boolean }) => {
-      if (!medicoId) {
+    async (signal?: { active: boolean }, silencioso = false) => {
+      if (!medicoId || (modo === 'fecha' && !fecha)) {
         if (!signal || signal.active) {
           setData([])
           setLoading(false)
         }
         return
       }
-      setLoading(true)
+      // Recarga silenciosa (Realtime): sin spinner, para que la tabla no
+      // parpadee ni se reemplace mientras el medico la esta usando.
+      if (!silencioso) setLoading(true)
       setError(null)
 
       // Bug B-21: fecha LOCAL (no toISOString/UTC) para que "hoy" sea correcto
@@ -66,6 +79,10 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
           finDate.setDate(finDate.getDate() + 6)
           const fin = `${finDate.getFullYear()}-${String(finDate.getMonth() + 1).padStart(2, '0')}-${String(finDate.getDate()).padStart(2, '0')}`
           query = query.gte('horario.fecha', hoy).lte('horario.fecha', fin).neq('estado', 'cancelada')
+        } else if (modo === 'fecha') {
+          // Fecha elegida por el medico (YYYY-MM-DD, ya validada arriba). Igual
+          // que 'hoy', no muestra las canceladas.
+          query = query.eq('horario.fecha', fecha as string).neq('estado', 'cancelada')
         } else {
           query = query.lt('horario.fecha', hoy)
         }
@@ -92,7 +109,7 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
         if (!signal || signal.active) setLoading(false)
       }
     },
-    [medicoId, modo],
+    [medicoId, modo, fecha],
   )
 
   useEffect(() => {
@@ -107,6 +124,27 @@ export function useMedicoCitas(medicoId: string | null, modo: ModoMedicoCitas = 
       signal.active = false
     }
   }, [fetchCitas])
+
+  // Realtime: la RLS ya limita los eventos a las citas de este medico; el
+  // filtro ademas evita recargas por citas ajenas.
+  useEffect(() => {
+    if (!medicoId) return
+    const signal = { active: true }
+    const canal = supabase
+      .channel(`citas-medico-${medicoId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'citas', filter: `medico_id=eq.${medicoId}` },
+        () => {
+          if (signal.active) void fetchCitas(signal, true)
+        },
+      )
+      .subscribe()
+    return () => {
+      signal.active = false
+      void supabase.removeChannel(canal)
+    }
+  }, [fetchCitas, medicoId])
 
   /**
    * Refleja en la lista local un estado que la BD YA confirmo (sin re-fetch ni

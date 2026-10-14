@@ -5,19 +5,32 @@ import { MemoryRouter } from 'react-router-dom'
 
 const useAuthMock = vi.fn()
 const useCitasMock = vi.fn()
+const useHistorialMock = vi.fn()
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => useAuthMock() }))
 vi.mock('../hooks/useCitas', () => ({ useCitas: () => useCitasMock() }))
+vi.mock('../hooks/useHistorialPaciente', () => ({
+  useHistorialPaciente: () => useHistorialMock(),
+}))
 
 // Mockeamos los componentes hijos (ya testeados aparte) para aislar la
 // lógica de MisCitas: qué botones aparecen según el estado y la apertura
 // del modal de reprogramar.
 vi.mock('../components/citas/BotonCancelarCita', () => ({
-  BotonCancelarCita: ({ citaId }: { citaId: string }) => (
-    <button type="button">Cancelar-{citaId}</button>
+  BotonCancelarCita: ({ citaId, onCancelada }: { citaId: string; onCancelada: () => void }) => (
+    <button type="button" onClick={onCancelada}>
+      Cancelar-{citaId}
+    </button>
   ),
 }))
 vi.mock('../components/citas/ReprogramarCitaModal', () => ({
-  ReprogramarCitaModal: () => <div role="dialog">Reprogramar modal</div>,
+  ReprogramarCitaModal: ({ onReprogramada }: { onReprogramada: () => void }) => (
+    <div role="dialog">
+      Reprogramar modal
+      <button type="button" onClick={onReprogramada}>
+        Confirmar reprogramación
+      </button>
+    </div>
+  ),
 }))
 
 import { MisCitas } from './MisCitas'
@@ -50,6 +63,7 @@ function buildCita(over: Record<string, unknown> = {}) {
 describe('<MisCitas />', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useHistorialMock.mockReturnValue({ data: [], loading: false, error: null })
   })
 
   it('invita a registrarse cuando no hay paciente', () => {
@@ -234,5 +248,131 @@ describe('<MisCitas />', () => {
       await user.click(screen.getByRole('button', { name: 'Reprogramar' }))
       expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
+  })
+})
+
+describe('<MisCitas /> — CU-04 (historial clínico) y confirmaciones de CU-03', () => {
+  const paciente = { id: 'p1', nombre: 'Ana López', cedula: '8-123-4567' }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAuthMock.mockReturnValue({ paciente })
+    useHistorialMock.mockReturnValue({ data: [], loading: false, error: null })
+  })
+
+  const renderMisCitas = () =>
+    render(
+      <MemoryRouter>
+        <MisCitas />
+      </MemoryRouter>,
+    )
+
+  const histCompletado = {
+    id: 'h1',
+    cita_id: 'c1',
+    paciente_id: 'p1',
+    dolencia_principal: 'Gripe estacional',
+    receta: 'Paracetamol 500 mg',
+    created_at: '2026-06-05T10:00:00Z',
+    medico: { nombre: 'Carlos Ruiz' },
+  }
+
+  it('CA-04-01: cita completada CON historial muestra dolencia y receta', () => {
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ estado: 'completada' })],
+      loading: false,
+      error: null,
+    })
+    useHistorialMock.mockReturnValue({ data: [histCompletado], loading: false, error: null })
+    renderMisCitas()
+
+    expect(screen.getAllByText('Gripe estacional').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Paracetamol 500 mg').length).toBeGreaterThan(0)
+    expect(
+      screen.queryByText('El médico aún no ha registrado información clínica para esta cita.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('CU-04 2.3.1: cita completada SIN historial avisa que el médico aún no registró información', () => {
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ estado: 'completada' })],
+      loading: false,
+      error: null,
+    })
+    renderMisCitas()
+    expect(
+      screen.getByText('El médico aún no ha registrado información clínica para esta cita.'),
+    ).toBeInTheDocument()
+  })
+
+  it('no muestra ese aviso en citas que aún no fueron atendidas (confirmada)', () => {
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ estado: 'confirmada' })],
+      loading: false,
+      error: null,
+    })
+    renderMisCitas()
+    expect(
+      screen.queryByText('El médico aún no ha registrado información clínica para esta cita.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('no parpadea el aviso mientras el historial todavía está cargando', () => {
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ estado: 'completada' })],
+      loading: false,
+      error: null,
+    })
+    useHistorialMock.mockReturnValue({ data: [], loading: true, error: null })
+    renderMisCitas()
+    expect(screen.queryByText(/aún no ha registrado información clínica/)).not.toBeInTheDocument()
+  })
+
+  it('CU-04 2.3.2: si falla la consulta del historial muestra el mensaje del documento', () => {
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ estado: 'completada' })],
+      loading: false,
+      error: null,
+    })
+    useHistorialMock.mockReturnValue({ data: [], loading: false, error: 'boom' })
+    renderMisCitas()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'No se pudo cargar la información. Intenta nuevamente.',
+    )
+    // con error no se afirma falsamente que "el médico no registró nada"
+    expect(screen.queryByText(/aún no ha registrado información clínica/)).not.toBeInTheDocument()
+  })
+
+  it('CU-03: tras cancelar muestra "Cita cancelada exitosamente." y recarga la lista', async () => {
+    const refetch = vi.fn()
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ estado: 'confirmada' })],
+      loading: false,
+      error: null,
+      refetch,
+    })
+    const user = userEvent.setup()
+    renderMisCitas()
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar-c1' }))
+    expect(screen.getByText('Cita cancelada exitosamente.')).toBeInTheDocument()
+    expect(refetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('CU-03: tras reprogramar muestra "Cita reprogramada exitosamente." y recarga la lista', async () => {
+    const refetch = vi.fn()
+    useCitasMock.mockReturnValue({
+      data: [buildCita({ estado: 'confirmada' })],
+      loading: false,
+      error: null,
+      refetch,
+    })
+    const user = userEvent.setup()
+    renderMisCitas()
+
+    await user.click(screen.getByRole('button', { name: 'Reprogramar' }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar reprogramación' }))
+    expect(screen.getByText('Cita reprogramada exitosamente.')).toBeInTheDocument()
+    expect(refetch).toHaveBeenCalledTimes(1)
   })
 })

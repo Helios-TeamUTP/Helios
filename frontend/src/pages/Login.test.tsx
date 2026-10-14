@@ -99,7 +99,8 @@ describe('<Login />', () => {
   it('muestra el error devuelto por Supabase Auth y rehabilita el botón', async () => {
     signInMock.mockResolvedValue({
       data: { user: null, session: null },
-      error: { message: 'Invalid credentials' },
+      // Supabase responde en inglés; la UI muestra el texto del documento (CA-02-01).
+      error: { message: 'Invalid login credentials', code: 'invalid_credentials' },
     })
     const user = userEvent.setup()
     render(
@@ -110,10 +111,29 @@ describe('<Login />', () => {
     await user.type(screen.getByLabelText('Correo electrónico'), 'paciente@test.com')
     await user.type(screen.getByLabelText('Contraseña'), 'wrongpass')
     await user.click(screen.getByRole('button', { name: /Iniciar sesión/ }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid credentials')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Correo o contraseña incorrectos.')
     // Regresión B-10: el `finally` debe rehabilitar el botón en el path
     // de error de credenciales. Sin esto, romper el finally pasaría silente.
     expect(screen.getByRole('button', { name: /Iniciar sesión/ })).not.toBeDisabled()
+  })
+
+  it('un error desconocido de Supabase no se muestra crudo (en inglés)', async () => {
+    signInMock.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'Database error querying schema' },
+    })
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>,
+    )
+    await user.type(screen.getByLabelText('Correo electrónico'), 'paciente@test.com')
+    await user.type(screen.getByLabelText('Contraseña'), 'cualquiera')
+    await user.click(screen.getByRole('button', { name: /Iniciar sesión/ }))
+    const alerta = await screen.findByRole('alert')
+    expect(alerta).toHaveTextContent('No se pudo iniciar sesión. Intenta nuevamente.')
+    expect(alerta).not.toHaveTextContent(/Database error/)
   })
 
   it('incluye un link a la página de registro', () => {
