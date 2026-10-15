@@ -75,7 +75,8 @@ export function aLatin1(texto: string): string {
 }
 
 function escaparPdf(texto: string): string {
-  return texto.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)')
+  // antepone una barra invertida a \ ( )
+  return texto.replaceAll(/[\\()]/g, String.raw`\$&`)
 }
 
 /** Ancho aproximado de un carácter de Helvetica, en unidades de 1 em. */
@@ -93,39 +94,56 @@ function anchoTexto(texto: string, tam: number, negrita: boolean): number {
   return em * tam * (negrita ? 1.06 : 1)
 }
 
-/** Ajuste de línea voraz por palabras; parte palabras más anchas que la línea. */
+/** Corta por caracteres una palabra más ancha que la línea: devuelve las líneas llenas y el resto. */
+function partirPalabra(
+  palabra: string,
+  tam: number,
+  negrita: boolean,
+  maxAncho: number,
+): { lineas: string[]; resto: string } {
+  const lineas: string[] = []
+  let trozo = ''
+  for (const ch of palabra) {
+    if (anchoTexto(trozo + ch, tam, negrita) > maxAncho) {
+      lineas.push(trozo)
+      trozo = ''
+    }
+    trozo += ch
+  }
+  return { lineas, resto: trozo }
+}
+
+/** Ajuste de línea voraz de un párrafo (sin saltos de línea). */
+function envolverParrafo(parrafo: string, tam: number, negrita: boolean, maxAncho: number): string[] {
+  const lineas: string[] = []
+  let actual = ''
+  for (const palabra of parrafo.split(' ')) {
+    const candidata = actual ? `${actual} ${palabra}` : palabra
+    if (anchoTexto(candidata, tam, negrita) <= maxAncho) {
+      actual = candidata
+      continue
+    }
+    if (actual) lineas.push(actual)
+    // palabra sin espacios más ancha que la línea: se corta por caracteres
+    const partes = partirPalabra(palabra, tam, negrita, maxAncho)
+    lineas.push(...partes.lineas)
+    actual = partes.resto
+  }
+  lineas.push(actual)
+  return lineas
+}
+
+/** Ajuste de línea por palabras; respeta los saltos de línea del texto. */
 function envolver(texto: string, tam: number, negrita: boolean): string[] {
   const maxAncho = ANCHO - 2 * MARGEN
-  const lineas: string[] = []
-  for (const parrafo of texto.split('\n')) {
-    let actual = ''
-    for (const palabra of parrafo.split(' ')) {
-      const candidata = actual ? `${actual} ${palabra}` : palabra
-      if (anchoTexto(candidata, tam, negrita) <= maxAncho) {
-        actual = candidata
-        continue
-      }
-      if (actual) lineas.push(actual)
-      // palabra sin espacios más ancha que la línea: se corta por caracteres
-      let trozo = ''
-      for (const ch of palabra) {
-        if (anchoTexto(trozo + ch, tam, negrita) > maxAncho) {
-          lineas.push(trozo)
-          trozo = ''
-        }
-        trozo += ch
-      }
-      actual = trozo
-    }
-    lineas.push(actual)
-  }
-  return lineas
+  return texto.split('\n').flatMap((parrafo) => envolverParrafo(parrafo, tam, negrita, maxAncho))
 }
 
 /** Genera el PDF. Devuelve los bytes listos para guardar como `application/pdf`. */
 export function generarPdf(lineas: LineaPdf[]): Uint8Array<ArrayBuffer> {
   // ── 1) maquetar: una lista de operaciones de contenido por página ──
-  const paginas: string[][] = [[]]
+  let pagina: string[] = []
+  const paginas: string[][] = [pagina]
   let y = ALTO - MARGEN
   for (const linea of lineas) {
     const estilo = ESTILOS[linea.estilo ?? 'normal']
@@ -133,12 +151,13 @@ export function generarPdf(lineas: LineaPdf[]): Uint8Array<ArrayBuffer> {
     y -= linea.separacion ?? 0
     for (const renglon of envolver(aLatin1(linea.texto), estilo.tam, negrita)) {
       if (y - estilo.interlineado < MARGEN) {
-        paginas.push([])
+        pagina = []
+        paginas.push(pagina)
         y = ALTO - MARGEN
       }
       y -= estilo.interlineado
       if (renglon) {
-        paginas[paginas.length - 1].push(
+        pagina.push(
           `BT /${estilo.fuente} ${estilo.tam} Tf 1 0 0 1 ${MARGEN} ${y.toFixed(2)} Tm (${escaparPdf(renglon)}) Tj ET`,
         )
       }
@@ -147,21 +166,21 @@ export function generarPdf(lineas: LineaPdf[]): Uint8Array<ArrayBuffer> {
 
   // ── 2) objetos del PDF ──
   // 1 catálogo · 2 páginas · 3 Helvetica · 4 Helvetica-Bold · luego (página, contenido) por cada página
-  const objetos: string[] = []
   const idPagina = (i: number) => 5 + 2 * i
-  objetos.push('<< /Type /Catalog /Pages 2 0 R >>')
-  objetos.push(
-    `<< /Type /Pages /Kids [${paginas.map((_, i) => `${idPagina(i)} 0 R`).join(' ')}] /Count ${paginas.length} >>`,
-  )
-  objetos.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>')
-  objetos.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>')
+  const hijos = paginas.map((_, i) => `${idPagina(i)} 0 R`).join(' ')
+  const objetos: string[] = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    `<< /Type /Pages /Kids [${hijos}] /Count ${paginas.length} >>`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
+  ]
   paginas.forEach((ops, i) => {
     const flujo = ops.join('\n')
     objetos.push(
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${ANCHO} ${ALTO}] ` +
         `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${idPagina(i) + 1} 0 R >>`,
+      `<< /Length ${flujo.length} >>\nstream\n${flujo}\nendstream`,
     )
-    objetos.push(`<< /Length ${flujo.length} >>\nstream\n${flujo}\nendstream`)
   })
 
   // ── 3) ensamblar con tabla xref (todo es Latin-1: 1 carácter = 1 byte) ──
@@ -176,7 +195,6 @@ export function generarPdf(lineas: LineaPdf[]): Uint8Array<ArrayBuffer> {
   for (const off of offsets) doc += `${String(off).padStart(10, '0')} 00000 n \n`
   doc += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF\n`
 
-  const bytes = new Uint8Array(doc.length)
-  for (let i = 0; i < doc.length; i++) bytes[i] = doc.charCodeAt(i) & 0xff
-  return bytes
+  // todo es Latin-1: cada carácter ocupa exactamente un byte
+  return Uint8Array.from(doc, (ch) => (ch.codePointAt(0) ?? 0) & 0xff)
 }

@@ -59,7 +59,8 @@ export function nombreArchivoHistorial(nombrePaciente: string, ahora: Date): str
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'paciente'
+      .replace(/^-/, '')
+      .replace(/-$/, '') || 'paciente'
   const fecha = `${ahora.getFullYear()}-${dos(ahora.getMonth() + 1)}-${dos(ahora.getDate())}`
   return `historial-clinico-${slug}-${fecha}.pdf`
 }
@@ -86,13 +87,7 @@ interface OpcionesPdf {
   ahora: Date
 }
 
-export function construirPdfHistorial({
-  paciente,
-  entradas,
-  modo,
-  generadoPor,
-  ahora,
-}: OpcionesPdf): Uint8Array<ArrayBuffer> {
+function lineasCabecera(paciente: PacientePdf, modo: ModoHistorial, ahora: Date): LineaPdf[] {
   const lineas: LineaPdf[] = [
     { texto: 'HELIOS - Historial clínico', estilo: 'titulo' },
     { texto: `Generado el ${sello(ahora)}`, estilo: 'pequeno' },
@@ -104,49 +99,75 @@ export function construirPdfHistorial({
     lineas.push({ texto: `Fecha de nacimiento: ${formatearFecha(paciente.fecha_nacimiento)}` })
   }
   if (modo === 'medico') {
-    lineas.push({ texto: `Teléfono: ${paciente.telefono || 'No registrado'}` })
-    lineas.push({ texto: `Correo: ${paciente.correo || 'No registrado'}` })
+    lineas.push(
+      { texto: `Teléfono: ${paciente.telefono || 'No registrado'}` },
+      { texto: `Correo: ${paciente.correo || 'No registrado'}` },
+    )
   }
+  return lineas
+}
 
+function lineasAlcance(total: number, modo: ModoHistorial, generadoPor?: string | null): LineaPdf[] {
   const alcance =
     modo === 'medico'
       ? `Incluye únicamente las atenciones registradas por ${generadoPor || 'el médico que genera este documento'}.`
       : 'Incluye las atenciones registradas por todos tus médicos en HELIOS.'
-  lineas.push(
+  return [
     { texto: 'Atenciones registradas', estilo: 'subtitulo', separacion: 14 },
-    { texto: `${entradas.length} en total. ${alcance}`, estilo: 'pequeno' },
+    { texto: `${total} en total. ${alcance}`, estilo: 'pequeno' },
+  ]
+}
+
+/** Quién/dónde de la atención: el paciente ve médico y especialidad; el médico solo la sede. */
+function textoQuien(e: EntradaHistorial, modo: ModoHistorial): string {
+  const partes =
+    modo === 'paciente'
+      ? [
+          e.medico ?? 'Médico no disponible',
+          e.especialidad ? `(${e.especialidad})` : null,
+          e.sede ? `- ${e.sede}` : null,
+        ]
+      : [e.sede ? `Sede: ${e.sede}` : null]
+  return partes.filter(Boolean).join(' ')
+}
+
+function lineasEntrada(e: EntradaHistorial, modo: ModoHistorial): LineaPdf[] {
+  const cuando = `${formatearFecha(e.fecha)} · ${e.hora?.slice(0, 5) ?? SIN_DATO}`
+  const lineas: LineaPdf[] = [{ texto: cuando, estilo: 'subtitulo', separacion: 12 }]
+  const quien = textoQuien(e, modo)
+  if (quien) lineas.push({ texto: quien, estilo: 'pequeno' })
+  lineas.push(
+    { texto: `Dolencia principal: ${e.dolencia}`, separacion: 4 },
+    { texto: `Receta: ${e.receta?.trim() || 'Sin receta'}` },
   )
-
-  for (const e of ordenarEntradas(entradas)) {
-    const cuando = `${formatearFecha(e.fecha)} · ${e.hora?.slice(0, 5) ?? SIN_DATO}`
-    lineas.push({ texto: cuando, estilo: 'subtitulo', separacion: 12 })
-
-    const quien =
-      modo === 'paciente'
-        ? [
-            e.medico ?? 'Médico no disponible',
-            e.especialidad ? `(${e.especialidad})` : null,
-            e.sede ? `- ${e.sede}` : null,
-          ]
-        : [e.sede ? `Sede: ${e.sede}` : null]
-    const textoQuien = quien.filter(Boolean).join(' ')
-    if (textoQuien) lineas.push({ texto: textoQuien, estilo: 'pequeno' })
-
-    lineas.push({ texto: `Dolencia principal: ${e.dolencia}`, separacion: 4 })
-    lineas.push({ texto: `Receta: ${e.receta?.trim() || 'Sin receta'}` })
-    if (modo === 'paciente' && e.notaPaciente) {
-      lineas.push({ texto: `Mi nota (privada): ${e.notaPaciente}` })
-    }
+  if (modo === 'paciente' && e.notaPaciente) {
+    lineas.push({ texto: `Mi nota (privada): ${e.notaPaciente}` })
   }
+  return lineas
+}
 
-  lineas.push({
+function lineaPie(modo: ModoHistorial): LineaPdf {
+  return {
     texto:
       modo === 'medico'
         ? 'Documento confidencial. Contiene información clínica del paciente. No incluye las notas privadas del médico ni del paciente.'
         : 'Documento confidencial. Contiene tu información clínica personal.',
     estilo: 'pequeno',
     separacion: 20,
-  })
+  }
+}
 
-  return generarPdf(lineas)
+export function construirPdfHistorial({
+  paciente,
+  entradas,
+  modo,
+  generadoPor,
+  ahora,
+}: OpcionesPdf): Uint8Array<ArrayBuffer> {
+  return generarPdf([
+    ...lineasCabecera(paciente, modo, ahora),
+    ...lineasAlcance(entradas.length, modo, generadoPor),
+    ...ordenarEntradas(entradas).flatMap((e) => lineasEntrada(e, modo)),
+    lineaPie(modo),
+  ])
 }

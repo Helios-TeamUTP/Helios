@@ -158,7 +158,7 @@ export function FichaPaciente({ paciente, onClose, generadoPor }: Readonly<Ficha
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-helios-ink/80">Últimas 5 citas</h3>
-          {/* Descarga TODO el historial clínico registrado por este médico, no solo las 5 citas. */}
+          {/* Descarga el historial clínico completo registrado por este médico, no solo las 5 citas. */}
           <button
             type="button"
             disabled={descargando}
@@ -174,9 +174,7 @@ export function FichaPaciente({ paciente, onClose, generadoPor }: Readonly<Ficha
           </p>
         )}
         {avisoDescarga && (
-          <p role="status" className="mt-2 text-sm text-helios-ink/60">
-            {avisoDescarga}
-          </p>
+          <output className="mt-2 block text-sm text-helios-ink/60">{avisoDescarga}</output>
         )}
         {loading && (
           <div className="mt-3 flex justify-center">
