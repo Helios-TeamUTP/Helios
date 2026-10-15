@@ -234,7 +234,11 @@ export function PacientesMedico() {
 
       {/* ── Modal ficha paciente ────────────────────────────────────────── */}
       {pacienteFicha && (
-        <FichaPaciente paciente={pacienteFicha} onClose={() => setPacienteFicha(null)} />
+        <FichaPaciente
+          paciente={pacienteFicha}
+          onClose={() => setPacienteFicha(null)}
+          generadoPor={medico?.nombre}
+        />
       )}
     </div>
   )

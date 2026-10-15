@@ -592,6 +592,7 @@ export function MedicoDashboardV2() {
         <FichaPaciente
           paciente={pacienteFicha}
           onClose={() => setPacienteFicha(null)}
+          generadoPor={medico.nombre}
         />
       )}
 

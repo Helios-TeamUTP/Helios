@@ -1,11 +1,20 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { CitaConRelaciones, HistorialClinico, Paciente } from '../../lib/types'
 
-const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }))
+const { fromMock, descargarMock, estadoDescarga } = vi.hoisted(() => ({
+  fromMock: vi.fn(),
+  descargarMock: vi.fn(),
+  // Estado que devuelve el hook mockeado; cada test lo ajusta antes de renderizar.
+  estadoDescarga: { loading: false, error: null as string | null, aviso: null as string | null },
+}))
 vi.mock('../../lib/supabase', () => ({
   supabase: { from: fromMock },
+}))
+// La descarga en sí se prueba en useDescargarHistorial.test.ts; aquí solo el botón.
+vi.mock('../../hooks/useDescargarHistorial', () => ({
+  useDescargarHistorial: () => ({ descargar: descargarMock, ...estadoDescarga }),
 }))
 
 import { FichaPaciente } from './FichaPaciente'
@@ -278,5 +287,49 @@ describe('<FichaPaciente />', () => {
 
     // Resolver la promesa despues del unmount no debe lanzar ni actualizar estado.
     expect(() => resolveCitas({ data: [], error: null })).not.toThrow()
+  })
+})
+
+describe('<FichaPaciente /> — descargar historial clínico (PDF)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    estadoDescarga.loading = false
+    estadoDescarga.error = null
+    estadoDescarga.aviso = null
+    fromMock.mockImplementation(() => mockQuery([]))
+  })
+
+  it('el botón descarga el historial del paciente en modo médico, con el nombre del médico', async () => {
+    const user = userEvent.setup()
+    const paciente = pacienteMock()
+    render(<FichaPaciente paciente={paciente} onClose={vi.fn()} generadoPor="Dra. García" />)
+
+    await user.click(screen.getByRole('button', { name: 'Descargar historial (PDF)' }))
+
+    expect(descargarMock).toHaveBeenCalledTimes(1)
+    expect(descargarMock).toHaveBeenCalledWith({
+      paciente,
+      modo: 'medico',
+      generadoPor: 'Dra. García',
+    })
+  })
+
+  it('mientras prepara el PDF el botón cambia de texto y se deshabilita (evita doble descarga)', () => {
+    estadoDescarga.loading = true
+    render(<FichaPaciente paciente={pacienteMock()} onClose={vi.fn()} />)
+    const boton = screen.getByRole('button', { name: 'Preparando PDF…' })
+    expect(boton).toBeDisabled()
+  })
+
+  it('muestra el error de la descarga como alerta', () => {
+    estadoDescarga.error = 'No se pudo preparar el historial. Intenta nuevamente.'
+    render(<FichaPaciente paciente={pacienteMock()} onClose={vi.fn()} />)
+    expect(screen.getByRole('alert')).toHaveTextContent('No se pudo preparar el historial.')
+  })
+
+  it('muestra el aviso cuando aún no hay historial para descargar', () => {
+    estadoDescarga.aviso = 'Aún no hay historial clínico registrado para descargar.'
+    render(<FichaPaciente paciente={pacienteMock()} onClose={vi.fn()} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Aún no hay historial clínico')
   })
 })

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCitas } from '../hooks/useCitas'
 import { useHistorialPaciente, type HistorialConMedico } from '../hooks/useHistorialPaciente'
+import { useDescargarHistorial } from '../hooks/useDescargarHistorial'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { SuccessMessage } from '../components/shared/SuccessMessage'
@@ -74,6 +75,13 @@ export function MisCitas() {
     useHistorialPaciente(paciente?.id ?? null)
   // CU-03: confirmación tras cancelar/reprogramar ("Cita cancelada exitosamente.").
   const [aviso, setAviso] = useState<string | null>(null)
+  // CU-04: descarga del propio historial clínico en PDF.
+  const {
+    descargar,
+    loading: descargando,
+    error: errorDescarga,
+    aviso: avisoDescarga,
+  } = useDescargarHistorial()
   // Sprint 2 (ST-38): cita que se está reprogramando (abre el modal con calendario).
   const [citaAReprogramar, setCitaAReprogramar] = useState<CitaConRelaciones | null>(null)
 
@@ -108,10 +116,26 @@ export function MisCitas() {
           <h1 className="mt-2 text-3xl font-bold text-helios-ink">Hola, {paciente.nombre}</h1>
           <p className="text-sm text-helios-ink/60">Cédula registrada: {paciente.cedula}</p>
         </div>
-        <Link to="/agendar" className="btn-primary">
-          Agendar nueva cita
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={descargando}
+            onClick={() => void descargar({ paciente, modo: 'paciente' })}
+            className="btn-secondary"
+          >
+            {descargando ? 'Preparando PDF…' : 'Descargar mi historial (PDF)'}
+          </button>
+          <Link to="/agendar" className="btn-primary">
+            Agendar nueva cita
+          </Link>
+        </div>
       </header>
+      {errorDescarga && <ErrorMessage message={errorDescarga} />}
+      {avisoDescarga && (
+        <p role="status" className="text-sm text-helios-ink/60">
+          {avisoDescarga}
+        </p>
+      )}
 
       {/* Tu última receta — resumen de la visita completada mas reciente */}
       {ultimoHistorial && (

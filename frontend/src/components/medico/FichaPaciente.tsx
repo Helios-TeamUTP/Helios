@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { COLUMNAS_CITA, COLUMNAS_HISTORIAL } from '../../lib/columnas'
+import { useDescargarHistorial } from '../../hooks/useDescargarHistorial'
 import { textoNota } from '../../lib/notas'
 import type { CitaConRelaciones, HistorialClinico, Paciente } from '../../lib/types'
 import { LoadingSpinner } from '../shared/LoadingSpinner'
@@ -9,6 +10,8 @@ interface FichaPacienteProps {
   paciente: Paciente
   /** Cierra el modal */
   onClose: () => void
+  /** Nombre del médico que consulta; sale en el PDF del historial ("atenciones registradas por…"). */
+  generadoPor?: string | null
 }
 
 /**
@@ -23,11 +26,17 @@ interface FichaPacienteProps {
  *
  * UX: cierra con boton X, click en backdrop, o tecla Escape.
  */
-export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
+export function FichaPaciente({ paciente, onClose, generadoPor }: Readonly<FichaPacienteProps>) {
   const [historial, setHistorial] = useState<CitaConRelaciones[]>([])
   const [clinico, setClinico] = useState<Map<string, HistorialClinico>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const {
+    descargar,
+    loading: descargando,
+    error: errorDescarga,
+    aviso: avisoDescarga,
+  } = useDescargarHistorial()
 
   useEffect(() => {
     const signal = { active: true }
@@ -147,7 +156,28 @@ export function FichaPaciente({ paciente, onClose }: FichaPacienteProps) {
 
         <hr className="my-5 border-helios-ink/10" />
 
-        <h3 className="text-sm font-semibold text-helios-ink/80">Últimas 5 citas</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-helios-ink/80">Últimas 5 citas</h3>
+          {/* Descarga TODO el historial clínico registrado por este médico, no solo las 5 citas. */}
+          <button
+            type="button"
+            disabled={descargando}
+            onClick={() => void descargar({ paciente, modo: 'medico', generadoPor })}
+            className="btn-secondary py-1.5 text-xs"
+          >
+            {descargando ? 'Preparando PDF…' : 'Descargar historial (PDF)'}
+          </button>
+        </div>
+        {errorDescarga && (
+          <p role="alert" className="mt-2 text-sm text-rose-600">
+            {errorDescarga}
+          </p>
+        )}
+        {avisoDescarga && (
+          <p role="status" className="mt-2 text-sm text-helios-ink/60">
+            {avisoDescarga}
+          </p>
+        )}
         {loading && (
           <div className="mt-3 flex justify-center">
             <LoadingSpinner label="Cargando historial…" />
