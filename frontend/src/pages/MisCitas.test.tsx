@@ -6,8 +6,13 @@ import { MemoryRouter } from 'react-router-dom'
 const useAuthMock = vi.fn()
 const useCitasMock = vi.fn()
 const useHistorialMock = vi.fn()
+const useDescargarMock = vi.fn()
+const descargarMock = vi.fn()
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => useAuthMock() }))
 vi.mock('../hooks/useCitas', () => ({ useCitas: () => useCitasMock() }))
+vi.mock('../hooks/useDescargarHistorial', () => ({
+  useDescargarHistorial: () => useDescargarMock(),
+}))
 vi.mock('../hooks/useHistorialPaciente', () => ({
   useHistorialPaciente: () => useHistorialMock(),
 }))
@@ -64,6 +69,7 @@ describe('<MisCitas />', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useHistorialMock.mockReturnValue({ data: [], loading: false, error: null })
+    useDescargarMock.mockReturnValue({ descargar: descargarMock, loading: false, error: null, aviso: null })
   })
 
   it('invita a registrarse cuando no hay paciente', () => {
@@ -258,6 +264,7 @@ describe('<MisCitas /> — CU-04 (historial clínico) y confirmaciones de CU-03'
     vi.clearAllMocks()
     useAuthMock.mockReturnValue({ paciente })
     useHistorialMock.mockReturnValue({ data: [], loading: false, error: null })
+    useDescargarMock.mockReturnValue({ descargar: descargarMock, loading: false, error: null, aviso: null })
   })
 
   const renderMisCitas = () =>
@@ -374,5 +381,49 @@ describe('<MisCitas /> — CU-04 (historial clínico) y confirmaciones de CU-03'
     await user.click(screen.getByRole('button', { name: 'Confirmar reprogramación' }))
     expect(screen.getByText('Cita reprogramada exitosamente.')).toBeInTheDocument()
     expect(refetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('<MisCitas /> — descargar mi historial clínico (PDF)', () => {
+  const paciente = { id: 'p1', nombre: 'Ana López', cedula: '8-123-4567' }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useAuthMock.mockReturnValue({ paciente })
+    useCitasMock.mockReturnValue({ data: [], loading: false, error: null, refetch: vi.fn() })
+    useHistorialMock.mockReturnValue({ data: [], loading: false, error: null })
+    useDescargarMock.mockReturnValue({ descargar: descargarMock, loading: false, error: null, aviso: null })
+  })
+
+  const renderMisCitas = () =>
+    render(
+      <MemoryRouter>
+        <MisCitas />
+      </MemoryRouter>,
+    )
+
+  it('el botón descarga el historial del propio paciente en modo paciente', async () => {
+    const user = userEvent.setup()
+    renderMisCitas()
+    await user.click(screen.getByRole('button', { name: 'Descargar mi historial (PDF)' }))
+    expect(descargarMock).toHaveBeenCalledWith({ paciente, modo: 'paciente' })
+  })
+
+  it('mientras prepara el PDF se deshabilita y cambia de texto', () => {
+    useDescargarMock.mockReturnValue({ descargar: descargarMock, loading: true, error: null, aviso: null })
+    renderMisCitas()
+    expect(screen.getByRole('button', { name: 'Preparando PDF…' })).toBeDisabled()
+  })
+
+  it('muestra el error y el aviso de la descarga', () => {
+    useDescargarMock.mockReturnValue({
+      descargar: descargarMock,
+      loading: false,
+      error: 'No se pudo preparar el historial. Intenta nuevamente.',
+      aviso: 'Aún no hay historial clínico registrado para descargar.',
+    })
+    renderMisCitas()
+    expect(screen.getByRole('alert')).toHaveTextContent('No se pudo preparar el historial.')
+    expect(screen.getByRole('status')).toHaveTextContent('Aún no hay historial clínico')
   })
 })
