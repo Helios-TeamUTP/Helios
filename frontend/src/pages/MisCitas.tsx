@@ -132,9 +132,7 @@ export function MisCitas() {
       </header>
       {errorDescarga && <ErrorMessage message={errorDescarga} />}
       {avisoDescarga && (
-        <p role="status" className="text-sm text-helios-ink/60">
-          {avisoDescarga}
-        </p>
+        <output className="block text-sm text-helios-ink/60">{avisoDescarga}</output>
       )}
 
       {/* Tu última receta — resumen de la visita completada mas reciente */}
