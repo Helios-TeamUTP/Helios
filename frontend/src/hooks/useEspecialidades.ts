@@ -23,7 +23,7 @@ export function useEspecialidades() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     setError(null)
-    ;(async () => {
+    void (async () => {
       try {
         const { data, error } = await supabase
           .from('especialidades')

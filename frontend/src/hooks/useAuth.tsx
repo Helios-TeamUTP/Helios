@@ -267,7 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) setLoading(false)
       }
     }
-    init()
+    void init()
 
     /**
      * Listener de cambios de auth. try/catch/finally garantiza loading=false.

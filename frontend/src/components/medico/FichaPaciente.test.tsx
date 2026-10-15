@@ -268,6 +268,17 @@ describe('<FichaPaciente />', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('Escape con el foco dentro del modal llama a onClose UNA sola vez (sin doble disparo)', async () => {
+    setupFrom()
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<FichaPaciente paciente={pacienteMock()} onClose={onClose} />)
+
+    screen.getByRole('button', { name: /Cerrar ficha/ }).focus()
+    await user.keyboard('{Escape}')
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('no actualiza el estado tras desmontar (evita warning de act / memory leak)', async () => {
     let resolveCitas: (v: { data: unknown; error: unknown }) => void = () => {}
     const pendingBuilder: Record<string, unknown> = {}
