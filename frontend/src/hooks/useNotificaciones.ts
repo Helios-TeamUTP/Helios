@@ -69,7 +69,7 @@ export function useNotificaciones(pacienteId: string | null, medicoId: string | 
     // `active` (cancelado en el cleanup de abajo). Mismo patron ya
     // documentado en useCitas.ts, useMedicoCitas.ts y usePacientesMedico.ts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchNotificaciones()
+    void fetchNotificaciones()
 
     const id = pacienteId ?? medicoId
     if (!id) return
@@ -99,7 +99,7 @@ export function useNotificaciones(pacienteId: string | null, medicoId: string | 
 
     return () => {
       active = false
-      supabase.removeChannel(canal) // cleanup obligatorio del canal
+      void supabase.removeChannel(canal) // cleanup obligatorio del canal
     }
   }, [fetchNotificaciones, pacienteId, medicoId])
 
@@ -113,7 +113,7 @@ export function useNotificaciones(pacienteId: string | null, medicoId: string | 
         if (rpcErr) throw rpcErr
       } catch (err) {
         console.error('[useNotificaciones] marcarLeida:', err)
-        fetchNotificaciones() // revertir el optimista al estado real del servidor
+        void fetchNotificaciones() // revertir el optimista al estado real del servidor
       }
     },
     [fetchNotificaciones],
@@ -127,7 +127,7 @@ export function useNotificaciones(pacienteId: string | null, medicoId: string | 
       if (rpcErr) throw rpcErr
     } catch (err) {
       console.error('[useNotificaciones] marcarTodasLeidas:', err)
-      fetchNotificaciones() // revertir el optimista al estado real del servidor
+      void fetchNotificaciones() // revertir el optimista al estado real del servidor
     }
   }, [fetchNotificaciones])
 

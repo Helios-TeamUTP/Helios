@@ -30,7 +30,7 @@ export function useMedicos(sedeId: string | null, especialidadId: string | null)
     let active = true
     setLoading(true)
     setError(null)
-    ;(async () => {
+    void (async () => {
       try {
         const { data, error } = await supabase
           .from('medicos')

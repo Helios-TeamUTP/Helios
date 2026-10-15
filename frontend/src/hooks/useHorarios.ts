@@ -96,7 +96,7 @@ export function useHorarios(medicoId: string | null, excluirCitaId?: string | nu
     // slots de "hoy". Construimos la fecha LOCAL (YYYY-MM-DD) a mano.
     const ahora = new Date()
     const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`
-    ;(async () => {
+    void (async () => {
       try {
         // Sprint 5: la RPC devuelve los slots libres del médico marcando con
         // `dia_completo` los días que ya llegaron al tope de 15 citas. Va por RPC

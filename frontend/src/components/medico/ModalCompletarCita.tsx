@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type KeyboardEvent, type MouseEvent } from 'react'
 import type { CitaConPaciente } from '../../lib/types'
 
 interface ModalCompletarCitaProps {
@@ -51,19 +51,24 @@ export function ModalCompletarCita({ cita, onClose, onGuardar }: ModalCompletarC
     }
   }
 
+  // Clic en el fondo (no dentro de la tarjeta) o Escape cierran el modal, salvo mientras se guarda.
+  const cerrarPorFondo = (e: MouseEvent<HTMLDivElement>) => {
+    if (!enviando && e.target === e.currentTarget) onClose()
+  }
+  const cerrarConEscape = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape' && !enviando) onClose()
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={enviando ? undefined : onClose}
+      onClick={cerrarPorFondo}
+      onKeyDown={cerrarConEscape}
       role="dialog"
       aria-modal="true"
       aria-label="Completar cita"
     >
-      <form
-        onSubmit={handleSubmit}
-        className="card w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <form onSubmit={handleSubmit} className="card w-full max-w-md">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold text-helios-ink">Completar cita</h2>

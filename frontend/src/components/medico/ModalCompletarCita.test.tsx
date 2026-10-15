@@ -173,6 +173,16 @@ describe('<ModalCompletarCita />', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('cierra con Escape cuando el foco está dentro del modal', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<ModalCompletarCita cita={citaMock()} onClose={onClose} onGuardar={vi.fn()} />)
+
+    await user.click(screen.getByLabelText(/Dolencia principal/))
+    await user.keyboard('{Escape}')
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('NO cierra al hacer clic dentro del formulario (stopPropagation)', async () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
