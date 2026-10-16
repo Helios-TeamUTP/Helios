@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
@@ -50,7 +50,7 @@ export function Login() {
    * setSubmitting(false) siempre se ejecute, incluso si Supabase nunca
    * responde.
    */
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
     setSubmitting(true)

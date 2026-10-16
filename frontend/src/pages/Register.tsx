@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
@@ -103,7 +103,7 @@ export function Register() {
    * Bug B-10 fix: try/catch/finally + withTimeout en TODAS las llamadas a
    * Supabase garantiza que el spinner nunca quede eterno si Supabase tarda.
    */
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
 

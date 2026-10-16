@@ -7,7 +7,7 @@ interface Props {
   onChange: (id: string, nombre: string) => void
 }
 
-export function SelectorSede({ value, onChange }: Props) {
+export function SelectorSede({ value, onChange }: Readonly<Props>) {
   const { data, loading, error } = useSedes()
 
   if (loading) return <LoadingSpinner label="Cargando sedes…" />

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
@@ -59,7 +59,7 @@ export function RestablecerPassword() {
     )
   }
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
     if (nueva.length < PASSWORD_MIN_LENGTH) {

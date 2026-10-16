@@ -35,7 +35,7 @@ interface Props {
  * El contrato del componente (medicoId, value, onChange) se mantiene igual
  * para que AgendarCita.tsx no requiera cambios.
  */
-export function CalendarioCitas({ medicoId, value, onChange, excluirCitaId }: Props) {
+export function CalendarioCitas({ medicoId, value, onChange, excluirCitaId }: Readonly<Props>) {
   const { data, loading, error } = useHorarios(medicoId, excluirCitaId)
 
   return (

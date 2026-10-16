@@ -18,11 +18,11 @@ export function ResumenCita({
   fecha,
   horaInicio,
   onAgendarOtra,
-}: Props) {
+}: Readonly<Props>) {
   return (
     <div className="card text-center">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-helios-accent/20 text-helios-primary">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="20 6 9 17 4 12" />
         </svg>
       </div>
@@ -55,7 +55,11 @@ export function ResumenCita({
   )
 }
 
-function Field({ label, value, className = '' }: { label: string; value: string; className?: string }) {
+function Field({
+  label,
+  value,
+  className = '',
+}: Readonly<{ label: string; value: string; className?: string }>) {
   return (
     <div className={`rounded-lg bg-helios-mist px-4 py-3 text-left ${className}`}>
       <dt className="text-xs uppercase tracking-wider text-helios-ink/40">{label}</dt>

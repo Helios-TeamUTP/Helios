@@ -17,7 +17,7 @@ interface Props {
  * useCancelarCita -> RPC cancelar_cita_atomica. Si falla, muestra el error
  * dentro del modal sin cerrarlo; si tiene éxito, refresca la lista y cierra.
  */
-export function BotonCancelarCita({ citaId, resumen, onCancelada }: Props) {
+export function BotonCancelarCita({ citaId, resumen, onCancelada }: Readonly<Props>) {
   const [abierto, setAbierto] = useState(false)
   const { cancelar, loading, error, setError } = useCancelarCita()
 

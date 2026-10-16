@@ -9,7 +9,7 @@ interface Props {
   onChange: (id: string, nombre: string) => void
 }
 
-export function ListaMedicos({ sedeId, especialidadId, value, onChange }: Props) {
+export function ListaMedicos({ sedeId, especialidadId, value, onChange }: Readonly<Props>) {
   const { data, loading, error } = useMedicos(sedeId, especialidadId)
 
   if (loading) return <LoadingSpinner label="Buscando médicos disponibles…" />

@@ -2,7 +2,7 @@ interface Props {
   message: string
 }
 
-export function ErrorMessage({ message }: Props) {
+export function ErrorMessage({ message }: Readonly<Props>) {
   return (
     <div
       role="alert"

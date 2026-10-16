@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useState, type KeyboardEvent, type MouseEvent, type SubmitEvent } from 'react'
 import type { CitaConPaciente } from '../../lib/types'
 
 interface ModalCompletarCitaProps {
@@ -20,7 +20,7 @@ interface ModalCompletarCitaProps {
  * UX: cierra con boton X, click en backdrop (si no esta enviando),
  * o boton Cancelar. No se puede cerrar mientras se esta guardando.
  */
-export function ModalCompletarCita({ cita, onClose, onGuardar }: ModalCompletarCitaProps) {
+export function ModalCompletarCita({ cita, onClose, onGuardar }: Readonly<ModalCompletarCitaProps>) {
   const [dolencia, setDolencia] = useState('')
   const [receta, setReceta] = useState('')
   const [notas, setNotas] = useState('')
@@ -29,7 +29,7 @@ export function ModalCompletarCita({ cita, onClose, onGuardar }: ModalCompletarC
 
   const nombre = cita.paciente?.nombre ?? 'este paciente'
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault()
     const dolenciaLimpia = dolencia.trim()
     if (!dolenciaLimpia) {

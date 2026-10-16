@@ -9,6 +9,7 @@ import { ModalCompletarCita } from '../components/medico/ModalCompletarCita'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import type { CitaConPaciente, EstadoCita, Paciente } from '../lib/types'
+import { avatarColor } from '../lib/avatarColor'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -60,8 +61,8 @@ function agruparPorFecha(
   const grupos: { fecha: string; citas: CitaConPaciente[] }[] = []
   for (const cita of citas) {
     const fecha = (cita as CitaConPaciente & { horario?: { fecha?: string } }).horario?.fecha ?? ''
-    const ultimo = grupos[grupos.length - 1]
-    if (ultimo && ultimo.fecha === fecha) ultimo.citas.push(cita)
+    const ultimo = grupos.at(-1)
+    if (ultimo?.fecha === fecha) ultimo.citas.push(cita)
     else grupos.push({ fecha, citas: [cita] })
   }
   return grupos
@@ -77,21 +78,6 @@ function initials(nombre: string): string {
     .toUpperCase()
 }
 
-/** Color de avatar determinista por nombre */
-const AVATAR_COLORS = [
-  'bg-violet-100 text-violet-700',
-  'bg-sky-100 text-sky-700',
-  'bg-teal-100 text-teal-700',
-  'bg-rose-100 text-rose-700',
-  'bg-amber-100 text-amber-700',
-  'bg-indigo-100 text-indigo-700',
-]
-function avatarColor(nombre: string): string {
-  let hash = 0
-  for (const ch of nombre) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
-}
-
 // ─── sub-componentes ─────────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -101,7 +87,7 @@ interface StatCardProps {
   sub?: string
   color: string
 }
-function StatCard({ icon, label, value, sub, color }: StatCardProps) {
+function StatCard({ icon, label, value, sub, color }: Readonly<StatCardProps>) {
   return (
     <div className="card flex items-center gap-4 p-5">
       <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}>
@@ -117,7 +103,7 @@ function StatCard({ icon, label, value, sub, color }: StatCardProps) {
 }
 
 /** Fila de encabezado de día — solo se usa en la vista "Esta semana". */
-function FilaDia({ fecha }: { fecha: string }) {
+function FilaDia({ fecha }: Readonly<{ fecha: string }>) {
   return (
     <tr>
       <td colSpan={6} className="bg-helios-mist px-5 py-2">
@@ -612,7 +598,7 @@ export function MedicoDashboardV2() {
 
 function CalendarIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
@@ -622,14 +608,14 @@ function CalendarIcon() {
 }
 function CheckIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   )
 }
 function ClockIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
@@ -637,7 +623,7 @@ function ClockIcon() {
 }
 function XIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>

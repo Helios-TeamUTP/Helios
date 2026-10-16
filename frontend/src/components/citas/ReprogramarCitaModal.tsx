@@ -20,7 +20,7 @@ interface Props {
  * cita NO aparece como disponible (su slot está reservado), así que no se puede
  * "reprogramar al mismo horario".
  */
-export function ReprogramarCitaModal({ cita, onClose, onReprogramada }: Props) {
+export function ReprogramarCitaModal({ cita, onClose, onReprogramada }: Readonly<Props>) {
   const [seleccion, setSeleccion] = useState<Horario | null>(null)
   const { reprogramar, loading, error } = useReprogramarCita()
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { SuccessMessage } from '../components/shared/SuccessMessage'
@@ -15,7 +15,7 @@ export function RecuperarPassword() {
   const [correo, setCorreo] = useState('')
   const [enviado, setEnviado] = useState(false)
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
     if (!validarEmail(correo)) {

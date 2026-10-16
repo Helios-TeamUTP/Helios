@@ -240,7 +240,7 @@ export function AgendarCita() {
   )
 }
 
-function Stepper({ paso }: { paso: number }) {
+function Stepper({ paso }: Readonly<{ paso: number }>) {
   const pasos = ['Especialidad y sede', 'Médico', 'Horario', 'Confirmar']
   return (
     <ol className="flex items-center justify-between gap-2 text-xs sm:text-sm">
@@ -274,7 +274,7 @@ function Stepper({ paso }: { paso: number }) {
   )
 }
 
-function ResumenPaso4(props: {
+function ResumenPaso4(props: Readonly<{
   paciente: string
   cedula: string
   telefono: string
@@ -286,7 +286,7 @@ function ResumenPaso4(props: {
   hora: string
   notas: string
   onNotasChange: (notas: string) => void
-}) {
+}>) {
   return (
     <div className="space-y-5">
       <div>
@@ -326,7 +326,7 @@ function ResumenPaso4(props: {
   )
 }
 
-function Item({ label, value }: { label: string; value: string }) {
+function Item({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="rounded-lg bg-helios-mist px-4 py-3">
       <dt className="text-xs uppercase tracking-wider text-helios-ink/40">{label}</dt>

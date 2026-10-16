@@ -44,7 +44,7 @@ function formatFechaLarga(fechaIso: string): string {
  * Se usa tanto en la card resumen de arriba como dentro de cada
  * cita individual que ya tenga historial_clinico registrado.
  */
-function BloqueHistorial({ hist }: { hist: HistorialConMedico }) {
+function BloqueHistorial({ hist }: Readonly<{ hist: HistorialConMedico }>) {
   return (
     <div className="mt-3 space-y-2">
       <p className="text-sm">

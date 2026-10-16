@@ -7,7 +7,7 @@ interface Props {
   onChange: (id: string, nombre: string) => void
 }
 
-export function SelectorEspecialidad({ value, onChange }: Props) {
+export function SelectorEspecialidad({ value, onChange }: Readonly<Props>) {
   const { data, loading, error } = useEspecialidades()
 
   if (loading) return <LoadingSpinner label="Cargando especialidades…" />
