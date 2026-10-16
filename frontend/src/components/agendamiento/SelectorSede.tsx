@@ -17,7 +17,7 @@ export function SelectorSede({ value, onChange }: Readonly<Props>) {
 
   return (
     <div>
-      <span className="label">Sede</span>
+      <label className="label">Sede</label>
       <div className="grid gap-2 sm:grid-cols-2">
         {data.map((sede) => {
           const active = value === sede.id

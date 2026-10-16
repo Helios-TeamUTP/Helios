@@ -19,7 +19,7 @@ export function SelectorEspecialidad({ value, onChange }: Readonly<Props>) {
 
   return (
     <div>
-      <span className="label">Especialidad</span>
+      <label className="label">Especialidad</label>
       <div className="grid gap-2 sm:grid-cols-2">
         {data.map((esp) => {
           const active = value === esp.id

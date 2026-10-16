@@ -6,6 +6,7 @@ import { FichaPaciente } from '../components/medico/FichaPaciente'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import type { Paciente } from '../lib/types'
+import { avatarColor } from '../lib/avatarColor'
 
 // ─── helpers — mismos que MedicoDashboardV2 para consistencia visual ───────
 
@@ -16,20 +17,6 @@ function initials(nombre: string): string {
     .map((p) => p[0])
     .join('')
     .toUpperCase()
-}
-
-const AVATAR_COLORS = [
-  'bg-violet-100 text-violet-700',
-  'bg-sky-100 text-sky-700',
-  'bg-teal-100 text-teal-700',
-  'bg-rose-100 text-rose-700',
-  'bg-amber-100 text-amber-700',
-  'bg-indigo-100 text-indigo-700',
-]
-function avatarColor(nombre: string): string {
-  let hash = 0
-  for (const ch of nombre) hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) & 0xffff
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
 /** Formato "04 JUL 2026" — día con cero + mes abreviado en mayúsculas */
