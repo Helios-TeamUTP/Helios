@@ -5,6 +5,7 @@ import {
   MSG_CORREO_EXISTENTE,
   MSG_CORREO_SIN_CONFIRMAR,
   MSG_DEMASIADOS_INTENTOS,
+  MSG_REGISTRO_RECHAZADO,
 } from './erroresAuth'
 
 const FALLBACK = 'No se pudo completar la operación.'
@@ -33,7 +34,15 @@ describe('traducirErrorAuth (CU-01 / CU-02)', () => {
   })
 
   it('un error desconocido (técnico, en inglés) NO se muestra crudo: usa el fallback', () => {
-    expect(traducirErrorAuth({ message: 'Database error saving new user' }, FALLBACK)).toBe(FALLBACK)
+    expect(traducirErrorAuth({ message: 'Unexpected failure in upstream service' }, FALLBACK)).toBe(FALLBACK)
     expect(traducirErrorAuth({}, FALLBACK)).toBe(FALLBACK)
+  })
+})
+
+describe('traducirErrorAuth — rechazo del trigger de registro', () => {
+  it('traduce "Database error saving new user" y no muestra el texto crudo', () => {
+    const msg = traducirErrorAuth({ message: 'Database error saving new user', status: 500 }, 'fallback')
+    expect(msg).toBe(MSG_REGISTRO_RECHAZADO)
+    expect(msg).not.toMatch(/database/i)
   })
 })

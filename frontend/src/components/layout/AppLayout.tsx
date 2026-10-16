@@ -40,8 +40,8 @@ export function AppLayout() {
             {user ? (
               <>
                 {/* Bug B-16: durante loading (role transitorio = null), NO mostrar
-                    los NavItems por rol — evita el flash de "Completa tu perfil"
-                    que confunde al medico al refrescar /medico. Mostramos solo
+                    los NavItems por rol — evita un flash de navegacion incorrecta
+                    al refrescar /medico. Mostramos solo
                     Cerrar sesion + email para que el usuario sepa que sigue
                     logueado y pueda salir si quiere. */}
                 {!loading && (
@@ -53,7 +53,6 @@ export function AppLayout() {
                         <NavItem to="/mis-citas">Mis citas</NavItem>
                       </>
                     )}
-                    {role === null && <NavItem to="/registro">Completa tu perfil</NavItem>}
                   </>
                 )}
                 {/* Sprint 4: campanita de notificaciones (solo con rol resuelto,

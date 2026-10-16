@@ -6,26 +6,13 @@ import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 import { traducirErrorAuth } from '../lib/erroresAuth'
-
-/**
- * Bug B-20.3: completarRegistroPendiente fue MOVIDA a useAuth.tsx para
- * eliminar el race condition que mantenía a la UI en "Completa tu perfil"
- * aunque el paciente y el link sí se creaban en BD.
- *
- * Historial:
- *   B-20:   Login llamaba la función tras signInWithPassword + refreshPerfil
- *   B-20.1: signOut tras signUp para evitar auto-login
- *   B-20.2: polling JWT + errores visibles en pantalla
- *   B-20.3: mover a onAuthStateChange de useAuth para que corra ANTES de
- *           loadPerfil (sin race). El error sale por context.registroPendienteError
- */
+import { CuentaIncompleta } from '../components/auth/CuentaIncompleta'
 
 export function Login() {
   const location = useLocation()
-  const { user, paciente, role, loading, registroPendienteError, clearRegistroPendienteError } =
-    useAuth()
+  const { user, role, loading } = useAuth()
 
-  // Bug B-20: state que viene del Register tras crear cuenta nueva.
+  // State que viene del Register cuando el registro no dejo sesion activa.
   const fromRegistro = (location.state as { registroExitoso?: boolean } | null)
     ?.registroExitoso === true
   const emailPrellenado =
@@ -39,10 +26,9 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Bug B-16: si loading=true (perfil cargando), mostrar spinner ANTES
-  // de evaluar Navigate. Sin esto, el bloque "if (user)" podia redirigir
-  // a /registro cuando role era null transitorio (mientras loadPerfil
-  // estaba en vuelo), causando flash de "Completa tu perfil" para medicos.
+  // Bug B-16: si loading=true (perfil cargando), mostrar spinner ANTES de
+  // evaluar el rol: role es null de forma transitoria mientras loadPerfil esta
+  // en vuelo y no debe interpretarse como "cuenta sin perfil".
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -51,31 +37,22 @@ export function Login() {
     )
   }
 
-  // Bug B-13: redirect segun rol. Medico → /medico, paciente → /agendar,
-  // sin perfil (cuenta auth sin link) → /registro (completar perfil).
+  // Bug B-13: redirect segun rol. Medico → /medico, paciente → /agendar.
+  // Sesion sin perfil (caso excepcional): pantalla con salida, sin formulario.
   if (user) {
     if (role === 'medico') return <Navigate to="/medico" replace />
     if (role === 'paciente') return <Navigate to="/agendar" replace />
-    return <Navigate to="/registro" replace />
+    return <CuentaIncompleta />
   }
-  // Variable paciente queda referenciada para mantener el contrato del hook
-  void paciente
 
   /**
    * Bug B-10 fix: try/catch/finally + withTimeout garantiza que
    * setSubmitting(false) siempre se ejecute, incluso si Supabase nunca
    * responde.
-   *
-   * Bug B-20.3: completarRegistroPendiente ya NO se llama aquí. useAuth lo
-   * ejecuta automáticamente dentro de onAuthStateChange (al evento SIGNED_IN)
-   * ANTES de loadPerfil. Esto elimina el race condition que mantenía la UI
-   * en "Completa tu perfil" aunque el INSERT y UPSERT sí se ejecutaran en BD.
-   * Cualquier error sale por context.registroPendienteError (banner abajo).
    */
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
-    clearRegistroPendienteError() // limpiar banner viejo si lo hay
     setSubmitting(true)
     try {
       const { error: signInError } = await withTimeout(
@@ -88,9 +65,8 @@ export function Login() {
         setError(traducirErrorAuth(signInError, 'No se pudo iniciar sesión. Intenta nuevamente.'))
         return
       }
-      // useAuth.onAuthStateChange (SIGNED_IN) se dispara aqui:
-      // 1. Si hay sessionStorage pendiente: INSERT paciente + UPSERT link
-      // 2. Luego loadPerfil -> paciente cargado -> redirect via if (user)
+      // useAuth.onAuthStateChange (SIGNED_IN) carga el perfil y el redirect
+      // por rol de arriba (if (user)) hace el resto.
     } catch (err) {
       if (err instanceof TimeoutError) {
         setError('El servidor tardó demasiado en responder. Verifica tu conexión e intenta de nuevo.')
@@ -111,7 +87,7 @@ export function Login() {
           Accede a tu cuenta para agendar y consultar tus citas.
         </p>
 
-        {/* Bug B-20: banner verde cuando viene del registro exitoso */}
+        {/* Banner verde cuando el registro termino sin sesion activa */}
         {fromRegistro && (
           <div
             role="status"
@@ -128,24 +104,6 @@ export function Login() {
             className="mt-4 rounded-lg border border-helios-primary/30 bg-helios-primary/10 px-4 py-3 text-sm text-helios-deep"
           >
             <strong>Contraseña actualizada.</strong> Inicia sesión con tu contraseña nueva.
-          </div>
-        )}
-
-        {/*
-          Bug B-20.3: banner rojo si completarRegistroPendiente fallo en
-          useAuth.onAuthStateChange. Muestra el error real (RLS rejected,
-          cedula duplicada, timeout, etc) para diagnostico en pantalla.
-        */}
-        {registroPendienteError && (
-          <div
-            role="alert"
-            className="mt-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            <strong>No pudimos completar tu registro automaticamente.</strong>
-            <br />
-            Detalle: <code className="text-xs">{registroPendienteError}</code>
-            <br />
-            Intenta iniciar sesión nuevamente o avisa al soporte.
           </div>
         )}
 

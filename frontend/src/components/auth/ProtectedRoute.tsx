@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { LoadingSpinner } from '../shared/LoadingSpinner'
+import { CuentaIncompleta } from './CuentaIncompleta'
 import type { Role } from '../../lib/types'
 
 interface ProtectedRouteProps {
@@ -9,7 +10,7 @@ interface ProtectedRouteProps {
    * - Sin prop: cualquier autenticado entra (compat con rutas existentes /agendar y /mis-citas)
    * - 'paciente': solo pacientes; medico redirect a /medico
    * - 'medico': solo medicos; paciente redirect a /agendar
-   * - null (sin perfil): redirect a /registro
+   * - cualquier rol requerido: una cuenta sin perfil ve <CuentaIncompleta />
    */
   requireRole?: Role
 }
@@ -32,9 +33,8 @@ export function ProtectedRoute({ requireRole }: ProtectedRouteProps = {}) {
 
   /**
    * Bug B-17: si loadPerfil termino con error (timeout, RLS, red), NO
-   * redirigir ciegamente a /registro como si fuera un paciente nuevo.
-   * Mostrar mensaje claro con boton "Reintentar" para que el usuario
-   * (especialmente medicos) no caiga en el form "Completa tu perfil".
+   * asumir que la cuenta no tiene perfil. Mostrar mensaje claro con boton
+   * "Reintentar".
    */
   if (loadPerfilFailed) {
     return (
@@ -66,8 +66,8 @@ export function ProtectedRoute({ requireRole }: ProtectedRouteProps = {}) {
   if (requireRole && role !== requireRole) {
     if (role === 'medico') return <Navigate to="/medico" replace />
     if (role === 'paciente') return <Navigate to="/agendar" replace />
-    // role === null: usuario auth sin perfil → completar registro
-    return <Navigate to="/registro" replace />
+    // role === null: sesion sin perfil (caso excepcional) → pantalla con salida
+    return <CuentaIncompleta />
   }
 
   return <Outlet />
