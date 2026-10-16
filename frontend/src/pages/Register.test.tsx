@@ -1,19 +1,28 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { TimeoutError } from '../lib/withTimeout'
 
-const { fromMock, rpcMock, signUpMock, signOutMock, refreshPerfilMock, navigateMock } = vi.hoisted(
+const {
+  fromMock,
+  rpcMock,
+  signUpMock,
+  refreshPerfilMock,
+  navigateMock,
+  signOutAuthMock,
+  authOverride,
+} = vi.hoisted(
   () => ({
+    // Contexto de auth mutable: permite simular sesion con/sin paciente.
+    authOverride: { value: {} as Record<string, unknown> },
+    signOutAuthMock: vi.fn().mockResolvedValue(undefined),
     fromMock: vi.fn(),
     // CU-01: los pre-chequeos de cédula/correo son RPC anónimos (boolean).
     rpcMock: vi.fn(),
     signUpMock: vi.fn(),
-    // Bug B-20.1: signOut tras signUp para forzar re-login manual.
-    signOutMock: vi.fn().mockResolvedValue({ error: null }),
     refreshPerfilMock: vi.fn().mockResolvedValue(undefined),
-    // Bug B-20: verificamos que Register navega a /login con el state correcto.
+    // Verificamos que Register navega a /login (sin sesion) con el state correcto.
     navigateMock: vi.fn(),
   }),
 )
@@ -22,7 +31,7 @@ vi.mock('../lib/supabase', () => ({
   supabase: {
     from: fromMock,
     rpc: rpcMock,
-    auth: { signUp: signUpMock, signOut: signOutMock },
+    auth: { signUp: signUpMock },
   },
 }))
 
@@ -34,8 +43,9 @@ vi.mock('../hooks/useAuth', () => ({
     session: null,
     loading: false,
     loadPerfilFailed: false,
-    signOut: vi.fn(),
+    signOut: signOutAuthMock,
     refreshPerfil: refreshPerfilMock,
+    ...authOverride.value,
   }),
 }))
 
@@ -102,11 +112,6 @@ function mockCedulaLibre() {
 describe('<Register />', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    sessionStorage.clear()
-  })
-
-  afterEach(() => {
-    sessionStorage.clear()
   })
 
   it('renderiza todos los campos del formulario (incluye confirmaciones)', () => {
@@ -157,10 +162,41 @@ describe('<Register />', () => {
   })
 
   /**
-   * Bug B-20 happy path (actualizado B-23/B-24): tras signUp exitoso,
-   * Register guarda los datos en sessionStorage y redirige a /login.
+   * Registro automatico: los datos del paciente viajan en options.data del
+   * signUp (un trigger de la base crea paciente + vinculo). Register ya NO
+   * inserta nada en tablas ni usa sessionStorage.
    */
-  it('B-20: registro nuevo guarda datos en sessionStorage y redirige a /login', async () => {
+  it('signUp envia nombre/cedula/telefono como metadata y NO inserta paciente desde el cliente', async () => {
+    mockCedulaLibre()
+    signUpMock.mockResolvedValue({
+      data: { user: { id: 'auth-uid-xyz' }, session: null },
+      error: null,
+    })
+
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user, { correo: 'Ana@Test.com' })
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+
+    await vi.waitFor(() => {
+      expect(signUpMock).toHaveBeenCalledWith({
+        email: 'ana@test.com',
+        password: 'segura123',
+        options: {
+          data: { nombre: 'Ana López', cedula: '8-123-4567', telefono: '6000-0000' },
+        },
+      })
+    })
+    // Nada de escrituras desde el cliente ni de estado en sessionStorage.
+    expect(fromMock).not.toHaveBeenCalled()
+    expect(sessionStorage.length).toBe(0)
+  })
+
+  it('sin sesion tras el signUp (confirmacion de correo): redirige a /login con banner', async () => {
     mockCedulaLibre()
     signUpMock.mockResolvedValue({
       data: { user: { id: 'auth-uid-xyz' }, session: null },
@@ -177,29 +213,54 @@ describe('<Register />', () => {
     await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
 
     await vi.waitFor(() => {
-      expect(signUpMock).toHaveBeenCalledWith({
-        email: 'ana@test.com',
-        password: 'segura123',
+      expect(navigateMock).toHaveBeenCalledWith('/login', {
+        replace: true,
+        state: { registroExitoso: true, email: 'ana@test.com' },
       })
     })
-    await vi.waitFor(() => {
-      expect(signOutMock).toHaveBeenCalled()
+  })
+
+  it('con sesion tras el signUp: NO navega a /login y deja el boton ocupado hasta que useAuth cargue el perfil', async () => {
+    mockCedulaLibre()
+    signUpMock.mockResolvedValue({
+      data: { user: { id: 'auth-uid-xyz' }, session: { access_token: 't' } },
+      error: null,
     })
 
-    const pendienteJson = sessionStorage.getItem('helios_pending_paciente')
-    expect(pendienteJson).not.toBeNull()
-    expect(JSON.parse(pendienteJson!)).toEqual({
-      nombre: 'Ana López',
-      cedula: '8-123-4567',
-      telefono: '6000-0000',
-      correo: 'ana@test.com',
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user)
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+
+    await vi.waitFor(() => expect(signUpMock).toHaveBeenCalled())
+    expect(navigateMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /Creando cuenta/ })).toBeDisabled()
+  })
+
+  it('si el trigger rechaza (cedula/correo repetidos) muestra mensaje claro y rehabilita el boton', async () => {
+    mockCedulaLibre()
+    signUpMock.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'Database error saving new user', status: 500 },
     })
 
-    expect(navigateMock).toHaveBeenCalledWith('/login', {
-      replace: true,
-      state: { registroExitoso: true, email: 'ana@test.com' },
-    })
-    expect(refreshPerfilMock).not.toHaveBeenCalled()
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Register />
+      </MemoryRouter>,
+    )
+    await llenarRegistro(user)
+    await user.click(screen.getByRole('button', { name: /Crear cuenta/ }))
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta).toHaveTextContent(/No se pudo crear la cuenta/)
+    expect(alerta).not.toHaveTextContent(/Database error/)
+    expect(screen.getByRole('button', { name: /Crear cuenta/ })).not.toBeDisabled()
   })
 
   /**
@@ -312,7 +373,7 @@ describe('<Register />', () => {
     expect(rpcMock).toHaveBeenCalledWith('cedula_ya_registrada', { p_cedula: '8-123-4567' })
     expect(signUpMock).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: /Crear cuenta/ })).not.toBeDisabled()
-    expect(sessionStorage.getItem('helios_pending_paciente')).toBeNull()
+    expect(sessionStorage.length).toBe(0)
   })
 
   /** CA-01-01 / CU-01 2.3.1: campos obligatorios vacíos → mensaje del documento. */
@@ -406,7 +467,7 @@ describe('<Register />', () => {
     // El correo se normaliza (trim + minúsculas) antes de consultar.
     expect(rpcMock).toHaveBeenCalledWith('correo_ya_registrado', { p_correo: 'ana@test.com' })
     expect(signUpMock).not.toHaveBeenCalled()
-    expect(sessionStorage.getItem('helios_pending_paciente')).toBeNull()
+    expect(sessionStorage.length).toBe(0)
   })
 
   /**
@@ -448,5 +509,71 @@ describe('<Register />', () => {
 
       expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo completar el registro\. Intenta nuevamente\./)
     })
+  })
+})
+
+describe('<Register /> — con sesión iniciada (ya no hay "Completa tu perfil")', () => {
+  const sesion = { id: 'auth-1', email: 'azul@test.com' }
+
+  function renderConRutas() {
+    return render(
+      <MemoryRouter initialEntries={['/registro']}>
+        <Routes>
+          <Route path="/registro" element={<Register />} />
+          <Route path="/agendar" element={<div>PANTALLA AGENDAR</div>} />
+          <Route path="/medico" element={<div>PANTALLA MEDICO</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    authOverride.value = {}
+  })
+
+  it('usuario con paciente va directo a /agendar (sin formulario)', () => {
+    authOverride.value = { user: sesion, paciente: { id: 'p1' }, role: 'paciente' }
+    renderConRutas()
+    expect(screen.getByText('PANTALLA AGENDAR')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Nombre completo')).not.toBeInTheDocument()
+  })
+
+  it('medico va a /medico', () => {
+    authOverride.value = { user: sesion, role: 'medico' }
+    renderConRutas()
+    expect(screen.getByText('PANTALLA MEDICO')).toBeInTheDocument()
+  })
+
+  it('sesion SIN perfil muestra "No encontramos tu perfil" y NUNCA un formulario para completarlo', () => {
+    authOverride.value = { user: sesion }
+    renderConRutas()
+    expect(screen.getByText('No encontramos tu perfil')).toBeInTheDocument()
+    expect(screen.queryByText('Completa tu perfil de paciente')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Nombre completo')).not.toBeInTheDocument()
+  })
+
+  it('"Cerrar sesión" cierra la sesion y vuelve a /login', async () => {
+    authOverride.value = { user: sesion }
+    const user = userEvent.setup()
+    renderConRutas()
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
+
+    expect(signOutAuthMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/login', { replace: true })
+  })
+
+  it('si loadPerfil fallo muestra "Reintentar" en vez de asumir que no hay perfil', async () => {
+    authOverride.value = { user: sesion, loadPerfilFailed: true }
+    const user = userEvent.setup()
+    renderConRutas()
+
+    expect(screen.queryByText('No encontramos tu perfil')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+    expect(refreshPerfilMock).toHaveBeenCalledTimes(1)
   })
 })

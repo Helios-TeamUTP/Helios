@@ -6,7 +6,7 @@ import { TimeoutError } from '../lib/withTimeout'
 
 const { signInMock, getUserMock, getSessionMock, fromMock, refreshPerfilMock } = vi.hoisted(() => ({
   signInMock: vi.fn(),
-  // Bug B-20: getUser + from son necesarios para completarRegistroPendiente
+  // getUser + from: Login no debe usarlos (lo verifica el happy path)
   getUserMock: vi.fn(),
   // Bug B-20.2: getSession se llama para polling JWT propagado antes de
   // hacer queries que dependen de auth.uid() en RLS.
@@ -30,11 +30,8 @@ vi.mock('../lib/supabase', () => ({
 
 // Mock useAuth para que los tests del formulario no requieran AuthProvider.
 // Sin sesión = mostrar el form de login normalmente.
-// Bug B-20.3: incluimos registroPendienteError y clearRegistroPendienteError
-// porque Login los consume del context (para el banner rojo de diagnostico).
-const { useAuthMock, clearRegistroPendienteErrorMock } = vi.hoisted(() => ({
+const { useAuthMock } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
-  clearRegistroPendienteErrorMock: vi.fn(),
 }))
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => useAuthMock(),
@@ -53,16 +50,15 @@ describe('<Login />', () => {
     getSessionMock.mockResolvedValue({
       data: { session: { access_token: 't', user: { id: 'auth-default' } } },
     })
-    // B-20.3: useAuth default - sin sesion, sin error de registro pendiente
+    // useAuth default - sin sesion
     useAuthMock.mockReturnValue({
       user: null,
       paciente: null,
+      role: null,
       session: null,
       loading: false,
-      registroPendienteError: null,
       signOut: vi.fn(),
       refreshPerfil: refreshPerfilMock,
-      clearRegistroPendienteError: clearRegistroPendienteErrorMock,
     })
   })
 
@@ -207,25 +203,20 @@ describe('<Login />', () => {
   })
 
   /**
-   * Bug B-20.3: completarRegistroPendiente fue movida a useAuth.tsx
-   * (onAuthStateChange handler) para eliminar el race condition que dejaba
-   * paciente=null tras crear el link. Login.tsx ya NO ejecuta esa logica.
-   * Aqui solo verificamos:
-   *   - Login muestra el banner rojo si registroPendienteError viene del context
-   *   - Login llama clearRegistroPendienteError al re-enviar el form
-   *   - El happy path sigue funcionando (signIn delega a useAuth)
+   * Registro automatico: ya no existe "Completa tu perfil". Una sesion valida
+   * sin perfil (caso excepcional) muestra una pantalla con salida, y el login
+   * normal delega todo a useAuth (Login no toca la tabla de pacientes).
    */
-  describe('B-20.3: errores de registro pendiente vienen de useAuth', () => {
-    it('muestra el banner rojo si registroPendienteError viene del context', () => {
+  describe('sesion sin perfil y delegacion a useAuth', () => {
+    it('sesion sin perfil muestra "No encontramos tu perfil" con boton para cerrar sesion', () => {
       useAuthMock.mockReturnValue({
-        user: null,
+        user: { id: 'auth-1', email: 'sinperfil@test.com' },
         paciente: null,
-        session: null,
+        role: null,
+        session: { access_token: 't' },
         loading: false,
-        registroPendienteError: 'crear paciente: duplicate key value violates unique constraint',
         signOut: vi.fn(),
         refreshPerfil: refreshPerfilMock,
-        clearRegistroPendienteError: clearRegistroPendienteErrorMock,
       })
 
       render(
@@ -233,37 +224,14 @@ describe('<Login />', () => {
           <Login />
         </MemoryRouter>,
       )
-      const alert = screen.getByRole('alert')
-      expect(alert).toHaveTextContent(/No pudimos completar tu registro/)
-      expect(alert).toHaveTextContent(/duplicate key value/)
+      expect(screen.getByText('No encontramos tu perfil')).toBeInTheDocument()
+      expect(screen.getByText('sinperfil@test.com')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument()
+      // No hay formulario de login ni de "completar perfil".
+      expect(screen.queryByLabelText('Correo electrónico')).not.toBeInTheDocument()
     })
 
-    it('llama clearRegistroPendienteError al re-enviar el form de login', async () => {
-      useAuthMock.mockReturnValue({
-        user: null,
-        paciente: null,
-        session: null,
-        loading: false,
-        registroPendienteError: 'algun error previo',
-        signOut: vi.fn(),
-        refreshPerfil: refreshPerfilMock,
-        clearRegistroPendienteError: clearRegistroPendienteErrorMock,
-      })
-
-      const user = userEvent.setup()
-      render(
-        <MemoryRouter>
-          <Login />
-        </MemoryRouter>,
-      )
-      await user.type(screen.getByLabelText('Correo electrónico'), 'a@b.com')
-      await user.type(screen.getByLabelText('Contraseña'), 'segura123')
-      await user.click(screen.getByRole('button', { name: /Iniciar sesión/ }))
-
-      expect(clearRegistroPendienteErrorMock).toHaveBeenCalled()
-    })
-
-    it('happy path: signIn se llama y NO se hace insert paciente desde Login (vive en useAuth)', async () => {
+    it('happy path: signIn se llama y Login NO toca la base (el perfil lo carga useAuth)', async () => {
       signInMock.mockResolvedValue({
         data: { user: { id: 'auth-1' }, session: { access_token: 't' } },
         error: null,
@@ -280,8 +248,6 @@ describe('<Login />', () => {
       await user.click(screen.getByRole('button', { name: /Iniciar sesión/ }))
 
       await vi.waitFor(() => expect(signInMock).toHaveBeenCalled())
-      // Login NO llama supabase.from ni getUser — eso es responsabilidad
-      // de useAuth.onAuthStateChange ahora (B-20.3).
       expect(fromMock).not.toHaveBeenCalled()
       expect(getUserMock).not.toHaveBeenCalled()
     })
