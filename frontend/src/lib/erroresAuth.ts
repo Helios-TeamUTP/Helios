@@ -16,6 +16,10 @@ export const MSG_CORREO_SIN_CONFIRMAR =
   'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.'
 export const MSG_DEMASIADOS_INTENTOS =
   'Demasiados intentos. Espera unos minutos e intenta de nuevo.'
+// El trigger que crea el paciente al registrarse rechaza cedula/correo repetidos;
+// GoTrue lo reporta como "Database error saving new user".
+export const MSG_REGISTRO_RECHAZADO =
+  'No se pudo crear la cuenta. Verifica que tu cédula y tu correo no estén ya registrados e intenta nuevamente.'
 
 interface ErrorAuthLike {
   message?: string
@@ -35,6 +39,9 @@ export function traducirErrorAuth(error: ErrorAuthLike, fallback: string): strin
   }
   if (code === 'email_not_confirmed' || /email not confirmed/i.test(msg)) {
     return MSG_CORREO_SIN_CONFIRMAR
+  }
+  if (/database error saving new user/i.test(msg)) {
+    return MSG_REGISTRO_RECHAZADO
   }
   if (
     error.status === 429 ||

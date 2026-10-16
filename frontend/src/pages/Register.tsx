@@ -13,6 +13,7 @@ import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { AUTH_TIMEOUT_MS, TimeoutError, withTimeout } from '../lib/withTimeout'
 import { traducirErrorAuth } from '../lib/erroresAuth'
+import { CuentaIncompleta } from '../components/auth/CuentaIncompleta'
 
 // CU-01 flujo 2.3.6: mensaje genérico cuando el registro falla o no responde.
 const MSG_REGISTRO_FALLIDO = 'No se pudo completar el registro. Intenta nuevamente.'
@@ -44,25 +45,22 @@ export function Register() {
     )
   }
 
-  // Caso 2: usuario completamente registrado (auth + paciente) -> ir a agendar
+  // Caso 2: usuario con cuenta y perfil de paciente -> ir a agendar. Tambien es
+  // el destino tras registrarse: el trigger de la base ya creo el paciente, asi
+  // que en cuanto useAuth carga el perfil este redirect lleva a /agendar.
   if (user && paciente) {
     return <Navigate to="/agendar" replace />
   }
 
   // Bug B-16: si el user es medico (no paciente), redirigir a /medico.
-  // Sin esto, un medico que caia en /registro por accidente (race condition
-  // post-login antes de que role estuviera calculado) veia el form de
-  // "Completa tu perfil" confuso.
   if (user && role === 'medico') {
     return <Navigate to="/medico" replace />
   }
 
   /**
    * Bug B-17: si loadPerfil fallo (timeout, error de red, RLS rota), NO
-   * asumir que es un paciente nuevo que debe completar perfil. Mostrar
-   * mensaje de error claro con boton reintentar. Sin esto, un medico cuyo
-   * loadPerfil fallaba caia aqui y veia "Completa tu perfil de paciente",
-   * lo cual era falso (el ya tiene perfil de medico).
+   * asumir nada sobre el perfil. Mostrar mensaje de error claro con boton
+   * reintentar.
    */
   if (user && loadPerfilFailed) {
     return (
@@ -89,8 +87,11 @@ export function Register() {
     )
   }
 
-  // Caso 3: tiene auth pero NO tiene paciente -> completar perfil
-  const isCompletingProfile = !!user && !paciente
+  // Sesion activa sin perfil de paciente ni de medico (caso excepcional). Ya no
+  // hay formulario "Completa tu perfil": el perfil se crea al registrarse.
+  if (user) {
+    return <CuentaIncompleta />
+  }
 
   const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -100,9 +101,7 @@ export function Register() {
 
   /**
    * Bug B-10 fix: try/catch/finally + withTimeout en TODAS las llamadas a
-   * Supabase garantiza que setSubmitting(false) siempre corra y que el
-   * spinner nunca quede eterno si Supabase tarda. Sin esto, cualquiera
-   * de los 5 awaits podía colgarse y dejar el botón disabled para siempre.
+   * Supabase garantiza que el spinner nunca quede eterno si Supabase tarda.
    */
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -115,13 +114,9 @@ export function Register() {
       ['nombre completo', form.nombre],
       ['cédula', form.cedula],
       ['confirmar cédula', form.cedulaConfirm],
-      ...(isCompletingProfile
-        ? []
-        : ([
-            ['correo electrónico', form.correo],
-            ['contraseña', form.password],
-            ['confirmar contraseña', form.passwordConfirm],
-          ] as Array<[string, string]>)),
+      ['correo electrónico', form.correo],
+      ['contraseña', form.password],
+      ['confirmar contraseña', form.passwordConfirm],
     ]
     const faltante = obligatorios.find(([, valor]) => !valor.trim())
     if (faltante) {
@@ -158,25 +153,27 @@ export function Register() {
       return
     }
 
-    if (!isCompletingProfile) {
-      // B-24: correo con formato válido (refuerza el type=email).
-      if (!validarEmail(form.correo)) {
-        setError('Correo electrónico inválido. Revisa el formato (ej: nombre@correo.com).')
-        return
-      }
-      // Contraseña: mínimo 6 caracteres y debe coincidir con su confirmación.
-      if (form.password.length < 6) {
-        setError('La contraseña debe tener al menos 6 caracteres.')
-        return
-      }
-      // B-23: doble confirmación de contraseña.
-      if (form.password !== form.passwordConfirm) {
-        setError('La contraseña no coincide con la confirmación. Verifica que las escribiste igual.')
-        return
-      }
+    // B-24: correo con formato válido (refuerza el type=email).
+    if (!validarEmail(form.correo)) {
+      setError('Correo electrónico inválido. Revisa el formato (ej: nombre@correo.com).')
+      return
+    }
+    // Contraseña: mínimo 6 caracteres y debe coincidir con su confirmación.
+    if (form.password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.')
+      return
+    }
+    // B-23: doble confirmación de contraseña.
+    if (form.password !== form.passwordConfirm) {
+      setError('La contraseña no coincide con la confirmación. Verifica que las escribiste igual.')
+      return
     }
 
     setSubmitting(true)
+    // true cuando el registro quedo con sesion: el boton sigue ocupado hasta que
+    // useAuth cargue el perfil y este componente redirija (nunca se vuelve a ver
+    // el formulario: ver los early returns de arriba).
+    let esperandoPerfil = false
     try {
       // Verificar si la cédula ya está en uso por otro paciente.
       // CU-01 (CA-01-04): este chequeo corre SIN sesión, y la lectura pública de
@@ -192,140 +189,58 @@ export function Register() {
         return
       }
 
+      // Bug B-02: verificar el CORREO antes de crear la cuenta auth (igual que
+      // la cédula). Mismo motivo: RPC anónimo `correo_ya_registrado` (boolean).
+      const correoNorm = form.correo.trim().toLowerCase()
+      const { data: correoYaRegistrado } = await withTimeout(
+        supabase.rpc('correo_ya_registrado', { p_correo: correoNorm }),
+        AUTH_TIMEOUT_MS,
+      )
+      if (correoYaRegistrado) {
+        setError('Ya existe una cuenta con este correo. Inicia sesión.')
+        return
+      }
+
       /**
-       * Bug B-20: separar registro de login para evitar el bug del session=null.
-       *
-       * Caso A — NUEVO USUARIO (NO isCompletingProfile):
-       *   1. signUp en auth.users (sin importar si session viene null o no)
-       *   2. Guardar nombre/cedula/telefono/correo en sessionStorage
-       *   3. Redirect a /login con state {registroExitoso, email}
-       *   4. Login.tsx hace el insert paciente + link tras signInWithPassword
-       *      (cuando ya hay JWT garantizado, sin race con la sesion)
-       *
-       * Caso B — COMPLETAR PERFIL (isCompletingProfile, caso B-04):
-       *   1. Usuario ya tiene auth.users + JWT activo
-       *   2. Insert paciente + upsert link directamente (RLS pasa por auth.uid)
-       *   3. refreshPerfil + navigate a /agendar
+       * Registro = cuenta + paciente, en un solo paso. Los datos del paciente
+       * viajan en `options.data` (raw_user_meta_data) y un trigger de la base
+       * (`crear_paciente_desde_signup`) crea el paciente y su vinculo en la
+       * MISMA transaccion que la cuenta. Reemplaza el flujo anterior (B-20.x:
+       * sessionStorage + insert desde el cliente tras el login), que dependia
+       * de la sesion y de RLS del lado del cliente.
        */
+      const { data: authData, error: authError } = await withTimeout(
+        supabase.auth.signUp({
+          email: correoNorm,
+          password: form.password,
+          options: {
+            data: {
+              nombre: form.nombre.trim(),
+              cedula: cedulaNorm,
+              telefono: form.telefono.trim() || null,
+            },
+          },
+        }),
+        AUTH_TIMEOUT_MS,
+      )
+      if (authError || !authData.user) {
+        setError(traducirErrorAuth(authError ?? {}, MSG_REGISTRO_FALLIDO))
+        return
+      }
 
-      if (!isCompletingProfile) {
-        // Bug B-02: verificar el CORREO antes de crear la cuenta auth (igual que
-        // ya se verifica la cédula). Evita dejar una cuenta auth.users huérfana
-        // cuando el correo ya pertenece a otro paciente: cortamos antes del signUp.
-        // Mismo motivo que la cédula: RPC anónimo `correo_ya_registrado` (boolean).
-        const { data: correoYaRegistrado } = await withTimeout(
-          supabase.rpc('correo_ya_registrado', {
-            p_correo: form.correo.trim().toLowerCase(),
-          }),
-          AUTH_TIMEOUT_MS,
-        )
-        if (correoYaRegistrado) {
-          setError('Ya existe una cuenta con este correo. Inicia sesión.')
-          return
-        }
-
-        // Caso A: nuevo usuario
-        const { data: authData, error: authError } = await withTimeout(
-          supabase.auth.signUp({
-            email: form.correo,
-            password: form.password,
-          }),
-          AUTH_TIMEOUT_MS,
-        )
-        if (authError || !authData.user) {
-          setError(traducirErrorAuth(authError ?? {}, MSG_REGISTRO_FALLIDO))
-          return
-        }
-
-        // Guardar datos para que Login.tsx complete el perfil tras signIn.
-        // Usamos sessionStorage (no localStorage) porque solo necesita
-        // sobrevivir el redirect /registro -> /login, no entre sesiones.
-        const pendiente = {
-          nombre: form.nombre.trim(),
-          cedula: cedulaNorm,
-          telefono: form.telefono.trim() || null,
-          correo: form.correo.trim().toLowerCase(),
-        }
-        sessionStorage.setItem('helios_pending_paciente', JSON.stringify(pendiente))
-
-        /**
-         * Bug B-20.1: cuando Supabase tiene email confirmation DESACTIVADA
-         * (caso HELIOS demo), signUp devuelve sesion activa inmediatamente
-         * (auto-login). Eso hace que useAuth detecte `user` y Login.tsx
-         * redirija a /registro mostrando "Completa tu perfil" SIN ejecutar
-         * completarRegistroPendiente() (que solo corre tras signInWithPassword
-         * manual en el handleSubmit). Resultado: el usuario queda autenticado
-         * sin paciente, viendo el form de completar — bug regresivo.
-         *
-         * Fix: signOut explicito para limpiar la sesion auto-creada por
-         * signUp. Asi Login.tsx renderiza el form normal con banner verde,
-         * el usuario ingresa password, signInWithPassword OK, y entonces
-         * SI corre completarRegistroPendiente() que crea paciente + link.
-         */
-        try {
-          await withTimeout(supabase.auth.signOut(), AUTH_TIMEOUT_MS)
-        } catch {
-          // No bloqueante. Si signOut falla, completarRegistroPendiente
-          // tiene su propio fallback en Login.tsx (caso edge raro).
-        }
-
+      // Sin sesion (p. ej. si se activa la confirmacion de correo): la cuenta y
+      // el paciente ya existen; al iniciar sesion podra agendar de inmediato.
+      if (!authData.session) {
         navigate('/login', {
           replace: true,
-          state: {
-            registroExitoso: true,
-            email: form.correo.trim().toLowerCase(),
-          },
+          state: { registroExitoso: true, email: correoNorm },
         })
-        return // El flujo continua en Login.tsx tras signInWithPassword
-      }
-
-      // Caso B: isCompletingProfile (B-04). Usuario ya tiene JWT activo.
-      if (!user) {
-        setError('Sesión no disponible. Cierra sesión e intenta de nuevo.')
-        return
-      }
-      const authUid = user.id
-      const correoFinal = user.email ?? form.correo.trim().toLowerCase()
-
-      // Crear paciente
-      const { data: pac, error: pacError } = await withTimeout(
-        supabase
-          .from('pacientes')
-          .insert({
-            nombre: form.nombre.trim(),
-            cedula: cedulaNorm,
-            telefono: form.telefono.trim() || null,
-            correo: correoFinal,
-          })
-          .select()
-          .single(),
-        AUTH_TIMEOUT_MS,
-      )
-      if (pacError || !pac) {
-        setError(pacError?.message ?? 'No se pudo crear el paciente.')
         return
       }
 
-      // Vincular auth con paciente (upsert por si ya existe)
-      const { error: linkError } = await withTimeout(
-        supabase
-          .from('auth_paciente_link')
-          .upsert({ auth_uid: authUid, paciente_id: pac.id }, { onConflict: 'auth_uid' }),
-        AUTH_TIMEOUT_MS,
-      )
-      if (linkError) {
-        setError(linkError.message)
-        return
-      }
-
-      // Bug B-20: limpiar sessionStorage si quedo data residual de un
-      // intento previo (caso edge: usuario completo perfil despues de
-      // dias y la sessionStorage de aquel registro vieja sigue ahi).
-      sessionStorage.removeItem('helios_pending_paciente')
-
-      // Refrescar contexto de auth para que paciente quede disponible
-      await withTimeout(refreshPerfil(), AUTH_TIMEOUT_MS)
-      navigate('/agendar', { replace: true })
+      // Con sesion: useAuth (onAuthStateChange) carga el perfil y el redirect
+      // "user && paciente" de arriba lleva a /agendar.
+      esperandoPerfil = true
     } catch (err) {
       if (err instanceof TimeoutError) {
         setError(`${MSG_REGISTRO_FALLIDO} El servidor tardó demasiado en responder.`)
@@ -334,29 +249,17 @@ export function Register() {
         setError(MSG_REGISTRO_FALLIDO)
       }
     } finally {
-      setSubmitting(false)
+      if (!esperandoPerfil) setSubmitting(false)
     }
   }
 
   return (
     <div className="mx-auto max-w-lg">
       <div className="card">
-        {isCompletingProfile ? (
-          <>
-            <h1 className="text-2xl font-bold text-helios-ink">Completa tu perfil de paciente</h1>
-            <p className="mt-1 text-sm text-helios-ink/60">
-              Detectamos que tu cuenta <strong>{user?.email}</strong> no tiene perfil de paciente.
-              Solo necesitamos tu nombre y cédula para terminar el registro.
-            </p>
-          </>
-        ) : (
-          <>
-            <h1 className="text-2xl font-bold text-helios-ink">Crear cuenta</h1>
-            <p className="mt-1 text-sm text-helios-ink/60">
-              Solo necesitamos tus datos básicos para registrarte como paciente HELIOS.
-            </p>
-          </>
-        )}
+        <h1 className="text-2xl font-bold text-helios-ink">Crear cuenta</h1>
+        <p className="mt-1 text-sm text-helios-ink/60">
+          Solo necesitamos tus datos básicos para registrarte como paciente HELIOS.
+        </p>
         <form
           onSubmit={handleSubmit}
           noValidate
@@ -440,58 +343,54 @@ export function Register() {
               placeholder="6000-0000"
             />
           </div>
-          {!isCompletingProfile && (
-            <>
-              <div className="sm:col-span-2">
-                <label htmlFor="correo" className="label">
-                  Correo electrónico
-                </label>
-                <input
-                  id="correo"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={form.correo}
-                  onChange={update('correo')}
-                  className="input"
-                  placeholder="nombre@correo.com"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label htmlFor="password" className="label">
-                  Contraseña
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  value={form.password}
-                  onChange={update('password')}
-                  className="input"
-                  placeholder="Mínimo 6 caracteres"
-                />
-              </div>
-              {/* B-23: confirmación de contraseña (debe coincidir). */}
-              <div className="sm:col-span-2">
-                <label htmlFor="passwordConfirm" className="label">
-                  Confirmar contraseña
-                </label>
-                <input
-                  id="passwordConfirm"
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  value={form.passwordConfirm}
-                  onChange={update('passwordConfirm')}
-                  className="input"
-                  placeholder="Escribe la contraseña de nuevo"
-                />
-              </div>
-            </>
-          )}
+          <div className="sm:col-span-2">
+            <label htmlFor="correo" className="label">
+              Correo electrónico
+            </label>
+            <input
+              id="correo"
+              type="email"
+              required
+              autoComplete="email"
+              value={form.correo}
+              onChange={update('correo')}
+              className="input"
+              placeholder="nombre@correo.com"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="password" className="label">
+              Contraseña
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              minLength={6}
+              autoComplete="new-password"
+              value={form.password}
+              onChange={update('password')}
+              className="input"
+              placeholder="Mínimo 6 caracteres"
+            />
+          </div>
+          {/* B-23: confirmación de contraseña (debe coincidir). */}
+          <div className="sm:col-span-2">
+            <label htmlFor="passwordConfirm" className="label">
+              Confirmar contraseña
+            </label>
+            <input
+              id="passwordConfirm"
+              type="password"
+              required
+              minLength={6}
+              autoComplete="new-password"
+              value={form.passwordConfirm}
+              onChange={update('passwordConfirm')}
+              className="input"
+              placeholder="Escribe la contraseña de nuevo"
+            />
+          </div>
           {error && (
             <div className="sm:col-span-2">
               <ErrorMessage message={error} />
@@ -499,23 +398,15 @@ export function Register() {
           )}
           <div className="sm:col-span-2">
             <button type="submit" disabled={submitting} className="btn-primary w-full">
-              {submitting
-                ? isCompletingProfile
-                  ? 'Guardando…'
-                  : 'Creando cuenta…'
-                : isCompletingProfile
-                  ? 'Completar perfil'
-                  : 'Crear cuenta'}
+              {submitting ? 'Creando cuenta…' : 'Crear cuenta'}
             </button>
           </div>
         </form>
-        {!isCompletingProfile && (
-          <p className="mt-4 text-center text-sm text-helios-ink/60">
-            <Link to="/login" className="font-semibold text-helios-primary hover:underline">
-              Ya tengo cuenta
-            </Link>
-          </p>
-        )}
+        <p className="mt-4 text-center text-sm text-helios-ink/60">
+          <Link to="/login" className="font-semibold text-helios-primary hover:underline">
+            Ya tengo cuenta
+          </Link>
+        </p>
       </div>
     </div>
   )
