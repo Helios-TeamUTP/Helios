@@ -1,216 +1,68 @@
 # 🧠 CONTEXTO DE LA ÚLTIMA SESIÓN — Memoria viva de HELIOS
 
-> **LEE ESTE ARCHIVO PRIMERO** al abrir una nueva sesión de Claude Code en `helios-repo`.
-> Contiene el estado exacto donde se quedó la sesión anterior y lo que falta hacer.
+> **LEE ESTE ARCHIVO PRIMERO** al abrir una sesión de Claude en el repo.
+> Es el estado exacto donde se quedó la última sesión. Lo detallado de cada bug vive en la tabla de `CLAUDE.md`.
 >
-> **Última actualización:** 2026-05-28 — sesión que cerró B-17, B-18, B-19, B-20 (cadena de 4 iteraciones B-20/.1/.2/.3 hasta el fix definitivo). Sprint 1 OFICIALMENTE CERRADO. Demo lista para viernes 29.
+> **Última actualización:** 2026-10-16 (viernes). **Demo con la profesora de Mantenimiento: lunes 19-oct-2026.**
 
 ---
 
-## 🟢 ESTADO ACTUAL — Sprint 1 CERRADO
+## 🟢 Estado verificado (16-oct-2026)
 
-- **Producción:** `https://helios-web-production.up.railway.app` (HTTP 200, ACTIVE)
-- **Branch principal:** `sprint1/bootstrap` (último commit `0cfc5b0` docs B-20)
-- **Tests:** 65/65 pasando ✅
-- **Build:** limpio (754 KB / 217 KB gzip)
-- **Cobertura:** 61.4% statements / 82% lines / 90.9% functions
-- **Bugs Sprint 1:** 20 detectados + 20 resueltos (cero pendientes)
-- **Flow E2E:** Registro → Login → Agendar Cita = funciona end-to-end con paciente automático
-- **Roles:** paciente / médico separados con RLS estricto + dashboard médico operativo
+Todo lo de esta sección se comprobó contra la BD real, el repo y producción, no se dio por bueno por reportes previos.
 
----
+- **Producción (Railway):** `https://helios-web-production.up.railway.app` → HTTP 200. Corre `main` @ `8611a73` (PR #14). CI, SonarCloud y "Deploy a Railway" en `success` (16-oct 21:48 UTC). El bundle en vivo ya no contiene "Completa tu perfil" ni el andamiaje B-20.x.
+- **Código de `main`:** 394/394 tests, `tsc -b` sin errores, lint 0 errores (8 warnings preexistentes), build OK.
+- **BD (Supabase `uobhbikcctausgpnzsph`):** registro funcionando de punta a punta; 0 cuentas de auth sin perfil; sin residuos de pruebas. 20 pacientes sin cuenta vinculada (el trigger solo reutiliza los que no tienen citas).
+- **Secretos:** ninguno en texto plano en el repo; `.env` ignorado por git.
 
-## ✅ LO QUE YA ESTÁ TERMINADO
+## 🔧 Qué se resolvió hoy: el registro estaba roto para todos (B-41 y B-42)
 
-### Sprint 1 — Agendamiento de Citas + Dashboard Médico
+- **Síntoma:** al crear cuenta y volver a entrar aparecía "Completa tu perfil", que fallaba con `new row violates row-level security policy for table "pacientes"`. Nadie pudo registrarse desde la multi-tenancy (27-sep); el último paciente con cuenta es del 10-sep.
+- **Causa:** (1) `pacientes.clinica_id` usa `DEFAULT clinica_demo_id()` (SECURITY INVOKER) y `clinicas` solo es visible vía `clinica_id_actual()`, que es NULL para un usuario nuevo → `clinica_id` NULL; (2) el `INSERT … RETURNING` exigía una policy de SELECT que ya no existía.
+- **Solución actual (arquitectura vigente):** un trigger `on_auth_user_created_crear_paciente` en `auth.users` ejecuta `crear_paciente_desde_signup()` (SECURITY DEFINER) y crea paciente + `auth_paciente_link` en la misma transacción que la cuenta, leyendo `raw_user_meta_data`. `Register.tsx` hace `signUp` con metadata y ya no inserta nada. Se eliminó "Completa tu perfil" y el andamiaje B-20.x (`sessionStorage`, `completarRegistroPendiente`). Una sesión sin perfil ve `CuentaIncompleta`.
+- **Cierre de escritura (Fase 2 y 2b):** eliminadas `paciente_crea_su_perfil`, `paciente_crea_su_link`, `paciente_actualiza_su_link`; `paciente_huerfano_id` revocada a `anon`/`authenticated` (solo `service_role`). Se dejan anónimas a propósito `cedula_ya_registrada` y `correo_ya_registrado`.
+- **Estado de los PR:** #14 fusionado (frontend + trigger). **#15 abierto** (https://github.com/Helios-TeamUTP/Helios/pull/15, solo SQL): versiona la Fase 2 y 2b, que **ya están aplicadas en producción**. Al momento de escribir esto su CI estaba en curso.
 
-- ✅ Schema SQL ejecutado en Supabase (6 tablas + RLS + 1 RPC atómica)
-- ✅ Wizard de 4 pasos (Especialidad → Médico → Calendario → Confirmar)
-- ✅ Auth con Supabase + flow registro→login→/agendar automático
-- ✅ Dashboard médico (agenda hoy, marcar completada/no_asistió, historial)
-- ✅ Vista móvil responsive del calendario (lista agrupada por día)
-- ✅ Deploy en Railway con CI automático
-- ✅ 65 tests pasando
-- ✅ Locust load test: P95 = 300 ms con 200 usuarios
+## ⚠️ Riesgos y pendientes (en orden de importancia para el lunes)
 
-### 20 Bugs cazados y resueltos (B-01 a B-20.3)
+1. **Decidir la URL de la demo.** Railway está al día. **Cloudflare (`https://helios.heliosmedic.workers.dev`, rama `demo-cloudflare`) está desactualizado:** 20 commits detrás de `main` y 10 propios (módulo Perfil). Ahí el registro sigue roto y muestra "Completa tu perfil". Si la demo es en Cloudflare, hay que fusionar `main` en `demo-cloudflare`, correr tests, hacer push (con confirmación) y esperar el deploy. **Recomendado: usar Railway.**
+2. **Fusionar el PR #15** cuando su CI pase (no afecta al frontend).
+3. **Reconstruir las migraciones de multi-tenancy.** El SQL `sprint0_multitenancy_*` (M-06) se aplicó directo en Supabase y hoy no existe en disco, ramas, stash ni `origin/main`. Ese desfase repo↔BD ocultó el bug de hoy. Reconstruirlo desde la BD real (`pg_policies`, `pg_get_functiondef`) y versionarlo. Cuidado: no re-aplicar versiones viejas de `crear_cita_atomica` (ver B-34b).
+4. **Protección contra contraseñas filtradas (Auth):** advertencia del asesor de seguridad de Supabase, solo se activa a mano en el panel de Auth (puede requerir plan Pro; guía oficial: https://supabase.com/docs/guides/auth/password-security). **No activarla antes de la demo:** rechazaría contraseñas comunes en el registro (p. ej. `123456`), y el frontend aún no traduce ese error (`weak_password`). Hacerlo después del lunes y añadir el mapeo en `erroresAuth.ts`.
+5. **Menor:** `anon`/`authenticated` conservan TRUNCATE/TRIGGER sobre `clinicas` y otras tablas (default de Supabase; la API no los expone). Cerrar junto con una revisión de grants.
 
-Todos documentados en `CLAUDE.md` tabla resumen y en detalle en `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md`.
+## 🚫 Fuera de alcance (decisiones del PO)
 
-| ID | Descripción | Estado |
+- **Recuperar contraseña (RF-04): fuera de la demo.** Existe la rama `feat/rf04-recuperar-password`. El worktree principal (`Helios`, rama local `demo-vercel`, upstream desaparecido) tiene **27 cambios sin commitear** (incluye esa feature) y el stash `wip-antes-de-sync`. **No tocarlos** sin pedirlo.
+- **Tokens (`GITHUB_TOKEN`, `SONAR_TOKEN`):** según el reporte de una sesión previa están en texto plano en el `CLAUDE.md` del proyecto de Claude. **Decisión del PO (16-oct-2026): no rotarlos; riesgo aceptado.** No volver a proponerlo salvo que cambie quién tiene acceso.
+
+## 🗺️ Mapa de worktrees y ramas
+
+| Carpeta (`~/ProyectosDev/`) | Rama | Para qué |
 |---|---|---|
-| B-01 | Regex cédula muy estricto | ✅ |
-| B-02 | vi.mock con vars externas | ✅ |
-| B-03 | Faker locale es_PA inexistente | ✅ |
-| B-04 | Auth sin paciente → form vacío | ✅ |
-| B-05 | NavLinks no responden | ✅ |
-| B-06 | Seed destructivo | ✅ |
-| B-07 | useAuth loading infinito | ✅ |
-| B-08 | 5 hooks de datos sin try/catch | ✅ |
-| B-09 | localStorage para auth | ✅ |
-| B-10 | Login/Register spinner eterno | ✅ |
-| B-11 | "Verificando sesión..." eterno | ✅ |
-| B-12 | Spinner ~10s por 2 queries | ✅ |
-| B-13 | Sprint 1 sin pantalla para médicos | ✅ |
-| B-14 | RLS permisiva por defecto | ✅ |
-| B-15 | Spinner >10s por RLS sin índice | ✅ |
-| B-16 | Flash "Completa tu perfil" en loading | ✅ |
-| B-17 | F5 lento + flash si loadPerfil falla | ✅ |
-| B-18 | Calendario ilegible en móvil | ✅ |
-| B-19 | signUp session=null → paciente huérfano | ✅ |
-| B-20 (.1, .2, .3) | 4 iteraciones hasta fix definitivo: completarRegistroPendiente movido a useAuth.onAuthStateChange | ✅ |
+| `Helios` | `demo-vercel` (local) | Pivote SaaS / Cloudflare. Con WIP sin commitear: no tocar |
+| `Helios-cu-demo` | `fix/registro-cerrar-policies-escritura` | PR #15 (Fase 2 y 2b) |
+| `Helios-fix-notas` | `feat/rf04-recuperar-password` | Recuperar contraseña (fuera de alcance) |
 
-### Equipo de agentes HELIOS — 5 agentes custom
+`fix/registro-paciente-rls` (PR #14) y `fix/cu-demo-19oct` ya están en `main`. El remoto `marian-legacy` es histórico: **no usar para push**.
 
-- ✅ Definidos en `docs/agentes/` y activos en `.claude/agents/`
-- ✅ Catálogo legible en `docs/EQUIPO_DE_AGENTES_HELIOS.md`
+## 🧪 Cómo verificar el registro (sin ensuciar la BD)
 
-**Lista de agentes:**
-1. `helios-team-orchestrator` — coordina al equipo según el tipo de cambio
-2. `helios-frontend-expert` — React 19 + TS 6 + Vite 8 + Tailwind + Supabase
-3. `helios-bug-hunter` — detecta loading infinitos, race conditions, promesas sin catch
-4. `helios-clean-code` — JSDoc, naming, complexity, código muerto
-5. `helios-test-engineer` — Vitest + RTL + cobertura ≥60%
+Las pruebas contra producción se hacen con un bloque `DO $$ … $$` que termina siempre en `RAISE EXCEPTION 'RESULTADO: …'`: se revierte solo y el mensaje trae el resultado. Casos de referencia: registro feliz (paciente+link+clínica), cédula duplicada (23505), cuenta sin metadata (sin paciente), el usuario nuevo ve su perfil por RLS, no puede insertar pacientes ni links a mano.
 
-### Material de presentación (viernes 29)
+**Smoke test para el lunes (5 min):** registrar un paciente nuevo → debe caer en `/agendar` sin pasar por "Completa tu perfil" → agendar una cita → cerrar sesión e iniciar de nuevo → ver la cita en "Mis citas" → entrar como médico (`docs/CREDENCIALES_DEMO_MEDICOS.md`) y completar la cita. Si hay slots vencidos: `python scripts/extender_horarios.py` (B-27).
 
-Carpeta `dailys/Entrega_Viernes/`:
+## 🛠️ Notas operativas
 
-- ✅ `HELIOS_Sprint1.pptx` (8 slides, 3 min)
-- ✅ `HELIOS_Sprint1_diapositivas.pdf`
-- ✅ `HELIOS_Sprint1_guion.pdf` (guion equipo completo)
-- ✅ `Guion_Jose_PERSONAL.pdf` (NUEVO - guion solo de José con explicaciones en lenguaje simple)
+- El shell de la herramienta es `sh` (no `bash`): no usar `PIPESTATUS` ni `$'…'`.
+- PR con `gh pr create` (ya autenticado como `MarianC-programing`). **Nunca push sin confirmación explícita** (regla 6).
+- Bugs nuevos van a la tabla de `CLAUDE.md` (último ID: **B-42**). `docs/PLAN_EJECUCION_SPRINT_0_Y_1.md` solo detalla hasta B-16.
 
-### Métricas finales del Sprint 1
+## 🔑 Reglas de trabajo (no se saltan)
 
-- **Tests:** 65/65 pasando
-- **Cobertura:** 61.4% statements / 82% lines / 90.9% functions
-- **KLOC:** 2.3 (frontend + SQL + dashboard médico)
-- **Tasa defectos:** 20 bugs / 2.3 KLOC = **8.70 bugs/KLOC**
-- **Latencia P95:** 300 ms con 200 usuarios + F5 <2s tras índice B-15
-- **Deploys:** 2/día promedio en Railway
-- **Story Points:** 53 totales, 37 completados, 5 en progreso (cancelar/reprogramar)
-
-### Cuentas demo en producción
-
-- **Médicos:** 20 cuentas con password `helios2026`. Lista en `docs/CREDENCIALES_DEMO_MEDICOS.md`
-- **Pacientes:** crear nuevos vía /registro
+1. Plan Mode primero (salvo cambios triviales). 2. `helios-team-orchestrator` en cambios no triviales. 3. Agente especializado para implementar. 4. Code review antes de cualquier push. 5. `pnpm vitest run`, cobertura ≥60% y `pnpm build` antes de deploy. 6. Push solo con confirmación explícita. 7. Documentar cada bug (ID, archivo, causa raíz, fix).
 
 ---
 
-## 🔵 SPRINT 2 — PROPUESTA (ver `docs/PLAN_SPRINT_2.md` para detalle)
-
-**Objetivo del Sprint 2:** Cancelación, reprogramación de citas + notificaciones + hardening producción.
-
-### Historias propuestas (validar con Jira real)
-
-| ID | Historia | Story Points | Prioridad |
-|---|---|---|---|
-| US-06 | Cancelar cita | 5 | Alta |
-| US-07 | Reprogramar cita | 8 | Alta |
-| US-08 | Notificaciones por email | 8 | Media |
-| US-09 | Historial de cambios por cita | 3 | Media |
-| US-10 | Confirmación email + MFA opcional | 13 | Baja |
-
-**Bugs/deuda técnica pendiente:**
-
-- Mejorar cobertura de tests del dashboard médico
-- Monitoreo de errores en producción (Sentry o similar)
-- Logging estructurado de operaciones críticas
-- Documentar la RPC `crear_cita_atomica` en SQL
-
----
-
-## 📋 LO QUE FALTA HACER (próxima sesión)
-
-### Pendiente 1 — Validar plan Sprint 2 con Jira real
-
-**Estado:** Tenemos propuesta en `docs/PLAN_SPRINT_2.md`. Necesita validarse con las issues reales de Jira.
-
-**Acción próxima sesión:**
-1. José manda captura del Sprint 2 en Jira (helios-group.atlassian.net)
-2. Comparar con la propuesta en `PLAN_SPRINT_2.md`
-3. Ajustar IDs, títulos y subtareas para que coincidan
-4. Mover subtareas a Jira (puede ser manual o vía MCP de Atlassian si se reconecta)
-
-### Pendiente 2 — Demo viernes 29
-
-**Estado:** Material listo en `dailys/Entrega_Viernes/`.
-
-**Checklist 15 min antes:**
-
-- [ ] Marian abre el PPTX en pantalla compartida
-- [ ] Ashley tiene navegador en `helios-web-production.up.railway.app/login` con sesión cargada
-- [ ] José tiene `Guion_Jose_PERSONAL.pdf` en celular o impreso
-- [ ] Cada integrante leyó SU sección cronometrada
-- [ ] QR de slide 3 nítido al proyector
-- [ ] Marian con cronómetro discreto
-
-### Pendiente 3 — Cleanup cuentas huérfanas (opcional)
-
-Durante B-20 quedaron en Supabase varias cuentas huérfanas de prueba: `maria@gmail.com`, `roxi@gmail.com`, `mariana@gmail.com`, `ale@gmail.com`. SQL cleanup disponibles:
-
-- `supabase/cleanup_B-20_huerfanos.sql`
-- `supabase/cleanup_B-20-1_roxi.sql`
-
----
-
-## 🚀 COMANDOS ÚTILES (referencia rápida)
-
-```bash
-# Tests
-cd frontend && pnpm vitest run
-
-# Build
-pnpm build
-
-# Coverage
-pnpm vitest run --coverage
-
-# Dev local
-pnpm dev
-
-# Deploy producción
-cd .. && railway up --service helios-web --ci
-
-# Smoke test post-deploy
-curl -sf -o /dev/null -w "HTTP %{http_code}\n" https://helios-web-production.up.railway.app/
-```
-
----
-
-## 📞 ENLACES IMPORTANTES
-
-- **Producción:** https://helios-web-production.up.railway.app
-- **GitHub:** https://github.com/MarianC-programing/Helios
-- **Jira:** https://helios-group.atlassian.net
-- **Supabase:** https://supabase.com/dashboard/project/uobhbikcctausgpnzsph
-- **Railway:** https://railway.app/project/...
-
----
-
-## 👥 EQUIPO
-
-| Nombre | Rol | Email |
-|---|---|---|
-| José Brown | Product Owner | brownjose540@gmail.com |
-| Ethan Gonzalez | Dev Frontend | ethang2169@gmail.com |
-| Alejandro Saenz | Tech Lead | - |
-| Ashley Martinez | QA Engineer | - |
-| Marian Barba | Scrum Master / DevOps | - |
-
----
-
-## 🔑 REGLAS DE TRABAJO (no se saltan)
-
-1. **Plan Mode primero** antes de cualquier cambio no trivial
-2. **Análisis con helios-team-orchestrator** para coordinar
-3. **Implementación con agente especializado**
-4. **Code review obligatorio** antes de cualquier push
-5. **Tests deben pasar** antes de cualquier deploy
-6. **Git push con confirmación** explícita del PO (José)
-7. **Documentar bugs** en este archivo + CLAUDE.md + PLAN_EJECUCION
-
----
-
-_Última sesión: 2026-05-28 — Sprint 1 cerrado, listo para demo viernes._
+_Última sesión: 2026-10-16 — registro reparado y verificado en producción; PR #15 abierto; pendiente decidir la URL de la demo._
