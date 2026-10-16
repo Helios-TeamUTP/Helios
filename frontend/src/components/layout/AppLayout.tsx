@@ -102,7 +102,7 @@ export function AppLayout() {
   )
 }
 
-function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
+function NavItem({ to, children }: Readonly<{ to: string; children: React.ReactNode }>) {
   return (
     <NavLink
       to={to}

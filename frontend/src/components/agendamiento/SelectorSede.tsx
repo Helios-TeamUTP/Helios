@@ -7,7 +7,7 @@ interface Props {
   onChange: (id: string, nombre: string) => void
 }
 
-export function SelectorSede({ value, onChange }: Props) {
+export function SelectorSede({ value, onChange }: Readonly<Props>) {
   const { data, loading, error } = useSedes()
 
   if (loading) return <LoadingSpinner label="Cargando sedes…" />
@@ -17,7 +17,7 @@ export function SelectorSede({ value, onChange }: Props) {
 
   return (
     <div>
-      <label className="label">Sede</label>
+      <span className="label">Sede</span>
       <div className="grid gap-2 sm:grid-cols-2">
         {data.map((sede) => {
           const active = value === sede.id

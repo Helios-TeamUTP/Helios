@@ -135,7 +135,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [session, setSession] = useState<Session | null>(null)
   const [paciente, setPaciente] = useState<Paciente | null>(null)
   const [medico, setMedico] = useState<MedicoConRelaciones | null>(null)

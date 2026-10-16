@@ -28,7 +28,7 @@ const AVATAR_COLORS = [
 ]
 function avatarColor(nombre: string): string {
   let hash = 0
-  for (const ch of nombre) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff
+  for (const ch of nombre) hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) & 0xffff
   return AVATAR_COLORS[hash % AVATAR_COLORS.length]
 }
 
@@ -105,7 +105,7 @@ export function PacientesMedico() {
             placeholder="Buscar por nombre o cédula…"
             className="input pl-9"
           />
-          <svg
+          <svg aria-hidden="true"
             width="16"
             height="16"
             viewBox="0 0 24 24"
@@ -246,7 +246,7 @@ export function PacientesMedico() {
 
 function UsersIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -258,7 +258,7 @@ function UsersIcon() {
 /** Icono pequeño tipo receta/pastilla, junto al texto de la receta */
 function PillIcon() {
   return (
-    <svg
+    <svg aria-hidden="true"
       width="13"
       height="13"
       viewBox="0 0 24 24"

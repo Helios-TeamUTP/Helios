@@ -46,7 +46,7 @@ function formatFechaLarga(fechaIso: string): string {
  * string (sin `Date`), por lo que es 100% timezone-safe. Más legible, más
  * táctil, sin librería pesada.
  */
-export function CalendarioCitasLista({ horarios, loading, error, value, onChange }: Props) {
+export function CalendarioCitasLista({ horarios, loading, error, value, onChange }: Readonly<Props>) {
   // Agrupar horarios por fecha (ordenados ascendente).
   const porDia = useMemo(() => {
     const grupos = new Map<string, HorarioAgendable[]>()

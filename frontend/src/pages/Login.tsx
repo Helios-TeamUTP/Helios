@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
@@ -22,7 +22,7 @@ import { traducirErrorAuth } from '../lib/erroresAuth'
 
 export function Login() {
   const location = useLocation()
-  const { user, paciente, role, loading, registroPendienteError, clearRegistroPendienteError } =
+  const { user, role, loading, registroPendienteError, clearRegistroPendienteError } =
     useAuth()
 
   // Bug B-20: state que viene del Register tras crear cuenta nueva.
@@ -58,8 +58,6 @@ export function Login() {
     if (role === 'paciente') return <Navigate to="/agendar" replace />
     return <Navigate to="/registro" replace />
   }
-  // Variable paciente queda referenciada para mantener el contrato del hook
-  void paciente
 
   /**
    * Bug B-10 fix: try/catch/finally + withTimeout garantiza que
@@ -72,7 +70,7 @@ export function Login() {
    * en "Completa tu perfil" aunque el INSERT y UPSERT sí se ejecutaran en BD.
    * Cualquier error sale por context.registroPendienteError (banner abajo).
    */
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
     clearRegistroPendienteError() // limpiar banner viejo si lo hay

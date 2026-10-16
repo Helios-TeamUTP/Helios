@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type SubmitEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
@@ -104,7 +104,7 @@ export function Register() {
    * spinner nunca quede eterno si Supabase tarda. Sin esto, cualquiera
    * de los 5 awaits podía colgarse y dejar el botón disabled para siempre.
    */
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SubmitEvent) => {
     event.preventDefault()
     setError(null)
 

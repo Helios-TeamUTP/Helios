@@ -59,5 +59,10 @@ export function validarEmail(correo: string): boolean {
   if (!correo) return false
   const c = correo.trim()
   if (c.length > 254) return false
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)
+  if (/\s/.test(c)) return false
+  const partes = c.split('@')
+  if (partes.length !== 2) return false
+  const [local, dominio] = partes
+  // local no vacio y el dominio con un punto que no sea su primer ni su ultimo caracter
+  return local.length > 0 && dominio.slice(1, -1).includes('.')
 }

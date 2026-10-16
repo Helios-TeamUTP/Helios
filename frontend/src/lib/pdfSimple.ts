@@ -183,7 +183,7 @@ export function generarPdf(lineas: LineaPdf[]): Uint8Array<ArrayBuffer> {
     )
   })
 
-  // ── 3) ensamblar con tabla xref (todo es Latin-1: 1 carácter = 1 byte) ──
+  // ── 3) ensamblar con tabla xref (Latin-1: 1 carácter = 1 byte) ──
   let doc = '%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n'
   const offsets: number[] = []
   objetos.forEach((cuerpo, i) => {
@@ -195,6 +195,6 @@ export function generarPdf(lineas: LineaPdf[]): Uint8Array<ArrayBuffer> {
   for (const off of offsets) doc += `${String(off).padStart(10, '0')} 00000 n \n`
   doc += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF\n`
 
-  // todo es Latin-1: cada carácter ocupa exactamente un byte
+  // Latin-1: cada carácter ocupa exactamente un byte
   return Uint8Array.from(doc, (ch) => (ch.codePointAt(0) ?? 0) & 0xff)
 }

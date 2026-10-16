@@ -7,7 +7,7 @@ interface Props {
   onChange: (id: string, nombre: string) => void
 }
 
-export function SelectorEspecialidad({ value, onChange }: Props) {
+export function SelectorEspecialidad({ value, onChange }: Readonly<Props>) {
   const { data, loading, error } = useEspecialidades()
 
   if (loading) return <LoadingSpinner label="Cargando especialidades…" />
@@ -19,7 +19,7 @@ export function SelectorEspecialidad({ value, onChange }: Props) {
 
   return (
     <div>
-      <label className="label">Especialidad</label>
+      <span className="label">Especialidad</span>
       <div className="grid gap-2 sm:grid-cols-2">
         {data.map((esp) => {
           const active = value === esp.id

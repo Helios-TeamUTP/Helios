@@ -30,13 +30,15 @@ export function CampanaNotificaciones() {
     return () => document.removeEventListener('mousedown', alClicFuera)
   }, [abierto])
 
+  const etiquetaCampana = noLeidas > 0 ? `Notificaciones (${noLeidas} sin leer)` : 'Notificaciones'
+
   return (
     <div className="relative" ref={contenedorRef}>
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg text-helios-ink/70 transition hover:bg-helios-ink/5"
-        aria-label={`Notificaciones${noLeidas > 0 ? ` (${noLeidas} sin leer)` : ''}`}
+        aria-label={etiquetaCampana}
       >
         <CampanaIcon />
         {noLeidas > 0 && (
@@ -78,7 +80,7 @@ export function CampanaNotificaciones() {
   )
 }
 
-function ItemNotificacion({ n, onLeer }: { n: Notificacion; onLeer: () => void }) {
+function ItemNotificacion({ n, onLeer }: Readonly<{ n: Notificacion; onLeer: () => void }>) {
   return (
     <button
       type="button"
@@ -103,7 +105,7 @@ function ItemNotificacion({ n, onLeer }: { n: Notificacion; onLeer: () => void }
 
 function CampanaIcon() {
   return (
-    <svg
+    <svg aria-hidden="true"
       width="20"
       height="20"
       viewBox="0 0 24 24"
