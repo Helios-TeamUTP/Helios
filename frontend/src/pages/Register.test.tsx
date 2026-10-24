@@ -193,7 +193,7 @@ describe('<Register />', () => {
     })
     // Nada de escrituras desde el cliente ni de estado en sessionStorage.
     expect(fromMock).not.toHaveBeenCalled()
-    expect(sessionStorage.length).toBe(0)
+    expect(sessionStorage).toHaveLength(0)
   })
 
   it('sin sesion tras el signUp (confirmacion de correo): redirige a /login con banner', async () => {
@@ -373,7 +373,7 @@ describe('<Register />', () => {
     expect(rpcMock).toHaveBeenCalledWith('cedula_ya_registrada', { p_cedula: '8-123-4567' })
     expect(signUpMock).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: /Crear cuenta/ })).not.toBeDisabled()
-    expect(sessionStorage.length).toBe(0)
+    expect(sessionStorage).toHaveLength(0)
   })
 
   /** CA-01-01 / CU-01 2.3.1: campos obligatorios vacíos → mensaje del documento. */
@@ -467,7 +467,7 @@ describe('<Register />', () => {
     // El correo se normaliza (trim + minúsculas) antes de consultar.
     expect(rpcMock).toHaveBeenCalledWith('correo_ya_registrado', { p_correo: 'ana@test.com' })
     expect(signUpMock).not.toHaveBeenCalled()
-    expect(sessionStorage.length).toBe(0)
+    expect(sessionStorage).toHaveLength(0)
   })
 
   /**
