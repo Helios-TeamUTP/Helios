@@ -21,6 +21,20 @@ const MESES = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ]
 
+const BASE_BOTON_HORARIO =
+  'rounded-lg border px-3 py-2.5 text-sm font-semibold transition tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-helios-primary focus-visible:ring-offset-2'
+
+/** Clases del boton de hora segun su estado (dia completo > seleccionado > normal). */
+function claseBotonHorario(diaCompleto: boolean, seleccionado: boolean): string {
+  if (diaCompleto) {
+    return `${BASE_BOTON_HORARIO} cursor-not-allowed border-helios-ink/10 bg-helios-ink/5 text-helios-ink/30 line-through`
+  }
+  if (seleccionado) {
+    return `${BASE_BOTON_HORARIO} border-helios-deep bg-helios-deep text-white shadow-card`
+  }
+  return `${BASE_BOTON_HORARIO} border-helios-primary/30 bg-helios-primary/5 text-helios-primary hover:bg-helios-primary/15 active:bg-helios-primary/25`
+}
+
 /**
  * Formatea 'YYYY-MM-DD' a 'jueves 28 de mayo'.
  * Local-safe: parseamos los componentes a mano para evitar timezone shifts
@@ -114,13 +128,7 @@ export function CalendarioCitasLista({ horarios, loading, error, value, onChange
                       onClick={() => onChange(h)}
                       aria-pressed={seleccionado}
                       title={diaCompleto ? 'Este día ya está completo. Elige otro día.' : undefined}
-                      className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-helios-primary focus-visible:ring-offset-2 ${
-                        diaCompleto
-                          ? 'cursor-not-allowed border-helios-ink/10 bg-helios-ink/5 text-helios-ink/30 line-through'
-                          : seleccionado
-                          ? 'border-helios-deep bg-helios-deep text-white shadow-card'
-                          : 'border-helios-primary/30 bg-helios-primary/5 text-helios-primary hover:bg-helios-primary/15 active:bg-helios-primary/25'
-                      }`}
+                      className={claseBotonHorario(diaCompleto, seleccionado)}
                     >
                       {h.hora_inicio.slice(0, 5)}
                     </button>

@@ -287,6 +287,19 @@ const TAB_LABELS: Record<Tab, string> = {
   fecha: 'Agenda por fecha',
 }
 
+// Texto de los botones de pestaña del selector (hoy / semana / historial).
+const ETIQUETA_BOTON_TAB: Record<'hoy' | 'semana' | 'historial', string> = {
+  hoy: 'Hoy',
+  semana: 'Esta semana',
+  historial: 'Historial',
+}
+
+function saludoPorHora(hora: number): string {
+  if (hora < 12) return 'Buenos días'
+  if (hora < 18) return 'Buenas tardes'
+  return 'Buenas noches'
+}
+
 // CU-05 flujo 2.3.1: texto exacto del documento de casos de uso.
 const SIN_CITAS_DIA = 'No tienes citas programadas para este día.'
 const TAB_VACIO: Record<Tab, string> = {
@@ -349,8 +362,7 @@ export function MedicoDashboardV2() {
 
   // ── hora actual para saludo ───────────────────────────────────────────────
   const hora = new Date().getHours()
-  const saludo =
-    hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
+  const saludo = saludoPorHora(hora)
 
   /**
    * Completa la cita y guarda su informacion clinica en UNA operacion atomica
@@ -515,7 +527,7 @@ export function MedicoDashboardV2() {
                       : 'text-helios-ink/50 hover:text-helios-ink'
                   }`}
                 >
-                  {t === 'hoy' ? 'Hoy' : t === 'semana' ? 'Esta semana' : 'Historial'}
+                  {ETIQUETA_BOTON_TAB[t]}
                 </button>
               ))}
             </div>

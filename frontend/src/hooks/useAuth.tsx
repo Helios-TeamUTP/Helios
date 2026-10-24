@@ -44,6 +44,16 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+/**
+ * Bug B-13: rol derivado del perfil cargado. Si por algun motivo ambos
+ * vinculos coexistieran, medico tiene precedencia (defensivo).
+ */
+function derivarRol(medico: MedicoConRelaciones | null, paciente: Paciente | null): Role {
+  if (medico) return 'medico'
+  if (paciente) return 'paciente'
+  return null
+}
+
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [session, setSession] = useState<Session | null>(null)
   const [paciente, setPaciente] = useState<Paciente | null>(null)
@@ -277,7 +287,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
    * Bug B-13: derivar rol del perfil cargado. Si por algun motivo
    * ambos vinculos coexistieran, medico tiene precedencia (defensivo).
    */
-  const role: Role = medico ? 'medico' : paciente ? 'paciente' : null
+  const role: Role = derivarRol(medico, paciente)
 
   const value = useMemo(
     () => ({
