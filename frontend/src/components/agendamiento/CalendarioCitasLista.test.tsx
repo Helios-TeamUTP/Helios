@@ -60,6 +60,22 @@ describe('<CalendarioCitasLista /> (B-21 timezone-safe)', () => {
     expect(onChange.mock.calls[0][0].hora_inicio).toBe('12:30:00')
   })
 
+  it('marca como seleccionado (aria-pressed) solo el slot elegido', () => {
+    const elegido = horario({ id: 'slot-1', hora_inicio: '09:00:00' })
+    const otro = horario({ id: 'slot-2', hora_inicio: '10:00:00' })
+    render(
+      <CalendarioCitasLista
+        horarios={[elegido, otro]}
+        loading={false}
+        error={null}
+        value={elegido}
+        onChange={() => {}}
+      />,
+    )
+    expect(screen.getByRole('button', { name: '09:00' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: '10:00' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('muestra mensaje cuando no hay horarios', () => {
     render(
       <CalendarioCitasLista

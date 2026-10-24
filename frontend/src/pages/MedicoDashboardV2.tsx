@@ -10,6 +10,7 @@ import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import type { CitaConPaciente, EstadoCita, Paciente } from '../lib/types'
 import { avatarColor } from '../lib/avatarColor'
+import { saludoPorHora } from '../lib/saludo'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -292,12 +293,6 @@ const ETIQUETA_BOTON_TAB: Record<'hoy' | 'semana' | 'historial', string> = {
   hoy: 'Hoy',
   semana: 'Esta semana',
   historial: 'Historial',
-}
-
-function saludoPorHora(hora: number): string {
-  if (hora < 12) return 'Buenos días'
-  if (hora < 18) return 'Buenas tardes'
-  return 'Buenas noches'
 }
 
 // CU-05 flujo 2.3.1: texto exacto del documento de casos de uso.
