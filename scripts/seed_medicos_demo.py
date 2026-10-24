@@ -18,6 +18,9 @@ Requiere variables de entorno (en .env en raiz o ya exportadas):
     SUPABASE_URL=https://xxx.supabase.co
     SUPABASE_SERVICE_ROLE_KEY=ey...   # OBLIGATORIO service_role
                                        # (anon key NO puede crear users)
+    HELIOS_DEMO_PASSWORD=...          # OPCIONAL: password de las cuentas NUEVAS.
+                                       # Si falta, se genera una aleatoria.
+                                       # Cuentas existentes no se modifican.
 
 Idempotente: si un medico ya tiene cuenta (de un run anterior), se salta.
 Si una cita ya existe para ese horario, se salta y prueba otro.
@@ -28,6 +31,7 @@ from __future__ import annotations
 import os
 import random
 import re
+import secrets
 import unicodedata
 from datetime import date, datetime, time
 from pathlib import Path
@@ -54,8 +58,10 @@ print("[ok] Conectado con service_role key (Patron 1: solo admin crea medicos)."
 
 client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Password fijo para todos los medicos demo. Sprint 2: password reset propio.
-PASSWORD_DEMO = "helios2026"
+# Password compartido SOLO para las cuentas que se CREEN en esta corrida.
+# Sale de HELIOS_DEMO_PASSWORD o se genera aleatoria; nunca va en el codigo.
+# Las cuentas que ya existen NO se modifican (ver crear_auth_user).
+PASSWORD_DEMO = os.environ.get("HELIOS_DEMO_PASSWORD") or secrets.token_urlsafe(12)
 DOMINIO_DEMO = "helios.demo"
 # Cantidad de medicos que tendran citas creadas para HOY (los primeros N)
 N_MEDICOS_CON_CITAS = 3
@@ -258,7 +264,8 @@ def main() -> None:
     # 4) Imprimir y guardar credenciales
     print("\n========================================================")
     print(" CREDENCIALES MEDICOS DEMO HELIOS")
-    print(f" Password (todos): {PASSWORD_DEMO}")
+    print(f" Password (cuentas nuevas de esta corrida): {PASSWORD_DEMO}")
+    print(" Las cuentas que ya existian conservan su password.")
     print("========================================================")
     for nombre, email, esp, sede in credenciales:
         print(f"  {nombre:35} {email:40} {esp} - {sede}")
@@ -272,7 +279,9 @@ def main() -> None:
         f"> Generadas el {datetime.now().isoformat()} por scripts/seed_medicos_demo.py",
         "> **NO commitear este archivo** (ya esta en .gitignore).",
         "",
-        f"**Password (todos):** `{PASSWORD_DEMO}`",
+        f"**Password (cuentas nuevas de esta corrida):** `{PASSWORD_DEMO}`",
+        "",
+        "> Las cuentas que ya existian conservan su password anterior.",
         "",
         "| Médico | Email (usuario) | Especialidad | Sede |",
         "|---|---|---|---|",

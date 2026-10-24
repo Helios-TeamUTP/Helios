@@ -93,7 +93,7 @@ Carpeta `dailys/Entrega_Viernes/`:
 
 ### Cuentas demo en producción
 
-- **Médicos:** 20 cuentas con password `helios2026`. Lista en `docs/CREDENCIALES_DEMO_MEDICOS.md`
+- **Médicos:** 20 cuentas demo. Contraseña y lista en `docs/CREDENCIALES_DEMO_MEDICOS.md` (local, no versionado)
 - **Pacientes:** crear nuevos vía /registro
 
 ---

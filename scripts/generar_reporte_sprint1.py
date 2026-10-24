@@ -593,7 +593,7 @@ Estas deudas estan documentadas y priorizadas en `docs/PLAN_SPRINT_2.md` y `docs
 
 ### Anexo B: Credenciales demo (solo para demo, no produccion real)
 
-**Medicos:** 20 cuentas creadas via seed_data.py con password universal `helios2026`. Lista completa en `docs/CREDENCIALES_DEMO_MEDICOS.md`.
+**Medicos:** 20 cuentas demo creadas via seed_data.py. Contraseña y lista completa en `docs/CREDENCIALES_DEMO_MEDICOS.md` (archivo local, no versionado).
 
 **Pacientes:** Crear cuentas nuevas via /registro en produccion.
 
