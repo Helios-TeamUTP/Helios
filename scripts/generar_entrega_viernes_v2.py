@@ -183,7 +183,6 @@ def slide_2(prs):
 
     # Tres cards (preguntas)
     cards_y = Inches(2.0)
-    card_h = Inches(1.55)
     card_w = Inches(4.05)
     gap = Inches(0.10)
     left_start = Inches(0.5)

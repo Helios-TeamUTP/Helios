@@ -60,7 +60,7 @@ img { max-width: 100%; border: 1px solid #ddd; border-radius: 6px; margin: 8px 0
 hr { border: none; border-top: 1px solid #ddd; margin: 22px 0; }
 """
 
-PORTADA = f"""
+PORTADA = """
 <div class="portada">
   <div class="uni">UNIVERSIDAD TECNOLÓGICA DE PANAMÁ</div>
   <div class="materia">Calidad de Software · Unidad II — ISTQB · TMMi · TQM</div>

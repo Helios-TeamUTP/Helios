@@ -481,7 +481,7 @@ def generate_docx_individual(doc_meta: dict) -> None:
             continue
 
         # Lista no ordenada
-        elif stripped.startswith("- ") or stripped.startswith("* "):
+        elif stripped.startswith(("- ", "* ")):
             add_list_item(docx, stripped[2:], ordered=False)
 
         # Lista ordenada
