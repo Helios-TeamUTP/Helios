@@ -240,6 +240,13 @@ export function AgendarCita() {
   )
 }
 
+function clasePasoCirculo(activo: boolean, completo: boolean): string {
+  const base = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold'
+  if (activo) return `${base} bg-helios-primary text-white`
+  if (completo) return `${base} bg-helios-accent/30 text-helios-primary`
+  return `${base} bg-helios-ink/10 text-helios-ink/40`
+}
+
 function Stepper({ paso }: Readonly<{ paso: number }>) {
   const pasos = ['Especialidad y sede', 'Médico', 'Horario', 'Confirmar']
   return (
@@ -250,15 +257,7 @@ function Stepper({ paso }: Readonly<{ paso: number }>) {
         const completo = paso > num
         return (
           <li key={titulo} className="flex flex-1 items-center gap-2">
-            <span
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                activo
-                  ? 'bg-helios-primary text-white'
-                  : completo
-                  ? 'bg-helios-accent/30 text-helios-primary'
-                  : 'bg-helios-ink/10 text-helios-ink/40'
-              }`}
-            >
+            <span className={clasePasoCirculo(activo, completo)}>
               {completo ? '✓' : num}
             </span>
             <span

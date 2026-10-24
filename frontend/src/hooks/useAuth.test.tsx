@@ -75,30 +75,24 @@ describe('useAuth — Bugs B-11/B-12/B-13 regresión', () => {
   // B-11: discriminación de eventos
   // ─────────────────────────────────────────────────────────────────
 
-  it('B-11: TOKEN_REFRESHED NO dispara recarga de perfil (no llama supabase.from)', async () => {
+  // B-11 (TOKEN_REFRESHED, USER_UPDATED) y B-17 (INITIAL_SESSION): estos
+  // eventos NO deben recargar el perfil, solo actualizar la sesion.
+  // - INITIAL_SESSION: el SDK de Supabase lo dispara solo al subscribirse y
+  //   init() ya cargo el perfil. Sin este filtro, loadPerfil corria 2 veces
+  //   concurrentes -> spinner > 10s.
+  it.each([
+    ['B-11', 'TOKEN_REFRESHED', 'user-token-refresh'],
+    ['B-11', 'USER_UPDATED', 'user-updated'],
+    ['B-17', 'INITIAL_SESSION', 'user-initial'],
+  ])('%s: %s NO recarga perfil (no llama supabase.from)', async (_bug, evento, userId) => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     fromMock.mockClear()
 
-    const fakeSession = { user: { id: 'user-token-refresh' } }
+    const fakeSession = { user: { id: userId } }
     await act(async () => {
-      await capturedListener!('TOKEN_REFRESHED', fakeSession)
-    })
-
-    expect(fromMock).not.toHaveBeenCalled()
-    expect(result.current.session).toEqual(fakeSession)
-  })
-
-  it('B-11: USER_UPDATED tampoco recarga perfil', async () => {
-    const { result } = renderHook(() => useAuth(), { wrapper })
-    await waitFor(() => expect(result.current.loading).toBe(false))
-
-    fromMock.mockClear()
-
-    const fakeSession = { user: { id: 'user-updated' } }
-    await act(async () => {
-      await capturedListener!('USER_UPDATED', fakeSession)
+      await capturedListener!(evento, fakeSession)
     })
 
     expect(fromMock).not.toHaveBeenCalled()
@@ -106,26 +100,8 @@ describe('useAuth — Bugs B-11/B-12/B-13 regresión', () => {
   })
 
   // ─────────────────────────────────────────────────────────────────
-  // B-17: filtrar INITIAL_SESSION + idempotencia por authUid
+  // B-17: idempotencia por authUid (INITIAL_SESSION va en el it.each de arriba)
   // ─────────────────────────────────────────────────────────────────
-
-  it('B-17: INITIAL_SESSION NO recarga perfil (init ya lo hizo)', async () => {
-    const { result } = renderHook(() => useAuth(), { wrapper })
-    await waitFor(() => expect(result.current.loading).toBe(false))
-
-    fromMock.mockClear()
-
-    // Supabase JS SDK dispara INITIAL_SESSION automaticamente al subscribirse.
-    // Mi codigo debe ignorarlo porque init() ya cargo el perfil. Sin este
-    // fix, loadPerfil corria 2 veces concurrentes -> spinner > 10s.
-    const fakeSession = { user: { id: 'user-initial' } }
-    await act(async () => {
-      await capturedListener!('INITIAL_SESSION', fakeSession)
-    })
-
-    expect(fromMock).not.toHaveBeenCalled()
-    expect(result.current.session).toEqual(fakeSession)
-  })
 
   it('B-17: evento con mismo authUid NO recarga perfil (idempotencia)', async () => {
     // Setup: cargar primero un paciente
