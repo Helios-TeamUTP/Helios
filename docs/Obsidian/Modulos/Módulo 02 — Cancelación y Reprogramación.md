@@ -96,7 +96,7 @@ docs/
 ```
 sedes          → 3 registros
 especialidades → 5 registros
-medicos        → 20 registros (con cuentas demo helios2026)
+medicos        → 20 registros (con cuentas demo)
 horarios       → 1200+ slots
 pacientes      → variable (se crean en producción)
 citas          → variable
