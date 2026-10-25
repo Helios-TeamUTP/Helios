@@ -4,6 +4,37 @@ import { COLUMNAS_CITA, COLUMNAS_HISTORIAL } from '../lib/columnas'
 import type { CitaConPaciente, HistorialClinico, PacienteConHistorial } from '../lib/types'
 
 /**
+ * Arma un renglon por paciente a partir de sus citas completadas y del
+ * historial clinico. Se queda con la cita mas reciente POR paciente: la lista
+ * de citas debe venir ordenada de mas reciente a mas antigua, asi que la
+ * primera ocurrencia de cada paciente_id es la que vale.
+ */
+export function resumirPacientes(
+  citas: CitaConPaciente[],
+  historial: HistorialClinico[],
+): PacienteConHistorial[] {
+  const historialPorCita = new Map<string, HistorialClinico>(historial.map((h) => [h.cita_id, h]))
+  const vistos = new Set<string>()
+  const resumen: PacienteConHistorial[] = []
+
+  for (const cita of citas) {
+    if (!cita.paciente_id || !cita.paciente) continue
+    if (vistos.has(cita.paciente_id)) continue
+    vistos.add(cita.paciente_id)
+
+    const hist = historialPorCita.get(cita.id)
+    resumen.push({
+      paciente: cita.paciente,
+      dolencia_principal: hist?.dolencia_principal ?? 'Sin registrar',
+      receta: hist?.receta ?? null,
+      ultima_visita: cita.horario?.fecha ?? cita.created_at,
+    })
+  }
+
+  return resumen
+}
+
+/**
  * Hook que arma el resumen "Gestión de Pacientes" del medico:
  * un renglon por paciente, con su cita 'completada' mas reciente
  * y el historial_clinico (dolencia_principal, receta) asociado.
@@ -21,8 +52,11 @@ export function usePacientesMedico(medicoId: string | null) {
 
   const fetchPacientes = useCallback(
     async (signal?: { active: boolean }) => {
+      // Sin signal (refetch manual) siempre vigente; con signal, hasta que el cleanup lo cancele.
+      const vigente = () => !signal || signal.active
+
       if (!medicoId) {
-        if (!signal || signal.active) {
+        if (vigente()) {
           setData([])
           setLoading(false)
         }
@@ -52,40 +86,22 @@ export function usePacientesMedico(medicoId: string | null) {
 
         if (historialError) throw historialError
 
-        if (signal && !signal.active) return
+        if (!vigente()) return
 
-        const historialPorCita = new Map<string, HistorialClinico>(
-          ((historial ?? []) as HistorialClinico[]).map((h) => [h.cita_id, h]),
+        // 3. Una fila por paciente, con su cita mas reciente y su historial.
+        setData(
+          resumirPacientes(
+            (citas ?? []) as unknown as CitaConPaciente[],
+            (historial ?? []) as HistorialClinico[],
+          ),
         )
-
-        // 3. Nos quedamos solo con la cita mas reciente POR paciente
-        //    (la lista ya viene ordenada desc, asi que la primera
-        //    ocurrencia de cada paciente_id es la mas reciente).
-        const vistos = new Set<string>()
-        const resumen: PacienteConHistorial[] = []
-
-        for (const cita of (citas ?? []) as unknown as CitaConPaciente[]) {
-          if (!cita.paciente_id || !cita.paciente) continue
-          if (vistos.has(cita.paciente_id)) continue
-          vistos.add(cita.paciente_id)
-
-          const hist = historialPorCita.get(cita.id)
-          resumen.push({
-            paciente: cita.paciente,
-            dolencia_principal: hist?.dolencia_principal ?? 'Sin registrar',
-            receta: hist?.receta ?? null,
-            ultima_visita: cita.horario?.fecha ?? cita.created_at,
-          })
-        }
-
-        setData(resumen)
       } catch (err) {
-        if (!signal || signal.active) {
+        if (vigente()) {
           console.error('[usePacientesMedico] unexpected:', err)
           setError(err instanceof Error ? err.message : 'Error desconocido')
         }
       } finally {
-        if (!signal || signal.active) setLoading(false)
+        if (vigente()) setLoading(false)
       }
     },
     [medicoId],
