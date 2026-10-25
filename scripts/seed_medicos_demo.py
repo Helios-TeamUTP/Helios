@@ -85,6 +85,28 @@ def email_para_medico(nombre: str) -> str:
     return f"{slugify(nombre)}@{DOMINIO_DEMO}"
 
 
+def _es_error_email_existente(e: Exception) -> bool:
+    """True si el error de la API indica que el email ya esta registrado."""
+    msg = str(e).lower()
+    return "already" in msg or "exist" in msg or "duplicate" in msg
+
+
+def _buscar_user_id_por_email(email: str) -> Optional[str]:
+    """Busca el id de un user existente por email. None si no esta o falla.
+    La API admin no tiene get_by_email directo: se lista y se filtra.
+    """
+    try:
+        users_resp = client.auth.admin.list_users()
+        # users_resp es una lista en supabase-py 2.x
+        users_list = users_resp if isinstance(users_resp, list) else users_resp.users
+        for u in users_list:
+            if u.email == email:
+                return u.id
+    except Exception as e2:
+        print(f"  [warn] no se pudo buscar user existente {email}: {e2}")
+    return None
+
+
 def crear_auth_user(email: str, password: str) -> Optional[str]:
     """Crea un usuario en auth.users via admin API. Retorna auth_uid.
     Si el email ya existe, busca el user existente y retorna su id.
@@ -103,17 +125,10 @@ def crear_auth_user(email: str, password: str) -> Optional[str]:
         return None
     except Exception as e:
         # Email ya existe: buscar el user
-        if "already" in str(e).lower() or "exist" in str(e).lower() or "duplicate" in str(e).lower():
-            # Listar todos los users y filtrar (la API admin no tiene get_by_email directo)
-            try:
-                users_resp = client.auth.admin.list_users()
-                # users_resp es una lista en supabase-py 2.x
-                users_list = users_resp if isinstance(users_resp, list) else users_resp.users
-                for u in users_list:
-                    if u.email == email:
-                        return u.id
-            except Exception as e2:
-                print(f"  [warn] no se pudo buscar user existente {email}: {e2}")
+        if _es_error_email_existente(e):
+            uid = _buscar_user_id_por_email(email)
+            if uid:
+                return uid
         print(f"  [error] al crear auth user {email}: {e}")
         return None
 
@@ -169,10 +184,8 @@ def crear_cita_demo(medico_id: str, paciente_id: str, horario_id: str, sede_id: 
         return False
 
 
-def main() -> None:
-    print("\n=== B-13: SEED MEDICOS DEMO ===\n")
-
-    # 1) Cargar todos los medicos activos
+def _cargar_medicos_activos() -> list[dict]:
+    """Carga todos los medicos activos. Aborta si no hay ninguno."""
     medicos_resp = (
         client.table("medicos")
         .select("id, nombre, sede_id, especialidad_id, especialidad:especialidades(nombre), sede:sedes(nombre)")
@@ -186,9 +199,14 @@ def main() -> None:
             "No hay medicos activos en la tabla. Corre primero `python scripts/seed_data.py`."
         )
     print(f"[info] {len(medicos)} medicos activos encontrados.")
+    return medicos
 
-    # 2) Crear auth user + link para cada uno
-    credenciales: list[tuple[str, str, str, str]] = []  # (nombre, email, especialidad, sede)
+
+def _crear_cuentas_medicos(medicos: list[dict]) -> list[tuple[str, str, str, str]]:
+    """Crea auth user + link para cada medico.
+    Devuelve credenciales: (nombre, email, especialidad, sede).
+    """
+    credenciales: list[tuple[str, str, str, str]] = []
     for med in medicos:
         nombre = med["nombre"]
         email = email_para_medico(nombre)
@@ -201,8 +219,60 @@ def main() -> None:
             esp = (med.get("especialidad") or {}).get("nombre", "")
             sede = (med.get("sede") or {}).get("nombre", "")
             credenciales.append((nombre, email, esp, sede))
+    return credenciales
 
-    # 3) Crear citas HOY para los primeros N medicos
+
+def _horarios_libres_hoy(medico_id: str, hoy: str, limite: int) -> list[dict]:
+    """Horarios disponibles del medico para hoy, ordenados por hora."""
+    horarios_resp = (
+        client.table("horarios")
+        .select("id, hora_inicio")
+        .eq("medico_id", medico_id)
+        .eq("fecha", hoy)
+        .eq("disponible", True)
+        .order("hora_inicio")
+        .limit(limite)
+        .execute()
+    )
+    return horarios_resp.data or []
+
+
+def _crear_horarios_basicos_hoy(med: dict, hoy: str) -> None:
+    """Crea 5 horarios (8:00 a 12:00) para hoy cuando el medico no tiene."""
+    print(f"  [info] {med['nombre']}: sin horarios libres hoy, creando 5...")
+    for hora_h in range(8, 13):
+        try:
+            client.table("horarios").insert(
+                {
+                    "medico_id": med["id"],
+                    "fecha": hoy,
+                    "hora_inicio": time(hora_h, 0).isoformat(),
+                    "hora_fin": time(hora_h, 30).isoformat(),
+                    "disponible": True,
+                }
+            ).execute()
+        except Exception:
+            pass
+
+
+def _crear_citas_hoy_para_medico(med: dict, hoy: str, pacientes: list[dict]) -> None:
+    """Crea hasta CITAS_POR_MEDICO_HOY citas para hoy con pacientes al azar."""
+    # margen x2 por si algunos fallan
+    horarios = _horarios_libres_hoy(med["id"], hoy, CITAS_POR_MEDICO_HOY * 2)
+    if not horarios:
+        _crear_horarios_basicos_hoy(med, hoy)
+        horarios = _horarios_libres_hoy(med["id"], hoy, CITAS_POR_MEDICO_HOY)
+
+    creadas = 0
+    for h in horarios[:CITAS_POR_MEDICO_HOY]:
+        paciente = random.choice(pacientes)
+        if crear_cita_demo(med["id"], paciente["id"], h["id"], med["sede_id"]):
+            creadas += 1
+    print(f"  [ok] {med['nombre']}: {creadas} citas para hoy")
+
+
+def _crear_citas_demo_hoy(medicos: list[dict]) -> None:
+    """Crea citas HOY para los primeros N medicos."""
     hoy = date.today().isoformat()
     print(f"\n[info] Creando citas demo para HOY ({hoy})...")
 
@@ -211,57 +281,14 @@ def main() -> None:
     pacientes = pacientes_resp.data or []
     if not pacientes:
         print("[warn] No hay pacientes en BD; salto creacion de citas demo.")
-    else:
-        random.seed(datetime.now().toordinal())
-        for med in medicos[:N_MEDICOS_CON_CITAS]:
-            # Horarios disponibles del medico para hoy
-            horarios_resp = (
-                client.table("horarios")
-                .select("id, hora_inicio")
-                .eq("medico_id", med["id"])
-                .eq("fecha", hoy)
-                .eq("disponible", True)
-                .order("hora_inicio")
-                .limit(CITAS_POR_MEDICO_HOY * 2)  # margen por si algunos fallan
-                .execute()
-            )
-            horarios = horarios_resp.data or []
-            if not horarios:
-                # Crear un par de horarios si no hay para hoy
-                print(f"  [info] {med['nombre']}: sin horarios libres hoy, creando 5...")
-                for i, hora_h in enumerate(range(8, 13)):
-                    try:
-                        client.table("horarios").insert(
-                            {
-                                "medico_id": med["id"],
-                                "fecha": hoy,
-                                "hora_inicio": time(hora_h, 0).isoformat(),
-                                "hora_fin": time(hora_h, 30).isoformat(),
-                                "disponible": True,
-                            }
-                        ).execute()
-                    except Exception:
-                        pass
-                horarios_resp = (
-                    client.table("horarios")
-                    .select("id, hora_inicio")
-                    .eq("medico_id", med["id"])
-                    .eq("fecha", hoy)
-                    .eq("disponible", True)
-                    .order("hora_inicio")
-                    .limit(CITAS_POR_MEDICO_HOY)
-                    .execute()
-                )
-                horarios = horarios_resp.data or []
+        return
 
-            creadas = 0
-            for h in horarios[:CITAS_POR_MEDICO_HOY]:
-                paciente = random.choice(pacientes)
-                if crear_cita_demo(med["id"], paciente["id"], h["id"], med["sede_id"]):
-                    creadas += 1
-            print(f"  [ok] {med['nombre']}: {creadas} citas para hoy")
+    random.seed(datetime.now().toordinal())
+    for med in medicos[:N_MEDICOS_CON_CITAS]:
+        _crear_citas_hoy_para_medico(med, hoy, pacientes)
 
-    # 4) Imprimir y guardar credenciales
+
+def _imprimir_credenciales(credenciales: list[tuple[str, str, str, str]]) -> None:
     print("\n========================================================")
     print(" CREDENCIALES MEDICOS DEMO HELIOS")
     print(f" Password (cuentas nuevas de esta corrida): {PASSWORD_DEMO}")
@@ -271,7 +298,9 @@ def main() -> None:
         print(f"  {nombre:35} {email:40} {esp} - {sede}")
     print("========================================================\n")
 
-    # Guardar archivo markdown
+
+def _guardar_credenciales(credenciales: list[tuple[str, str, str, str]]) -> None:
+    """Guarda las credenciales en docs/CREDENCIALES_DEMO_MEDICOS.md (gitignored)."""
     doc_path = ROOT / "docs" / "CREDENCIALES_DEMO_MEDICOS.md"
     lines = [
         "# Credenciales DEMO - Medicos HELIOS",
@@ -295,6 +324,20 @@ def main() -> None:
     )
     doc_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"[ok] Credenciales guardadas en: {doc_path}")
+
+
+def main() -> None:
+    print("\n=== B-13: SEED MEDICOS DEMO ===\n")
+
+    # 1) Cargar todos los medicos activos
+    medicos = _cargar_medicos_activos()
+    # 2) Crear auth user + link para cada uno
+    credenciales = _crear_cuentas_medicos(medicos)
+    # 3) Crear citas HOY para los primeros N medicos
+    _crear_citas_demo_hoy(medicos)
+    # 4) Imprimir y guardar credenciales
+    _imprimir_credenciales(credenciales)
+    _guardar_credenciales(credenciales)
 
 
 if __name__ == "__main__":
