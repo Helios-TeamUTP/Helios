@@ -154,6 +154,20 @@ Los archivos `.env.local`, `.env`, `scripts/.env` están en `.gitignore`. Si una
 
 ---
 
+## ⚠️ Trampas conocidas de CI y Sonar (aprendidas limpiando 47 issues, oct-2026)
+
+Quality Gate de SonarCloud: **cobertura de código nuevo ≥ 80 %**. Sonar cuenta líneas **y condiciones (ramas)**, no solo líneas.
+
+1. **React Compiler genera ramas en el JSX.** El build lo usa y agrega comprobaciones de caché de memoización atribuidas a las líneas del JSX/handlers. La rama "mismas props, reutilizo el resultado" solo se ejecuta al **re-renderizar**. Si tocas líneas de un componente, agrega un test con `rerender` (una vez con las mismas props y otra con props distintas). Pasa aunque el componente ya tenga tests de todos sus estados (PR #13 y PR #26).
+2. **Componente sin test propio = todo lo que toques cuenta como código nuevo sin cubrir.** Antes de refactorizar uno, escribe sus tests (ej. `ReprogramarCitaModal` no tenía).
+3. **Calcula la cobertura nueva en local antes de subir:** cruza las líneas añadidas del diff (`git diff -U0 origin/main...HEAD`) con `frontend/coverage/lcov.info` (`DA:` para líneas, `BRDA:` para ramas). Sirve para no gastar vueltas de CI.
+4. **S1135 ("TODO") tiene falso positivo con la palabra española "todo"** en comentarios y docstrings ("o null si todo es válido"). Reescribe la frase en vez de silenciar la regla.
+5. **jsdom no implementa `HTMLDialogElement.showModal()` ni `close()`.** Los modales usan `<dialog open>` (sin focus trap ni resto inerte). Pasar a `showModal()` implica simularlo en los tests y cambia el comportamiento: hazlo como issue aparte.
+6. **`scripts/` Python:** `python:S2245` (`random`) está excluido en `sonar-project.properties` solo para `scripts/**`, porque son datos de prueba. Si algo ahí genera secretos, usa `secrets`. No hay tests Python: al refactorizar, compara la salida del código viejo (`git show origin/main:...`) contra el nuevo, y corre `ruff`/`pyflakes` (`python3 -m venv ~/.venvs/helios-lint && ~/.venvs/helios-lint/bin/pip install ruff pyflakes`).
+7. **`seed_medicos_demo.py` no cambia contraseñas de cuentas existentes** (hay médicos reales usando sus cuentas). Para cuentas nuevas toma `HELIOS_DEMO_PASSWORD` o genera una aleatoria. Nunca escribas contraseñas en el código ni en la documentación.
+
+---
+
 ## 🔥 Defectos conocidos resueltos (Sprint 1)
 
 Referencia rápida — NO repetir estos patrones:
