@@ -29,7 +29,7 @@ const OBLIGATORIOS: ReadonlyArray<readonly [keyof RegistroForm, string]> = [
 /**
  * Valida el formulario de registro. Devuelve el mensaje del PRIMER error
  * encontrado (el orden de las reglas es parte del comportamiento) o null si
- * todo es válido. Función pura: no toca la red ni el estado de React.
+ * el formulario es válido. Función pura: no toca la red ni el estado de React.
  */
 export function validarRegistro(form: RegistroForm): string | null {
   const faltante = OBLIGATORIOS.find(([campo]) => !form[campo].trim())
