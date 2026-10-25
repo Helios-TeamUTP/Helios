@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { COLUMNAS_CITA, COLUMNAS_HISTORIAL } from '../../lib/columnas'
 import { useDescargarHistorial } from '../../hooks/useDescargarHistorial'
@@ -91,28 +91,22 @@ export function FichaPaciente({ paciente, onClose, generadoPor }: Readonly<Ficha
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // Clic en el fondo (no dentro de la tarjeta) cierra el modal.
-  const cerrarPorFondo = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) onClose()
-  }
-  // Escape con el foco dentro del modal. stopPropagation evita que el listener global
-  // de arriba (que cubre el caso sin foco) llame a onClose por segunda vez.
-  const cerrarConEscape = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'Escape') return
-    e.stopPropagation()
-    onClose()
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={cerrarPorFondo}
-      onKeyDown={cerrarConEscape}
-      role="dialog"
+    <dialog
+      open
+      className="fixed inset-0 z-50 m-0 flex h-full max-h-none w-full max-w-none items-center justify-center bg-black/50 p-4 text-inherit"
       aria-modal="true"
       aria-label={`Ficha de ${paciente.nombre}`}
     >
-      <div className="card max-h-[90vh] w-full max-w-lg overflow-y-auto">
+      {/* Fondo: un clic fuera de la tarjeta cierra el modal. */}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label="Cerrar al hacer clic fuera"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default focus:outline-none"
+      />
+      <div className="card relative max-h-[90vh] w-full max-w-lg overflow-y-auto">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-helios-ink">{paciente.nombre}</h2>
@@ -249,6 +243,6 @@ export function FichaPaciente({ paciente, onClose, generadoPor }: Readonly<Ficha
           </ul>
         )}
       </div>
-    </div>
+    </dialog>
   )
 }
