@@ -650,22 +650,27 @@ table_w = Inches(12.3)
 header_h = Inches(0.4)
 row_h = Inches(0.35)
 
+CAT_CODIGO = "Código"
+CAT_NO_FUNCIONAL = "No funcional"
+HERR_LOCUST = "Locust 2.31"
+CAT_PRESSMAN = "Clásicas (Pressman)"
+
 rows = [
     ("Requerimientos", "Cobertura US con criterios", "100% (5/5)", "Notion + Obsidian", "ISTQB · TMMi"),
     ("Requerimientos", "Trazabilidad US→BD→Comp→Test", "5/5", "Matriz manual", "TMMi Nivel 3"),
     ("Requerimientos", "Volatilidad", "0 cambios mid-sprint", "Backlog Jira", "TQM"),
     ("Diseño", "Tablas BD vs documentadas", "7/7 (100%)", "Supabase + Obsidian", "ISO/IEC 25010"),
     ("Diseño", "Componentes con SRP", "9/9", "Code review", "TMMi"),
-    ("Código", "Cobertura statements (Vitest)", "65.26%  (≥ 60% target)", "Vitest v8", "ISTQB"),
-    ("Código", "Cobertura lines / functions", "81.72% / 89.28%", "Vitest v8", "ISTQB"),
-    ("Código", "Tests automatizados pasando", "39/39 (100%)", "Vitest", "TMMi"),
-    ("No funcional", "Latencia P50 (Locust)", "120 ms", "Locust 2.31", "ISTQB rendimiento"),
-    ("No funcional", "Latencia P95 (Locust)", "300 ms  (target <2000 ms)", "Locust 2.31", "ISTQB rendimiento"),
-    ("No funcional", "Tasa de error bajo carga", "0/6.105 = 0.00%", "Locust 2.31", "ISTQB"),
-    ("No funcional", "Throughput sostenido", "103.85 req/s", "Locust 2.31", "ISTQB"),
-    ("Clásicas (Pressman)", "KLOC del Sprint (producto)", "1.71 KLOC medidas", "Script Python conteo", "Pressman"),
-    ("Clásicas (Pressman)", "Productividad", "0.342 KLOC/persona", "1.71/5 personas", "Pressman"),
-    ("Clásicas (Pressman)", "Tasa de defectos", "5.26 bugs/KLOC", "9 bugs / 1.71 KLOC", "Pressman"),
+    (CAT_CODIGO, "Cobertura statements (Vitest)", "65.26%  (≥ 60% target)", "Vitest v8", "ISTQB"),
+    (CAT_CODIGO, "Cobertura lines / functions", "81.72% / 89.28%", "Vitest v8", "ISTQB"),
+    (CAT_CODIGO, "Tests automatizados pasando", "39/39 (100%)", "Vitest", "TMMi"),
+    (CAT_NO_FUNCIONAL, "Latencia P50 (Locust)", "120 ms", HERR_LOCUST, "ISTQB rendimiento"),
+    (CAT_NO_FUNCIONAL, "Latencia P95 (Locust)", "300 ms  (target <2000 ms)", HERR_LOCUST, "ISTQB rendimiento"),
+    (CAT_NO_FUNCIONAL, "Tasa de error bajo carga", "0/6.105 = 0.00%", HERR_LOCUST, "ISTQB"),
+    (CAT_NO_FUNCIONAL, "Throughput sostenido", "103.85 req/s", HERR_LOCUST, "ISTQB"),
+    (CAT_PRESSMAN, "KLOC del Sprint (producto)", "1.71 KLOC medidas", "Script Python conteo", "Pressman"),
+    (CAT_PRESSMAN, "Productividad", "0.342 KLOC/persona", "1.71/5 personas", "Pressman"),
+    (CAT_PRESSMAN, "Tasa de defectos", "5.26 bugs/KLOC", "9 bugs / 1.71 KLOC", "Pressman"),
     ("Proceso", "Ciclo Goal→Metric→Acción", "Documentado en daily MD", "Daily Scrum semanal", "TQM"),
 ]
 

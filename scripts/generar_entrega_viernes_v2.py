@@ -24,14 +24,13 @@ Output:
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
-from pptx.util import Inches, Pt, Emu
+from pptx.util import Inches, Pt
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "dailys" / "Entrega_Viernes"
@@ -183,7 +182,6 @@ def slide_2(prs):
 
     # Tres cards (preguntas)
     cards_y = Inches(2.0)
-    card_h = Inches(1.55)
     card_w = Inches(4.05)
     gap = Inches(0.10)
     left_start = Inches(0.5)

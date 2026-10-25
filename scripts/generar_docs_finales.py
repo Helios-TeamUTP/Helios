@@ -20,12 +20,11 @@ from pathlib import Path
 
 import markdown2
 from docx import Document
-from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
-from docx.shared import Pt, RGBColor, Cm, Inches
+from docx.shared import Pt, RGBColor, Cm
 from xhtml2pdf import pisa
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -373,16 +372,8 @@ def add_table_from_md(doc: Document, lines: list[str]) -> None:
     doc.add_paragraph()
 
 
-def generate_docx_individual(doc_meta: dict) -> None:
-    """Convierte un markdown a DOCX manualmente, manteniendo estructura."""
-    docx = Document()
-
-    # Estilo base
-    style = docx.styles["Normal"]
-    style.font.name = "Calibri"
-    style.font.size = Pt(10)
-    style.font.color.rgb = INK
-
+def _agregar_portada(docx: Document, doc_meta: dict) -> None:
+    """Portada: logo textual, titulo, subtitulo, equipo y universidad."""
     # Portada
     p_cover = docx.add_paragraph()
     p_cover.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
@@ -448,82 +439,112 @@ def generate_docx_individual(doc_meta: dict) -> None:
 
     docx.add_page_break()
 
-    # Procesar markdown
-    md_lines = doc_meta["md_path"].read_text(encoding="utf-8").splitlines()
+
+HEADINGS_MD = (("# ", 1), ("## ", 2), ("### ", 3), ("#### ", 4))
+
+
+def _parsear_heading(stripped: str) -> tuple[int, str] | None:
+    """Devuelve (nivel, texto) si la linea es un heading markdown."""
+    for prefijo, nivel in HEADINGS_MD:
+        if stripped.startswith(prefijo):
+            return nivel, stripped[len(prefijo):]
+    return None
+
+
+def _es_inicio_tabla(md_lines: list[str], i: int) -> bool:
+    """True si la linea i y la siguiente empiezan con '|' (tabla markdown)."""
+    return (
+        md_lines[i].strip().startswith("|")
+        and i + 1 < len(md_lines)
+        and md_lines[i + 1].strip().startswith("|")
+    )
+
+
+def _agregar_tabla(docx: Document, md_lines: list[str], i: int) -> int:
+    """Agrega la tabla que empieza en i. Devuelve el indice de la linea siguiente."""
+    tbl_lines = []
+    while i < len(md_lines) and md_lines[i].strip().startswith("|"):
+        tbl_lines.append(md_lines[i])
+        i += 1
+    add_table_from_md(docx, tbl_lines)
+    return i
+
+
+def _agregar_cita(docx: Document, texto: str) -> None:
+    """Blockquote: parrafo en cursiva con sangria."""
+    p = docx.add_paragraph()
+    p.paragraph_format.left_indent = Cm(1)
+    r = p.add_run(texto)
+    r.font.italic = True
+    r.font.color.rgb = INK_MUTED
+    r.font.name = "Calibri"
+    r.font.size = Pt(10)
+
+
+def _agregar_codigo(docx: Document, md_lines: list[str], i: int) -> int:
+    """Agrega el bloque de codigo que abre en i. Devuelve el indice tras el cierre."""
+    i += 1
+    code_lines = []
+    while i < len(md_lines) and not md_lines[i].strip().startswith("```"):
+        code_lines.append(md_lines[i])
+        i += 1
+    if code_lines:
+        p = docx.add_paragraph()
+        r = p.add_run("\n".join(code_lines))
+        r.font.name = "Consolas"
+        r.font.size = Pt(8)
+        r.font.color.rgb = TEAL
+    return i + 1
+
+
+def _agregar_markdown(docx: Document, md_lines: list[str]) -> None:
+    """Recorre el markdown linea por linea y lo traduce a elementos DOCX."""
     i = 0
     while i < len(md_lines):
-        line = md_lines[i]
-        stripped = line.strip()
+        stripped = md_lines[i].strip()
 
-        # Saltar lineas vacias dobles
+        # Saltar lineas vacias
         if not stripped:
             i += 1
             continue
 
-        # Headings
-        if stripped.startswith("# "):
-            add_heading_styled(docx, stripped[2:], 1)
-        elif stripped.startswith("## "):
-            add_heading_styled(docx, stripped[3:], 2)
-        elif stripped.startswith("### "):
-            add_heading_styled(docx, stripped[4:], 3)
-        elif stripped.startswith("#### "):
-            add_heading_styled(docx, stripped[5:], 4)
-
-        # Tabla markdown
-        elif stripped.startswith("|") and i + 1 < len(md_lines) and md_lines[i + 1].strip().startswith("|"):
-            # Coleccionar lineas de tabla
-            tbl_lines = []
-            while i < len(md_lines) and md_lines[i].strip().startswith("|"):
-                tbl_lines.append(md_lines[i])
-                i += 1
-            add_table_from_md(docx, tbl_lines)
+        heading = _parsear_heading(stripped)
+        if heading:
+            add_heading_styled(docx, heading[1], heading[0])
+        elif _es_inicio_tabla(md_lines, i):
+            i = _agregar_tabla(docx, md_lines, i)
             continue
-
-        # Lista no ordenada
-        elif stripped.startswith("- ") or stripped.startswith("* "):
+        elif stripped.startswith(("- ", "* ")):
             add_list_item(docx, stripped[2:], ordered=False)
-
-        # Lista ordenada
         elif re.match(r"^\d+\.\s", stripped):
             add_list_item(docx, re.sub(r"^\d+\.\s", "", stripped), ordered=True)
-
-        # Blockquote
         elif stripped.startswith("> "):
-            p = docx.add_paragraph()
-            p.paragraph_format.left_indent = Cm(1)
-            r = p.add_run(stripped[2:])
-            r.font.italic = True
-            r.font.color.rgb = INK_MUTED
-            r.font.name = "Calibri"
-            r.font.size = Pt(10)
-
-        # Separator
+            _agregar_cita(docx, stripped[2:])
         elif stripped == "---":
             docx.add_paragraph()
-
-        # Codigo
         elif stripped.startswith("```"):
-            # Skip code block delimiters - just process content as code paragraph
-            i += 1
-            code_lines = []
-            while i < len(md_lines) and not md_lines[i].strip().startswith("```"):
-                code_lines.append(md_lines[i])
-                i += 1
-            if code_lines:
-                p = docx.add_paragraph()
-                r = p.add_run("\n".join(code_lines))
-                r.font.name = "Consolas"
-                r.font.size = Pt(8)
-                r.font.color.rgb = TEAL
-            i += 1
+            i = _agregar_codigo(docx, md_lines, i)
             continue
-
-        # Parrafo normal
         else:
             add_paragraph_styled(docx, stripped)
 
         i += 1
+
+
+def generate_docx_individual(doc_meta: dict) -> None:
+    """Convierte un markdown a DOCX manualmente, manteniendo estructura."""
+    docx = Document()
+
+    # Estilo base
+    style = docx.styles["Normal"]
+    style.font.name = "Calibri"
+    style.font.size = Pt(10)
+    style.font.color.rgb = INK
+
+    _agregar_portada(docx, doc_meta)
+
+    md_lines = doc_meta["md_path"].read_text(encoding="utf-8").splitlines()
+    _agregar_markdown(docx, md_lines)
 
     docx.save(doc_meta["out_docx"])
     size_kb = doc_meta["out_docx"].stat().st_size / 1024

@@ -717,7 +717,7 @@ def main() -> None:
 <style>{CSS}</style>
 </head><body>{body}</body></html>"""
 
-    # Todo en tmpdir - no deja archivos residuales.
+    # Archivos temporales en tmpdir - no deja residuos.
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_html = Path(tmpdir) / "guion_jose.html"
         tmp_html.write_text(html, encoding="utf-8")

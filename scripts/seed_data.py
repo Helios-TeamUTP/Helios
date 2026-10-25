@@ -201,7 +201,6 @@ def insert_pacientes() -> list[dict]:
 
 def insert_citas_iniciales(pacientes: list[dict], medicos: list[dict], horarios: list[dict]) -> None:
     print("[citas] Creando 15 citas de prueba ya agendadas...")
-    medicos_idx = {m["id"]: m for m in medicos}
     horarios_por_medico: dict[str, list[dict]] = {}
     for h in horarios:
         horarios_por_medico.setdefault(h["medico_id"], []).append(h)
