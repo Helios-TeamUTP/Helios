@@ -1,13 +1,8 @@
 import { useState, type SubmitEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import {
-  isValidCedulaPanama,
-  normalizeCedula,
-  detectarTipoCedula,
-  EJEMPLOS_CEDULA,
-} from '../lib/cedula'
-import { validarTelefonoPanama, validarNombre, validarEmail } from '../lib/validaciones'
+import { normalizeCedula, detectarTipoCedula } from '../lib/cedula'
+import { validarRegistro, EJEMPLOS_TEXTO } from '../lib/validarRegistro'
 import { ErrorMessage } from '../components/shared/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
 import { LoadingSpinner } from '../components/shared/LoadingSpinner'
@@ -17,9 +12,6 @@ import { CuentaIncompleta } from '../components/auth/CuentaIncompleta'
 
 // CU-01 flujo 2.3.6: mensaje genérico cuando el registro falla o no responde.
 const MSG_REGISTRO_FALLIDO = 'No se pudo completar el registro. Intenta nuevamente.'
-
-/** Texto de ejemplos de cédula para la ayuda visual (B-22). */
-const EJEMPLOS_TEXTO = EJEMPLOS_CEDULA.map((e) => e.ejemplo).join('  ·  ')
 
 export function Register() {
   const navigate = useNavigate()
@@ -107,67 +99,14 @@ export function Register() {
     event.preventDefault()
     setError(null)
 
-    // CU-01 flujo 2.3.1 / CA-01-01: ningún campo obligatorio puede ir vacío. El
-    // teléfono es opcional. Se valida aquí (el form usa noValidate) para mostrar
-    // el mensaje del documento en vez del globo nativo del navegador.
-    const obligatorios: Array<[string, string]> = [
-      ['nombre completo', form.nombre],
-      ['cédula', form.cedula],
-      ['confirmar cédula', form.cedulaConfirm],
-      ['correo electrónico', form.correo],
-      ['contraseña', form.password],
-      ['confirmar contraseña', form.passwordConfirm],
-    ]
-    const faltante = obligatorios.find(([, valor]) => !valor.trim())
-    if (faltante) {
-      setError(`Debe completar ${faltante[0]} para continuar.`)
+    // Validación del formulario (CU-01 / B-22 / B-23 / B-24). El form usa
+    // noValidate para mostrar el mensaje del documento en vez del globo nativo.
+    const mensajeError = validarRegistro(form)
+    if (mensajeError) {
+      setError(mensajeError)
       return
     }
-
-    // B-24: validación de nombre (solo letras, espacios y signos de nombre).
-    if (!validarNombre(form.nombre)) {
-      setError('Nombre inválido. Usa solo letras, espacios, apóstrofo o guion (2-80 caracteres).')
-      return
-    }
-
-    // B-22: validación de cédula (acepta los 5 tipos panameños).
     const cedulaNorm = normalizeCedula(form.cedula)
-    if (!isValidCedulaPanama(cedulaNorm)) {
-      setError(
-        `El formato de la cédula no es válido. Ejemplos válidos: ${EJEMPLOS_TEXTO}.`,
-      )
-      return
-    }
-
-    // B-23: la cédula y su confirmación deben coincidir (evita errores de tipeo).
-    if (normalizeCedula(form.cedulaConfirm) !== cedulaNorm) {
-      setError('La cédula no coincide con la confirmación. Verifica que las escribiste igual.')
-      return
-    }
-
-    // B-24: teléfono es opcional, pero si se ingresa debe ser válido.
-    if (form.telefono.trim() && !validarTelefonoPanama(form.telefono)) {
-      setError(
-        'Ingresa un número de teléfono válido. Usa solo números (ej: 6000-0000 o +507 6000 0000).',
-      )
-      return
-    }
-
-    // B-24: correo con formato válido (refuerza el type=email).
-    if (!validarEmail(form.correo)) {
-      setError('Correo electrónico inválido. Revisa el formato (ej: nombre@correo.com).')
-      return
-    }
-    // Contraseña: mínimo 6 caracteres y debe coincidir con su confirmación.
-    if (form.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.')
-      return
-    }
-    // B-23: doble confirmación de contraseña.
-    if (form.password !== form.passwordConfirm) {
-      setError('La contraseña no coincide con la confirmación. Verifica que las escribiste igual.')
-      return
-    }
 
     setSubmitting(true)
     // true cuando el registro quedo con sesion: el boton sigue ocupado hasta que
