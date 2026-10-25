@@ -5,7 +5,8 @@ import { createTableQuery } from '../test/supabase-mock'
 const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: fromMock } }))
 
-import { usePacientesMedico } from './usePacientesMedico'
+import { usePacientesMedico, resumirPacientes } from './usePacientesMedico'
+import type { CitaConPaciente, HistorialClinico } from '../lib/types'
 import { COLUMNAS_CITA, COLUMNAS_HISTORIAL } from '../lib/columnas'
 
 const pac = (id: string, nombre: string) => ({ id, nombre, cedula: '8-123-4567' })
@@ -80,5 +81,59 @@ describe('usePacientesMedico', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.error).toBe('boom')
     errSpy.mockRestore()
+  })
+})
+
+describe('resumirPacientes', () => {
+  const citas = (...c: unknown[]) => c as unknown as CitaConPaciente[]
+  const hist = (citaId: string, dolencia: string, receta: string | null = null) =>
+    ({ cita_id: citaId, dolencia_principal: dolencia, receta }) as unknown as HistorialClinico
+
+  it('devuelve [] sin citas', () => {
+    expect(resumirPacientes([], [])).toEqual([])
+  })
+
+  it('deja una sola fila por paciente: gana la primera cita (la mas reciente)', () => {
+    const r = resumirPacientes(
+      citas(citaDe('c-nueva', 'p1', '2026-06-10'), citaDe('c-vieja', 'p1', '2026-01-05')),
+      [hist('c-nueva', 'Gripe'), hist('c-vieja', 'Fractura')],
+    )
+    expect(r).toHaveLength(1)
+    expect(r[0].dolencia_principal).toBe('Gripe')
+    expect(r[0].ultima_visita).toBe('2026-06-10')
+  })
+
+  it('conserva el orden de llegada entre pacientes distintos', () => {
+    const r = resumirPacientes(
+      citas(citaDe('c1', 'p2', '2026-06-10'), citaDe('c2', 'p1', '2026-06-09')),
+      [],
+    )
+    expect(r.map((x) => x.paciente.id)).toEqual(['p2', 'p1'])
+  })
+
+  it('usa "Sin registrar" y receta null cuando la cita no tiene historial', () => {
+    const r = resumirPacientes(citas(citaDe('c1', 'p1', '2026-06-10')), [])
+    expect(r[0].dolencia_principal).toBe('Sin registrar')
+    expect(r[0].receta).toBeNull()
+  })
+
+  it('trae dolencia y receta del historial de esa cita', () => {
+    const r = resumirPacientes(citas(citaDe('c1', 'p1', '2026-06-10')), [
+      hist('c1', 'Migraña', 'Ibuprofeno 400 mg'),
+    ])
+    expect(r[0].dolencia_principal).toBe('Migraña')
+    expect(r[0].receta).toBe('Ibuprofeno 400 mg')
+  })
+
+  it('si la cita no trae horario, la ultima visita es su created_at', () => {
+    const sinHorario = { ...citaDe('c1', 'p1', 'x'), horario: null }
+    const r = resumirPacientes(citas(sinHorario), [])
+    expect(r[0].ultima_visita).toBe('2026-01-01T00:00:00Z')
+  })
+
+  it('ignora citas sin paciente o sin paciente_id', () => {
+    const sinPaciente = { ...citaDe('c1', 'p1', '2026-06-10'), paciente: null }
+    const sinId = { ...citaDe('c2', 'p2', '2026-06-10'), paciente_id: null }
+    expect(resumirPacientes(citas(sinPaciente, sinId), [])).toEqual([])
   })
 })
