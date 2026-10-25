@@ -24,14 +24,13 @@ Output:
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
-from pptx.util import Inches, Pt, Emu
+from pptx.util import Inches, Pt
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "dailys" / "Entrega_Viernes"

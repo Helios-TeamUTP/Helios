@@ -20,12 +20,11 @@ from pathlib import Path
 
 import markdown2
 from docx import Document
-from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
-from docx.shared import Pt, RGBColor, Cm, Inches
+from docx.shared import Pt, RGBColor, Cm
 from xhtml2pdf import pisa
 
 ROOT = Path(__file__).resolve().parent.parent
