@@ -77,4 +77,25 @@ describe('<SelectorEspecialidad />', () => {
     render(<SelectorEspecialidad value={null} onChange={vi.fn()} />)
     expect(screen.getByRole('alert')).toHaveTextContent('No hay especialidades registradas')
   })
+
+  it('expone el grupo "Especialidad" (fieldset + legend) a los lectores de pantalla', () => {
+    render(<SelectorEspecialidad value={null} onChange={vi.fn()} />)
+    expect(screen.getByRole('group', { name: 'Especialidad' })).toBeInTheDocument()
+  })
+
+  it('al re-renderizar con las mismas props mantiene lo mostrado', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<SelectorEspecialidad value="esp-2" onChange={onChange} />)
+    rerender(<SelectorEspecialidad value="esp-2" onChange={onChange} />)
+    expect(screen.getByRole('group', { name: 'Especialidad' })).toBeInTheDocument()
+    expect(screen.getByText('Pediatría').closest('button')?.className).toContain('ring-2')
+  })
+
+  it('actualiza la opción activa cuando cambia value', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<SelectorEspecialidad value="esp-1" onChange={onChange} />)
+    rerender(<SelectorEspecialidad value="esp-2" onChange={onChange} />)
+    expect(screen.getByText('Pediatría').closest('button')?.className).toContain('ring-2')
+    expect(screen.getByText('Cardiología').closest('button')?.className).not.toContain('ring-2')
+  })
 })
