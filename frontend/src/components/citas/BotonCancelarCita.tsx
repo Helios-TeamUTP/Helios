@@ -48,9 +48,9 @@ export function BotonCancelarCita({ citaId, resumen, onCancelada }: Readonly<Pro
       </button>
 
       {abierto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
+        <dialog
+          open
+          className="fixed inset-0 z-50 m-0 flex h-full max-h-none w-full max-w-none items-center justify-center bg-black/40 p-4 text-inherit"
           aria-modal="true"
           aria-label="Confirmar cancelación de cita"
         >
@@ -87,7 +87,7 @@ export function BotonCancelarCita({ citaId, resumen, onCancelada }: Readonly<Pro
               </button>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </>
   )
