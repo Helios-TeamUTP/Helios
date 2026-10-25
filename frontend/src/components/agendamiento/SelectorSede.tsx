@@ -16,8 +16,8 @@ export function SelectorSede({ value, onChange }: Readonly<Props>) {
     return <ErrorMessage message="No hay sedes activas registradas." />
 
   return (
-    <div>
-      <label className="label">Sede</label>
+    <fieldset className="min-w-0">
+      <legend className="label">Sede</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {data.map((sede) => {
           const active = value === sede.id
@@ -41,6 +41,6 @@ export function SelectorSede({ value, onChange }: Readonly<Props>) {
           )
         })}
       </div>
-    </div>
+    </fieldset>
   )
 }
