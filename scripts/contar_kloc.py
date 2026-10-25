@@ -16,6 +16,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
+DIRS_EXCLUIDOS = ("node_modules", "coverage", "dist", "__pycache__")
+COMENTARIOS_CODIGO = ("//", "/*", "*", "#")
+COMENTARIOS_TESTS = ("//", "/*", "*")
+
+
+def _debe_omitir(f: Path, excluir_tests: bool) -> bool:
+    """True si el archivo no debe contarse (test o carpeta excluida)."""
+    if excluir_tests and ".test." in f.name:
+        return True
+    return any(skip in str(f) for skip in DIRS_EXCLUIDOS)
+
+
+def _contar_lineas(contenido: str, prefijos_comentario: tuple[str, ...]) -> tuple[int, int]:
+    """Devuelve (total_lineas, lineas_codigo) de un texto."""
+    total = 0
+    codigo = 0
+    for linea in contenido.splitlines():
+        total += 1
+        limpia = linea.strip()
+        if limpia and not limpia.startswith(prefijos_comentario):
+            codigo += 1
+    return total, codigo
+
+
 def cuenta_lineas_utiles(path: Path, extensiones: tuple[str, ...], excluir_tests: bool = True) -> tuple[int, int, int]:
     """Devuelve (total_lineas, lineas_codigo, archivos)."""
     total = 0
@@ -25,20 +49,16 @@ def cuenta_lineas_utiles(path: Path, extensiones: tuple[str, ...], excluir_tests
         return 0, 0, 0
     for ext in extensiones:
         for f in path.rglob(f"*{ext}"):
-            if excluir_tests and ".test." in f.name:
-                continue
-            if any(skip in str(f) for skip in ["node_modules", "coverage", "dist", "__pycache__"]):
+            if _debe_omitir(f, excluir_tests):
                 continue
             archivos += 1
             try:
                 contenido = f.read_text(encoding="utf-8", errors="ignore")
             except Exception:
                 continue
-            for linea in contenido.splitlines():
-                total += 1
-                limpia = linea.strip()
-                if limpia and not limpia.startswith(("//", "/*", "*", "#")):
-                    codigo += 1
+            t, c = _contar_lineas(contenido, COMENTARIOS_CODIGO)
+            total += t
+            codigo += c
     return total, codigo, archivos
 
 
@@ -54,11 +74,9 @@ def cuenta_solo_tests(path: Path) -> tuple[int, int, int]:
             contenido = f.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             continue
-        for linea in contenido.splitlines():
-            total += 1
-            limpia = linea.strip()
-            if limpia and not limpia.startswith(("//", "/*", "*")):
-                codigo += 1
+        t, c = _contar_lineas(contenido, COMENTARIOS_TESTS)
+        total += t
+        codigo += c
     return total, codigo, archivos
 
 
