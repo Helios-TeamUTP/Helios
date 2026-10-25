@@ -89,22 +89,20 @@ export function Login() {
 
         {/* Banner verde cuando el registro termino sin sesion activa */}
         {fromRegistro && (
-          <div
-            role="status"
-            className="mt-4 rounded-lg border border-helios-primary/30 bg-helios-primary/10 px-4 py-3 text-sm text-helios-deep"
+          <output
+            className="mt-4 block rounded-lg border border-helios-primary/30 bg-helios-primary/10 px-4 py-3 text-sm text-helios-deep"
           >
             <strong>Cuenta creada con éxito.</strong> Inicia sesión con tu correo y
             contraseña para entrar al sistema.
-          </div>
+          </output>
         )}
 
         {passwordRestablecida && (
-          <div
-            role="status"
-            className="mt-4 rounded-lg border border-helios-primary/30 bg-helios-primary/10 px-4 py-3 text-sm text-helios-deep"
+          <output
+            className="mt-4 block rounded-lg border border-helios-primary/30 bg-helios-primary/10 px-4 py-3 text-sm text-helios-deep"
           >
             <strong>Contraseña actualizada.</strong> Inicia sesión con tu contraseña nueva.
-          </div>
+          </output>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">

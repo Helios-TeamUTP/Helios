@@ -18,8 +18,8 @@ export function SelectorEspecialidad({ value, onChange }: Readonly<Props>) {
     )
 
   return (
-    <div>
-      <label className="label">Especialidad</label>
+    <fieldset className="min-w-0">
+      <legend className="label">Especialidad</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {data.map((esp) => {
           const active = value === esp.id
@@ -42,6 +42,6 @@ export function SelectorEspecialidad({ value, onChange }: Readonly<Props>) {
           )
         })}
       </div>
-    </div>
+    </fieldset>
   )
 }

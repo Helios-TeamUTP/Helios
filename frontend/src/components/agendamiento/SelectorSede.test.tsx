@@ -76,4 +76,28 @@ describe('<SelectorSede />', () => {
     render(<SelectorSede value={null} onChange={vi.fn()} />)
     expect(screen.getByRole('alert')).toHaveTextContent('No hay sedes activas registradas.')
   })
+
+  it('expone el grupo "Sede" (fieldset + legend) a los lectores de pantalla', () => {
+    render(<SelectorSede value={null} onChange={vi.fn()} />)
+    expect(screen.getByRole('group', { name: 'Sede' })).toBeInTheDocument()
+  })
+
+  it('al re-renderizar con las mismas props mantiene lo mostrado', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<SelectorSede value="sede-1" onChange={onChange} />)
+    rerender(<SelectorSede value="sede-1" onChange={onChange} />)
+    expect(screen.getByRole('group', { name: 'Sede' })).toBeInTheDocument()
+    expect(screen.getByText('Policlínica Central').closest('button')?.className).toContain('ring-2')
+  })
+
+  it('actualiza la sede activa cuando cambia value', () => {
+    setHook({ data: [sede(), sede({ id: 'sede-2', nombre: 'Clínica Norte' })] })
+    const onChange = vi.fn()
+    const { rerender } = render(<SelectorSede value="sede-1" onChange={onChange} />)
+    rerender(<SelectorSede value="sede-2" onChange={onChange} />)
+    expect(screen.getByText('Clínica Norte').closest('button')?.className).toContain('ring-2')
+    expect(screen.getByText('Policlínica Central').closest('button')?.className).not.toContain(
+      'ring-2',
+    )
+  })
 })

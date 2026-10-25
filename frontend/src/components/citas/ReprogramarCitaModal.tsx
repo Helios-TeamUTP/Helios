@@ -34,9 +34,9 @@ export function ReprogramarCitaModal({ cita, onClose, onReprogramada }: Readonly
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4"
-      role="dialog"
+    <dialog
+      open
+      className="fixed inset-0 z-50 m-0 flex h-full max-h-none w-full max-w-none items-start justify-center overflow-y-auto bg-black/40 p-4 text-inherit"
       aria-modal="true"
       aria-label="Reprogramar cita"
     >
@@ -102,6 +102,6 @@ export function ReprogramarCitaModal({ cita, onClose, onReprogramada }: Readonly
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }

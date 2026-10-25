@@ -169,8 +169,31 @@ describe('<ModalCompletarCita />', () => {
     const user = userEvent.setup()
     render(<ModalCompletarCita cita={citaMock()} onClose={onClose} onGuardar={vi.fn()} />)
 
-    await user.click(screen.getByRole('dialog'))
+    await user.click(screen.getByRole('button', { name: 'Cerrar al hacer clic fuera' }))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('mientras guarda, ni Escape ni el fondo cierran el modal', async () => {
+    let resolver: () => void = () => {}
+    const onGuardar = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolver = resolve
+        }),
+    )
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<ModalCompletarCita cita={citaMock()} onClose={onClose} onGuardar={onGuardar} />)
+
+    await user.type(screen.getByLabelText(/Dolencia principal/), 'Gripe')
+    await user.click(screen.getByRole('button', { name: /Guardar y completar/ }))
+    await screen.findByRole('button', { name: /Guardando…/ })
+
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('button', { name: 'Cerrar al hacer clic fuera' })).toBeDisabled()
+    expect(onClose).not.toHaveBeenCalled()
+
+    resolver()
   })
 
   it('cierra con Escape cuando el foco está dentro del modal', async () => {

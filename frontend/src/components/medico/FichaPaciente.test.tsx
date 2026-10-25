@@ -244,7 +244,7 @@ describe('<FichaPaciente />', () => {
     const user = userEvent.setup()
     render(<FichaPaciente paciente={pacienteMock()} onClose={onClose} />)
 
-    await user.click(screen.getByRole('dialog'))
+    await user.click(screen.getByRole('button', { name: 'Cerrar al hacer clic fuera' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 

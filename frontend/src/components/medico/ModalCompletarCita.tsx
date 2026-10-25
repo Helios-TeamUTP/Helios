@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type MouseEvent, type SubmitEvent } from 'react'
+import { useEffect, useState, type SubmitEvent } from 'react'
 import type { CitaConPaciente } from '../../lib/types'
 
 interface ModalCompletarCitaProps {
@@ -51,24 +51,32 @@ export function ModalCompletarCita({ cita, onClose, onGuardar }: Readonly<ModalC
     }
   }
 
-  // Clic en el fondo (no dentro de la tarjeta) o Escape cierran el modal, salvo mientras se guarda.
-  const cerrarPorFondo = (e: MouseEvent<HTMLDivElement>) => {
-    if (!enviando && e.target === e.currentTarget) onClose()
-  }
-  const cerrarConEscape = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape' && !enviando) onClose()
-  }
+  // Escape cierra el modal, salvo mientras se guarda.
+  useEffect(() => {
+    const alPresionarTecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !enviando) onClose()
+    }
+    document.addEventListener('keydown', alPresionarTecla)
+    return () => document.removeEventListener('keydown', alPresionarTecla)
+  }, [enviando, onClose])
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={cerrarPorFondo}
-      onKeyDown={cerrarConEscape}
-      role="dialog"
+    <dialog
+      open
+      className="fixed inset-0 z-50 m-0 flex h-full max-h-none w-full max-w-none items-center justify-center bg-black/50 p-4 text-inherit"
       aria-modal="true"
       aria-label="Completar cita"
     >
-      <form onSubmit={handleSubmit} className="card w-full max-w-md">
+      {/* Fondo: un clic fuera de la tarjeta cierra el modal (salvo mientras se guarda). */}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label="Cerrar al hacer clic fuera"
+        disabled={enviando}
+        onClick={onClose}
+        className="absolute inset-0 cursor-default focus:outline-none"
+      />
+      <form onSubmit={handleSubmit} className="card relative w-full max-w-md">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold text-helios-ink">Completar cita</h2>
@@ -151,6 +159,6 @@ export function ModalCompletarCita({ cita, onClose, onGuardar }: Readonly<ModalC
           </button>
         </div>
       </form>
-    </div>
+    </dialog>
   )
 }
