@@ -9,6 +9,8 @@ import { RecuperarPassword } from './pages/RecuperarPassword'
 import { RestablecerPassword } from './pages/RestablecerPassword'
 import { AgendarCita } from './pages/AgendarCita'
 import { MisCitas } from './pages/MisCitas'
+import { Perfil } from './pages/Perfil'
+import { PerfilMedico } from './pages/PerfilMedico'
 import { MedicoDashboardV2 } from './pages/MedicoDashboardV2'
 import { PacientesMedico } from './pages/PacientesMedico'
 
@@ -27,11 +29,13 @@ export default function App() {
             <Route element={<ProtectedRoute requireRole="paciente" />}>
               <Route path="agendar" element={<AgendarCita />} />
               <Route path="mis-citas" element={<MisCitas />} />
+              <Route path="perfil" element={<Perfil />} />
             </Route>
             {/* Rutas de médico */}
             <Route element={<ProtectedRoute requireRole="medico" />}>
               <Route path="medico" element={<MedicoDashboardV2 />} />
               <Route path="medico/pacientes" element={<PacientesMedico />} />
+              <Route path="medico/perfil" element={<PerfilMedico />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
