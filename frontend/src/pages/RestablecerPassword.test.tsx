@@ -93,11 +93,11 @@ describe('<RestablecerPassword />', () => {
     expect(screen.getByText('Enlace inválido o expirado')).toBeInTheDocument()
   })
 
-  it('rechaza contraseñas de menos de 8 caracteres sin llamar a Supabase', async () => {
+  it('rechaza contraseñas de menos de 6 caracteres sin llamar a Supabase', async () => {
     const user = userEvent.setup()
     renderPagina()
-    await llenar(user, 'corta1', 'corta1')
-    expect(await screen.findByRole('alert')).toHaveTextContent(/al menos 8 caracteres/)
+    await llenar(user, 'corta', 'corta')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/al menos 6 caracteres/)
     expect(updateUserMock).not.toHaveBeenCalled()
   })
 

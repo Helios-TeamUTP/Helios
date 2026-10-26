@@ -1,5 +1,6 @@
 import { EJEMPLOS_CEDULA, isValidCedulaPanama, normalizeCedula } from './cedula'
 import { validarEmail, validarNombre, validarTelefonoPanama } from './validaciones'
+import { PASSWORD_MIN_LENGTH } from './passwordPolicy'
 
 /** Campos del formulario de registro de paciente. */
 export interface RegistroForm {
@@ -61,9 +62,9 @@ export function validarRegistro(form: RegistroForm): string | null {
     return 'Correo electrónico inválido. Revisa el formato (ej: nombre@correo.com).'
   }
 
-  // Contraseña: mínimo 6 caracteres y debe coincidir con su confirmación.
-  if (form.password.length < 6) {
-    return 'La contraseña debe tener al menos 6 caracteres.'
+  // Contraseña: largo mínimo compartido (passwordPolicy) y debe coincidir con su confirmación.
+  if (form.password.length < PASSWORD_MIN_LENGTH) {
+    return `La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`
   }
   // B-23: doble confirmación de contraseña.
   if (form.password !== form.passwordConfirm) {
