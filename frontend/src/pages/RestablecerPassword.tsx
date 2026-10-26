@@ -5,9 +5,7 @@ import { LoadingSpinner } from '../components/shared/LoadingSpinner'
 import { useAuth } from '../hooks/useAuth'
 import { useRestablecerPassword } from '../hooks/useRestablecerPassword'
 import { leerEstadoRecuperacion, limpiarEstadoRecuperacion } from '../lib/recuperacionPassword'
-
-/** Mismo mínimo que el cambio de contraseña desde Perfil (TarjetaPassword). */
-const PASSWORD_MIN_LENGTH = 8
+import { PASSWORD_MIN_LENGTH } from '../lib/passwordPolicy'
 
 /**
  * Recuperar contraseña, paso 2 (ruta pública /restablecer-password).
