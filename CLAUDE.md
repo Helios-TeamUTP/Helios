@@ -32,7 +32,8 @@ No empezar a trabajar sin haber leído ese archivo primero. Es la "memoria viva"
 
 **Stack:** React 19 + TypeScript 6 + Vite 8 + Tailwind 3 + Supabase 2 + React Router 7 + FullCalendar 6
 
-**Deploy:** Railway (`https://helios-web-production.up.railway.app`)
+**Deploy:** Cloudflare Workers vía *Workers Builds* (`https://helios.heliosmedic.workers.dev`). Rama de producción: `main` (cada push/merge a `main` despliega solo; los PR generan build de preview). Railway fue dado de baja (oct-2026).
+**Email worker:** Cloudflare Worker `helios-email-worker` con Cron Trigger cada minuto (`email-worker/`), envía por la API de Brevo
 **BD:** Supabase (`uobhbikcctausgpnzsph`)
 **Repo:** `MarianC-programing/Helios`
 
@@ -123,7 +124,7 @@ helios-repo/
 │   └── tailwind.config.js       ← Tema HELIOS (teal #0A8478)
 ├── scripts/                     ← Python (seed, locust, pptx, pdfs)
 ├── supabase/schema.sql          ← Schema ejecutable
-├── Dockerfile                   ← Multi-stage para Railway
+├── Dockerfile                   ← Legado de Railway (ya no se usa para desplegar)
 ├── README.md
 └── CLAUDE.md                    ← Este archivo
 ```
@@ -309,14 +310,14 @@ pnpm build
 # 3. Code review obligatorio
 # (invocar pr-review-toolkit:code-reviewer)
 
-# 4. Confirmar con José (push)
-git push origin sprint1/bootstrap
+# 4. Confirmar con José (push) — rama + PR a main
 
-# 5. Deploy
-railway up --service helios-web --ci
+# 5. Deploy (automático)
+# Workers Builds despliega solo al mergear a main. Manual de emergencia:
+cd frontend && pnpm build && pnpm exec wrangler deploy
 
 # 6. Verificar
-curl -sf https://helios-web-production.up.railway.app
+curl -sf https://helios.heliosmedic.workers.dev
 ```
 
 ---
@@ -330,3 +331,20 @@ curl -sf https://helios-web-production.up.railway.app
 ---
 
 _CLAUDE.md mantenido por Marian Barba (DevOps) — Última actualización: Sprint 1 semana 2._
+
+
+---
+
+## ☁️ Deploy en Cloudflare (oct-2026) — migración desde Railway
+
+| Pieza | Dónde vive | Cómo se despliega |
+|---|---|---|
+| Frontend (`helios`) | `frontend/wrangler.jsonc` (assets SPA desde `dist`) | Workers Builds, rama de producción `main`. Root dir `frontend`, build `pnpm build`, deploy `pnpm exec wrangler deploy` |
+| Email worker (`helios-email-worker`) | `email-worker/` (`wrangler.jsonc` + `src/index.js`) | Segundo proyecto de Workers Builds con Root dir `email-worker`, o `pnpm deploy` manual. Cron `* * * * *`, sin URL pública |
+
+- **Secrets del email worker** (solo en Cloudflare, nunca en el repo): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `BREVO_API_KEY`, `SENDER_EMAIL`, opcional `SENDER_NAME`. Cargar con `pnpm exec wrangler secret put <NOMBRE>` dentro de `email-worker/`.
+- **pnpm 11 + wrangler**: `pnpm-workspace.yaml` (en `frontend/` y `email-worker/`) aprueba los postinstall de `esbuild`/`workerd` (`allowBuilds`) y excluye de `minimumReleaseAge` las versiones de wrangler fijadas. Si se sube wrangler, actualizar ambos sitios.
+- **Latencia del correo**: pasó de ~8 s (polling en Railway) a ≤ 1 min (mínimo de un cron).
+- **Supabase Auth → Redirect URLs** debe incluir `https://helios.heliosmedic.workers.dev/restablecer-password` (RF-04).
+- La rama `demo-cloudflare` se eliminó; su último estado quedó en el tag `archive/demo-cloudflare`.
+- Secret `RAILWAY_TOKEN` del repo ya no se usa → borrarlo.

@@ -60,3 +60,7 @@ __pycache__/
 .venv/
 venv/
 scripts/.env
+
+# Cloudflare Workers
+.wrangler/
+.dev.vars
