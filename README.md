@@ -9,7 +9,7 @@ HELIOS permite a los pacientes agendar, cancelar y reprogramar citas, y a los m√
 ## Estado del proyecto
 
 - Estado: terminado y desplegado
-- Entorno productivo: Railway
+- Entorno productivo: Cloudflare Workers
 - Base de datos: Supabase
 - Enfoque: calidad, seguridad y experiencia de usuario
 
@@ -32,7 +32,7 @@ HELIOS permite a los pacientes agendar, cancelar y reprogramar citas, y a los m√
 - Backend y base de datos: Supabase (PostgreSQL, Auth y RLS)
 - Testing: Vitest + React Testing Library
 - Calidad: ESLint, SonarQube y scripts de QA en Python
-- Despliegue: Railway + Docker
+- Despliegue: Cloudflare Workers (Workers Builds, rama `main`)
 
 
 ## Estructura del repositorio
@@ -60,7 +60,7 @@ El proyecto est√° organizado de forma simple y clara en m√≥dulos funcionales:
 ## Enlaces del proyecto
 
 - [Tablero Jira](https://helios-group.atlassian.net/)
-- [Sitio desplegado](https://helios-web-production.up.railway.app/)
+- [Sitio desplegado](https://helios.heliosmedic.workers.dev/)
 - [Repositorio GitHub](https://github.com/Helios-TeamUTP/Helios)
 
 ## Nota final

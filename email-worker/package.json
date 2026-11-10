@@ -1,14 +1,18 @@
 {
   "name": "helios-email-worker",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "private": true,
-  "description": "Worker que envia por la API HTTP de Brevo los correos encolados en notificaciones (canal=email). API HTTP porque Railway bloquea el SMTP saliente.",
+  "description": "Worker (Cloudflare Workers + Cron) que envia por la API HTTP de Brevo los correos encolados en notificaciones (canal=email).",
+  "packageManager": "pnpm@11.2.2",
   "scripts": {
-    "start": "node index.js"
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.2",
-    "dotenv": "^16.4.5"
+    "@supabase/supabase-js": "^2.106.2"
+  },
+  "devDependencies": {
+    "wrangler": "4.136.1"
   }
 }
